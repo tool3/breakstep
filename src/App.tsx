@@ -12,18 +12,24 @@ import { App as AntApp, ConfigProvider, Skeleton, Tabs, theme as antdTheme } fro
 import {
   BarChartOutlined,
   CodeOutlined,
+  BugOutlined,
   ExperimentOutlined,
   PartitionOutlined,
   SlidersOutlined,
 } from '@ant-design/icons';
 import { Header, ModeBadge } from './components/Header';
 import { ParamsPanel } from './components/ParamsPanel';
+import { DebugPanel } from './components/DebugPanel';
 import { OutputPanel } from './components/OutputPanel';
 import { VisualizerPanel } from './components/VisualizerPanel';
 import { ComplexityPanel } from './components/ComplexityPanel';
 import { TemplatePicker } from './components/TemplatePicker';
+import { ProblemDrawer } from './components/ProblemDrawer';
 import { SplitPane } from './components/SplitPane';
 import { useWorkspace } from './hooks/useWorkspace';
+import { useDebugger } from './hooks/useDebugger';
+import { listFunctions } from './analysis/functions';
+import type { LeetProblem, PatternId } from './leetcode/types';
 import { useTheme } from './hooks/useTheme';
 import { useLayout } from './hooks/useLayout';
 import { useLocalStorage } from './hooks/useLocalStorage';
@@ -40,7 +46,7 @@ const EditorPanel = lazy(() =>
   import('./components/EditorPanel').then((m) => ({ default: m.EditorPanel })),
 );
 
-/** antd tokens mapped onto the BCS palette so the two never drift apart. */
+/** antd tokens mapped onto the Breakstep palette so the two never drift apart. */
 function useAntdTheme(isDark: boolean, coarsePointer: boolean) {
   return useMemo(
     () => ({
@@ -81,21 +87,32 @@ function useAntdTheme(isDark: boolean, coarsePointer: boolean) {
   );
 }
 
-const COMPACT_TABS: { key: CompactKey; label: string; icon: ReactNode }[] = [
-  { key: 'code', label: 'Code', icon: <CodeOutlined /> },
-  { key: 'params', label: 'Inputs', icon: <SlidersOutlined /> },
-  { key: 'visualize', label: 'Visual', icon: <PartitionOutlined /> },
-  { key: 'output', label: 'Output', icon: <ExperimentOutlined /> },
-  { key: 'complexity', label: 'Analyze', icon: <BarChartOutlined /> },
-];
+/**
+ * The phone tab strip. While debugging, the Inputs slot becomes the debugger —
+ * the parameters are fixed for the recording anyway, and the controls need the
+ * room far more than the sliders do.
+ */
+function compactTabs(debugging: boolean): { key: CompactKey; label: string; icon: ReactNode }[] {
+  return [
+    { key: 'code', label: 'Code', icon: <CodeOutlined /> },
+    debugging
+      ? { key: 'params', label: 'Debug', icon: <BugOutlined /> }
+      : { key: 'params', label: 'Inputs', icon: <SlidersOutlined /> },
+    { key: 'visualize', label: 'Visual', icon: <PartitionOutlined /> },
+    { key: 'output', label: 'Output', icon: <ExperimentOutlined /> },
+    { key: 'complexity', label: 'Analyze', icon: <BarChartOutlined /> },
+  ];
+}
 
 export default function App() {
   const workspace = useWorkspace();
+  const debug = useDebugger();
   const { theme, setTheme, isDark } = useTheme();
   const layout = useLayout();
   const antdConfig = useAntdTheme(isDark, layout.coarsePointer);
 
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [problemsOpen, setProblemsOpen] = useState(false);
   const [panel, setPanel] = useState<PanelKey>('visualize');
   const [compactTab, setCompactTab] = useState<CompactKey>('code');
   const [splitRatio, setSplitRatio] = useLocalStorage('layout:split', 50);
@@ -119,7 +136,7 @@ export default function App() {
     [compact],
   );
 
-  const { run, analyze, status, result } = workspace;
+  const { run, debugRun, analyze, status, result } = workspace;
 
   /** Show a panel, wherever that panel currently lives. */
   const reveal = useCallback(
@@ -131,14 +148,64 @@ export default function App() {
   );
 
   const handleRun = useCallback(() => {
+    debug.end();
     run();
     reveal('visualize');
-  }, [run, reveal]);
+  }, [run, reveal, debug]);
+
+  /**
+   * Record a run, then hand it to the debugger.
+   *
+   * The run itself is an ordinary run — same code, same parameters, same
+   * frames — so the picture the debugger walks is exactly the picture Run
+   * would have produced.
+   */
+  const handleDebug = useCallback(() => {
+    debug.end();
+    reveal('visualize');
+    void debugRun().then((steps) => {
+      debug.begin(steps, listFunctions(workspace.code, workspace.language));
+      if (compact) setCompactTab('params');
+    });
+  }, [debugRun, debug, reveal, compact, workspace.code, workspace.language]);
 
   const handleAnalyze = useCallback(() => {
     analyze();
     reveal('complexity');
   }, [analyze, reveal]);
+
+  /** Load a problem's starter code and get out of the way. */
+  const handleLoadProblem = useCallback(
+    (problem: LeetProblem) => {
+      debug.end();
+      workspace.loadProblem(problem, 'starter');
+      setProblemsOpen(false);
+      if (compact) setCompactTab('code');
+    },
+    [workspace, debug, compact],
+  );
+
+  /** The reveal: the editor becomes the worked solution, ready to run. */
+  const handleRevealSolution = useCallback(
+    (problem: LeetProblem) => {
+      debug.end();
+      workspace.loadProblem(problem, 'solution');
+      setProblemsOpen(false);
+      if (compact) setCompactTab('code');
+    },
+    [workspace, debug, compact],
+  );
+
+  /** Jump from a recommendation to the template that teaches the technique. */
+  const handleOpenPattern = useCallback(
+    (pattern: PatternId) => {
+      debug.end();
+      workspace.selectTemplate(pattern);
+      setProblemsOpen(false);
+      if (compact) setCompactTab('code');
+    },
+    [workspace, debug, compact],
+  );
 
   // An error is worth interrupting for — surface the log without being asked.
   useEffect(() => {
@@ -175,6 +242,9 @@ export default function App() {
           theme={theme}
           error={workspace.result?.error}
           compact={compact}
+          activeLine={debug.active ? (debug.step?.line ?? null) : null}
+          breakpoints={debug.breakpoints}
+          onToggleBreakpoint={debug.toggleBreakpoint}
           onChange={workspace.setCode}
           onRun={handleRun}
           registerGoToLine={registerGoToLine}
@@ -183,7 +253,7 @@ export default function App() {
     </div>
   );
 
-  const params = (
+  const inputs = (
     <ParamsPanel
       template={template}
       values={workspace.params}
@@ -194,11 +264,19 @@ export default function App() {
     />
   );
 
+  const params = debug.active ? (
+    <DebugPanel debug={debug} onGoToLine={goToLine} onStop={debug.end} />
+  ) : (
+    inputs
+  );
+
   const visualizer = (
     <VisualizerPanel
       frames={workspace.frames}
       status={workspace.status}
       compact={compact}
+      pinnedFrame={debug.active ? debug.frameIndex : null}
+      following={debug.active}
       onRun={handleRun}
     />
   );
@@ -309,9 +387,12 @@ export default function App() {
             theme={theme}
             layout={layout.mode}
             onOpenTemplates={() => setPickerOpen(true)}
+            onOpenProblems={() => setProblemsOpen(true)}
             onLanguage={workspace.setLanguage}
             onMode={workspace.setMode}
             onRun={handleRun}
+            onDebug={handleDebug}
+            debugging={debug.active}
             onAnalyze={handleAnalyze}
             onCancel={workspace.cancel}
             onResetCode={workspace.resetCode}
@@ -352,7 +433,7 @@ export default function App() {
 
           {compact ? (
             <nav className={styles.bottomBar} role="tablist" aria-label="Panels">
-              {COMPACT_TABS.map((tab) => {
+              {compactTabs(debug.active).map((tab) => {
                 const active = compactTab === tab.key;
                 return (
                   <button
@@ -387,13 +468,33 @@ export default function App() {
               </span>
               <span className={styles.spacer} />
               <span className={styles.footerHint}>
-                <kbd>⌘</kbd>
-                <kbd>↵</kbd> run · <kbd>⌘</kbd>
-                <kbd>K</kbd> templates · <kbd>←</kbd>
-                <kbd>→</kbd> step
+                {debug.active ? (
+                  <>
+                    debugging · <kbd>{debug.index + 1}</kbd> of <kbd>{debug.steps.length}</kbd>{' '}
+                    steps · line <kbd>{debug.step?.line ?? '—'}</kbd>
+                  </>
+                ) : (
+                  <>
+                    <kbd>⌘</kbd>
+                    <kbd>↵</kbd> run · <kbd>⌘</kbd>
+                    <kbd>K</kbd> templates · <kbd>←</kbd>
+                    <kbd>→</kbd> step
+                  </>
+                )}
               </span>
             </footer>
           )}
+
+          <ProblemDrawer
+            open={problemsOpen}
+            language={workspace.language}
+            currentSlug={workspace.problemSlug}
+            compact={compact}
+            onClose={() => setProblemsOpen(false)}
+            onLoad={handleLoadProblem}
+            onReveal={handleRevealSolution}
+            onOpenPattern={handleOpenPattern}
+          />
 
           <TemplatePicker
             open={pickerOpen}

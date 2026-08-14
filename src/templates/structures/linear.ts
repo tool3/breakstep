@@ -147,7 +147,7 @@ breakstep.bench(input=lambda n: breakstep.random_ints(n, 1000, 4), run=_bench)
     typescript: `// Stack — the same structure, drawn explicitly.
 //
 // \`breakstep.show(..., { as: 'stack' })\` forces the vertical layout; without the
-// override BCS reads the class name and reaches the same conclusion.
+// override Breakstep reads the class name and reaches the same conclusion.
 
 const values = breakstep.param<number[]>('values', [3, 7, 1, 9, 4]);
 
@@ -210,7 +210,7 @@ breakstep.bench({
 `,
     python: `# Stack - the same structure, drawn explicitly.
 #
-# \`kind="stack"\` forces the vertical layout; without the override BCS reads the
+# \`kind="stack"\` forces the vertical layout; without the override Breakstep reads the
 # class name and reaches the same conclusion.
 
 values = breakstep.param('values', [3, 7, 1, 9, 4])
@@ -1311,7 +1311,7 @@ breakstep.bench(input=lambda n: list(range(n)), run=_bench)
   instrumented: {
     typescript: `// Doubly linked list — the same structure, drawn explicitly.
 //
-// BCS detects \`prev\` on its own and draws ⇄ connectors; nothing here forces it.
+// Breakstep detects \`prev\` on its own and draws ⇄ connectors; nothing here forces it.
 
 const values = breakstep.param<number[]>('values', [1, 2, 3, 4, 5]);
 
@@ -1416,7 +1416,7 @@ breakstep.bench({
 `,
     python: `# Doubly linked list - the same structure, drawn explicitly.
 #
-# BCS detects \`prev\` on its own and draws <-> connectors; nothing here forces it.
+# Breakstep detects \`prev\` on its own and draws <-> connectors; nothing here forces it.
 
 values = breakstep.param('values', [1, 2, 3, 4, 5])
 

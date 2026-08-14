@@ -16,6 +16,7 @@ import { autoInstrument, hasManualInstrumentation } from '@/analysis/autoInstrum
 import { createAutoTracer } from './autoTrace';
 import type { BenchmarkSample, LogEntry, LogLevel, ParamValues, RunError } from '@/types';
 import type { Frame, ShowOptions } from '@/types/viz';
+import type { DebugStep } from '@/types/debug';
 
 export interface BenchSpec {
   input: (n: number) => unknown;
@@ -32,6 +33,13 @@ export interface SandboxOptions {
    * visualize itself. Ignored when the source already calls `breakstep.show`.
    */
   autoTrace?: boolean;
+  /**
+   * Also record a step before every statement, so the debugger can walk the run
+   * one line at a time. Costs roughly 3x the steps, so it is opt-in.
+   */
+  debug?: boolean;
+  /** Ceiling on recorded debug steps; a runaway loop must not fill memory. */
+  stepLimit?: number;
   /** Called as frames/logs arrive so the worker can stream them out. */
   onFlush?: (payload: { frames: Frame[]; logs: LogEntry[] }) => void;
   flushEveryMs?: number;
@@ -39,6 +47,8 @@ export interface SandboxOptions {
 
 export interface SandboxResult {
   frames: Frame[];
+  /** Recorded execution, present only on a debug run. */
+  steps?: DebugStep[];
   /** True when frames came from auto-tracing rather than explicit `breakstep.show`. */
   traced?: boolean;
   logs: LogEntry[];
@@ -130,6 +140,7 @@ export function stripModuleSyntax(code: string): string {
 interface Harness {
   breakstep: Record<string, unknown>;
   frames: Frame[];
+  steps: DebugStep[];
   logs: LogEntry[];
   getBench: () => BenchSpec | undefined;
   countOp: () => void;
@@ -144,6 +155,7 @@ interface Harness {
 
 function createHarness(params: ParamValues, options: SandboxOptions, startedAt: number): Harness {
   const frames: Frame[] = [];
+  const steps: DebugStep[] = [];
   const logs: LogEntry[] = [];
   let ops = 0;
   let frameId = 0;
@@ -242,6 +254,8 @@ function createHarness(params: ParamValues, options: SandboxOptions, startedAt: 
    * Auto-trace shares the frame budget and the capture flag with `breakstep.show`,
    * so a benchmark sweep silently disables it along with everything else.
    */
+  const stepLimit = options.stepLimit ?? 20_000;
+
   const tracer = createAutoTracer({
     enabled: () => capturing,
     emit: (view, label, line, meta) => {
@@ -250,11 +264,31 @@ function createHarness(params: ParamValues, options: SandboxOptions, startedAt: 
       maybeFlush();
       return true;
     },
+    // Only a debug run pays for the recording.
+    record: options.debug
+      ? (kind, line, scope, stack, fn, frame) => {
+          if (steps.length >= stepLimit) return false;
+          steps.push({
+            id: steps.length,
+            line,
+            kind,
+            fn,
+            depth: stack.length,
+            // The scope crosses a worker boundary, so it has to be cloneable —
+            // and shallow enough that a big structure does not dominate.
+            scope: toTransferable(scope, 5) as Record<string, unknown>,
+            stack: stack.map((e) => ({ label: e.label, depth: e.depth })),
+            frame,
+          });
+          return true;
+        }
+      : undefined,
   });
 
   return {
     breakstep,
     frames,
+    steps,
     logs,
     getBench: () => bench,
     countOp,
@@ -308,7 +342,7 @@ export async function runInSandbox(
   // auto-tracing adds afterwards are never themselves counted. Otherwise every
   // captured frame would inflate the reported operation count by one.
   const counted = instrument(cleaned).code;
-  const traceable = traced ? autoInstrument(counted) : null;
+  const traceable = traced ? autoInstrument(counted, { debug: options.debug }) : null;
   const instrumented = traceable?.ok ? traceable.code : counted;
   const startedAt = now();
   const h = createHarness(params, options, startedAt);
@@ -364,6 +398,7 @@ export async function runInSandbox(
 
   return {
     frames: h.frames,
+    steps: options.debug ? h.steps : undefined,
     traced: traced && traceable?.ok === true,
     logs: h.logs,
     error,

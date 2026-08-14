@@ -33,6 +33,14 @@ interface Props {
   status: RunStatus;
   /** Phone-sized: the transport wraps and the legend collapses. */
   compact?: boolean;
+  /**
+   * The frame the debugger is sitting on. While this is set the stage follows
+   * the debug cursor instead of playing on its own — that is the interlock
+   * between stepping through code and watching the structure change.
+   */
+  pinnedFrame?: number | null;
+  /** True while the debugger owns the transport. */
+  following?: boolean;
   onRun: () => void;
 }
 
@@ -42,7 +50,7 @@ interface Props {
  * Playback is driven by a timeout chain rather than an interval so a slow
  * render can never queue up a backlog of ticks it then burns through at once.
  */
-export function VisualizerPanel({ frames, status, compact, onRun }: Props) {
+export function VisualizerPanel({ frames, status, compact, pinnedFrame, following, onRun }: Props) {
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [delay, setDelay] = useState(400);
@@ -65,9 +73,18 @@ export function VisualizerPanel({ frames, status, compact, onRun }: Props) {
     if (wasRunning.current && status === 'done') {
       wasRunning.current = false;
       setIndex(0);
-      setPlaying(total > 1);
+      // The debugger drives the stage itself; auto-playing would fight it.
+      setPlaying(!following && total > 1);
     }
-  }, [status, total]);
+  }, [status, total, following]);
+
+  // Follow the debug cursor. Scrubbing by hand still works — the next debug
+  // step simply takes the stage back.
+  useEffect(() => {
+    if (pinnedFrame === null || pinnedFrame === undefined) return;
+    setPlaying(false);
+    setIndex(pinnedFrame);
+  }, [pinnedFrame]);
 
   useEffect(() => {
     if (!playing || total === 0) return;
@@ -159,6 +176,7 @@ export function VisualizerPanel({ frames, status, compact, onRun }: Props) {
     <div className={styles.panel}>
       <div className={styles.header}>
         <span className={styles.kind}>{frame ? VIEW_LABEL[frame.view.kind] : ''}</span>
+        {following && <span className={styles.following}>following the debugger</span>}
         <span className={styles.label} title={frame?.label}>
           {frame?.label}
         </span>

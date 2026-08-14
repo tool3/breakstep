@@ -1,7 +1,7 @@
 /**
  * Shape detection: turns arbitrary user values into a normalized `VizView`.
  *
- * The whole point of BCS is that you write ordinary code — a plain `{val, next}`
+ * The whole point of Breakstep is that you write ordinary code — a plain `{val, next}`
  * chain, a `Map`, a class with a `root` — and it just draws. This module is the
  * only place that guesses. It is pure and synchronous so it can be unit tested
  * without a worker, and it is cycle-safe because student linked lists have

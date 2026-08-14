@@ -220,7 +220,7 @@ breakstep.bench(input=lambda n: breakstep.random_ints(n, 100000, 5), run=_bench,
   instrumented: {
     typescript: `// Min heap — the same structure, drawn explicitly.
 //
-// BCS reads the class name to pick the min ordering; \`heapType\` here is
+// Breakstep reads the class name to pick the min ordering; \`heapType\` here is
 // belt and braces.
 
 const values = breakstep.param<number[]>('values', [42, 17, 88, 5, 63]);

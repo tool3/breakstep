@@ -1,7 +1,7 @@
 /**
  * Two-way binding between the Parameters panel and literals in the source.
  *
- * In clean mode the code contains no BCS API at all — inputs are ordinary
+ * In clean mode the code contains no Breakstep API at all — inputs are ordinary
  * top-level constants:
  *
  *     const values = [1, 2, 3, 4, 5];

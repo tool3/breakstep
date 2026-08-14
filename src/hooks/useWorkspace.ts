@@ -15,9 +15,19 @@ import {
   assembleRunnable,
   defaultParams,
   getTemplate,
+  registerTemplate,
   templateSource,
 } from '@/templates';
+import { getProblem } from '@/leetcode/catalogue';
+import {
+  problemTemplate,
+  slugFromTemplateId,
+  solutionSource,
+  starterSource,
+} from '@/leetcode/toTemplate';
+import type { LeetProblem } from '@/leetcode/types';
 import { readStored, useLocalStorage, writeStored, removeStored } from './useLocalStorage';
+import type { DebugStep } from '@/types/debug';
 import type {
   ComplexityReport,
   EditorMode,
@@ -29,6 +39,12 @@ import type {
   RunStatus,
   Template,
 } from '@/types';
+
+/** The problem behind a problem template id, if there is one. */
+function problemFor(id: string): LeetProblem | undefined {
+  const slug = slugFromTemplateId(id);
+  return slug ? getProblem(slug) : undefined;
+}
 
 /** Edits are kept per template, language *and* mode, so nothing is ever lost. */
 const codeKey = (templateId: string, language: Language, mode: EditorMode) =>
@@ -62,6 +78,8 @@ export interface Workspace {
 
   isDirty: boolean;
   template: Template;
+  /** The LeetCode problem currently in the editor, if the template is one. */
+  problemSlug: string | null;
 
   selectTemplate: (id: string) => void;
   setLanguage: (language: Language) => void;
@@ -71,6 +89,14 @@ export interface Workspace {
   resetParams: () => void;
   resetCode: () => void;
   run: () => void;
+  /**
+   * Run with recording on. Resolves with the steps that belong to the user's
+   * own code — harness lines are dropped, since stepping into the driver the
+   * app appended would only be confusing.
+   */
+  debugRun: () => Promise<DebugStep[]>;
+  /** Open a LeetCode problem — the starter by default, or the worked solution. */
+  loadProblem: (problem: LeetProblem, variant?: 'starter' | 'solution') => void;
   analyze: () => void;
   cancel: () => void;
 }
@@ -83,7 +109,13 @@ export function useWorkspace(): Workspace {
   const [language, setLanguageState] = useLocalStorage<Language>('language', 'typescript');
   const [mode, setModeState] = useLocalStorage<EditorMode>('editorMode', 'clean');
 
-  const template = useMemo(() => getTemplate(templateId), [templateId]);
+  const template = useMemo(() => {
+    // A problem the last session left open only exists once it is registered
+    // again, so restore it before anything asks for it.
+    const problem = problemFor(templateId);
+    if (problem) return registerTemplate(problemTemplate(problem));
+    return getTemplate(templateId);
+  }, [templateId]);
   const pristine = useMemo(
     () => templateSource(template, language, mode),
     [template, language, mode],
@@ -242,42 +274,86 @@ export function useWorkspace(): Workspace {
     setAnalysisStale(true);
   }, [templateId, language, mode, pristine, template]);
 
+  /**
+   * Load a problem into the editor.
+   *
+   * `starter` respects any earlier attempt that is still stored, so coming back
+   * to a problem picks up where you left off. `solution` always overwrites —
+   * that is the whole point of the Reveal button — and the previous buffer is
+   * still one undo away in Monaco, with Reset code as the way back to the stub.
+   */
+  const loadProblem = useCallback(
+    (problem: LeetProblem, variant: 'starter' | 'solution' = 'starter') => {
+      const next = registerTemplate(problemTemplate(problem));
+      const key = codeKey(next.id, language, mode);
+
+      const fresh =
+        variant === 'solution'
+          ? solutionSource(problem, language)
+          : starterSource(problem, language);
+      const source = variant === 'solution' ? fresh : readStored(key, fresh);
+
+      setTemplateId(next.id);
+      setCodeState(source);
+      writeStored(key, source);
+      setParams(readStored(paramsKey(next.id, mode), defaultParams(next, language, mode, source)));
+      clearResults();
+    },
+    [language, mode, setTemplateId, clearResults],
+  );
+
   /** What actually executes: the buffer, plus the harness when in clean mode. */
   const runnable = useCallback(
     () => assembleRunnable(template, language, mode, code),
     [template, language, mode, code],
   );
 
-  const run = useCallback(() => {
-    const engine = engineRef.current!;
-    setStatus(language === 'python' ? 'preparing' : 'running');
-    setFrames([]);
-    setLogs([]);
-    setResult(null);
-    setDetail('');
+  const execute = useCallback(
+    (debug: boolean) => {
+      const engine = engineRef.current!;
+      setStatus(language === 'python' ? 'preparing' : 'running');
+      setFrames([]);
+      setLogs([]);
+      setResult(null);
+      setDetail('');
 
-    engine
-      .run({
-        code: runnable(),
-        language,
-        params,
-        onProgress: (update) => {
-          if (update.frames) setFrames(update.frames);
-          if (update.logs) setLogs(update.logs);
-          if (update.detail) {
-            setDetail(update.detail);
-            setStatus('running');
-          }
-        },
-      })
-      .then((res) => {
-        setResult(res);
-        setFrames(res.frames);
-        setLogs(res.logs);
-        setStatus(res.status === 'done' ? 'done' : res.status);
-        setDetail('');
-      });
-  }, [runnable, language, params]);
+      return engine
+        .run({
+          code: runnable(),
+          language,
+          params,
+          debug,
+          onProgress: (update) => {
+            if (update.frames) setFrames(update.frames);
+            if (update.logs) setLogs(update.logs);
+            if (update.detail) {
+              setDetail(update.detail);
+              setStatus('running');
+            }
+          },
+        })
+        .then((res) => {
+          setResult(res);
+          setFrames(res.frames);
+          setLogs(res.logs);
+          setStatus(res.status === 'done' ? 'done' : res.status);
+          setDetail('');
+          return res;
+        });
+    },
+    [runnable, language, params],
+  );
+
+  const run = useCallback(() => {
+    void execute(false);
+  }, [execute]);
+
+  const debugRun = useCallback(async () => {
+    const res = await execute(true);
+    // Everything past the last line the user can see belongs to the harness.
+    const visible = code.split('\n').length;
+    return (res.steps ?? []).filter((step) => step.line <= visible);
+  }, [execute, code]);
 
   const analyze = useCallback(() => {
     const engine = engineRef.current!;
@@ -330,6 +406,7 @@ export function useWorkspace(): Workspace {
     analysisStale,
     isDirty: code !== pristine,
     template,
+    problemSlug: slugFromTemplateId(templateId),
     selectTemplate,
     setLanguage,
     setMode,
@@ -338,6 +415,8 @@ export function useWorkspace(): Workspace {
     resetParams,
     resetCode,
     run,
+    debugRun,
+    loadProblem,
     analyze,
     cancel,
   };

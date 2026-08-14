@@ -22,6 +22,7 @@ ctx.onmessage = async (event: MessageEvent<WorkerRequest>) => {
       opLimit: msg.opLimit,
       frameLimit: msg.frameLimit,
       autoTrace: msg.autoTrace,
+      debug: msg.debug,
       onFlush: ({ frames, logs }) => {
         if (frames.length) ctx.postMessage({ type: 'frame', id: msg.id, frames });
         if (logs.length) ctx.postMessage({ type: 'log', id: msg.id, entries: logs });
@@ -48,6 +49,7 @@ ctx.onmessage = async (event: MessageEvent<WorkerRequest>) => {
         operations: result.operations,
         returnValue: toTransferable(result.returnValue),
         hasBenchmark: Boolean(result.bench),
+        steps: result.steps,
       });
     }
     return;

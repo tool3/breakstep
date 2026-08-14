@@ -2,7 +2,7 @@
  * Auto-trace instrumentation.
  *
  * This is what lets the default templates look like ordinary computer-science
- * code — a `ListNode` class, a `while` loop, no BCS API anywhere — and still
+ * code — a `ListNode` class, a `while` loop, no Breakstep API anywhere — and still
  * produce a step-by-step visualization. The rewrite injects three hooks:
  *
  *   __bcs_step(line, () => ({ …locals }))   at the top of every loop body
@@ -21,6 +21,7 @@
  */
 import MagicString from 'magic-string';
 import { parseJs } from './instrument';
+import type { FunctionInfo } from '@/types/debug';
 
 export const STEP_FN = '__bcs_step';
 export const ENTER_FN = '__bcs_enter';
@@ -119,6 +120,16 @@ function isSnapshotable(name: string): boolean {
   return !RESERVED.has(name) && !name.startsWith('__bcs');
 }
 
+export interface AutoInstrumentOptions {
+  /**
+   * Also report before every ordinary statement, not just loop iterations and
+   * function calls. This is what makes step-over and step-into meaningful, and
+   * it roughly triples the number of recorded steps — so it is only switched on
+   * for a debug run.
+   */
+  debug?: boolean;
+}
+
 export interface AutoInstrumentResult {
   code: string;
   ok: boolean;
@@ -131,13 +142,18 @@ export interface AutoInstrumentResult {
  * Returns the source untouched when it cannot be parsed; the runner surfaces
  * the real syntax error when it evaluates the code.
  */
-export function autoInstrument(source: string): AutoInstrumentResult {
+export function autoInstrument(
+  source: string,
+  options: AutoInstrumentOptions = {},
+): AutoInstrumentResult {
   let ast: AnyNode;
   try {
     ast = parseJs(source) as unknown as AnyNode;
   } catch {
     return { code: source, ok: false, steps: 0 };
   }
+
+  const debug = options.debug === true;
 
   const s = new MagicString(source);
   const scopes: Scope[] = [];
@@ -192,6 +208,31 @@ export function autoInstrument(source: string): AutoInstrumentResult {
       if (scopes[i].hasOwnThis) return !scopes[i].thisUnsafe;
     }
     return false;
+  };
+
+  /**
+   * Report before each statement in a block, so the debugger can step one
+   * statement at a time.
+   *
+   * The first statement of a loop body is skipped: the loop hook already fires
+   * at exactly that position, and two hooks on one line would show up as two
+   * indistinguishable steps.
+   */
+  const injectStatementHooks = (body: AnyNode[], skipFirst: boolean): void => {
+    if (!debug) return;
+
+    body.forEach((statement, index) => {
+      if (skipFirst && index === 0) return;
+      if (typeof statement.start !== 'number') return;
+      // A hoisted declaration has no runtime position worth stopping at.
+      if (statement.type === 'FunctionDeclaration' || statement.type === 'ClassDeclaration') return;
+
+      s.appendLeft(
+        statement.start,
+        `${STEP_FN}(${lineOf(statement.start)},${snapshotThunk(statement.start)},'stmt');`,
+      );
+      steps++;
+    });
   };
 
   /** `() => ({ a, b, this: … })` — evaluated only while frames are captured. */
@@ -281,7 +322,19 @@ export function autoInstrument(source: string): AutoInstrumentResult {
   const isConstructor = (parent: AnyNode | null): boolean =>
     parent?.type === 'MethodDefinition' && parent.kind === 'constructor';
 
+  /** Enclosing class names, so a method reports as `LinkedList.push`. */
+  const classStack: string[] = [];
+
   const visit = (node: AnyNode, parent: AnyNode | null): void => {
+    if (node.type === 'ClassDeclaration' || node.type === 'ClassExpression') {
+      const id = node.id as AnyNode | undefined;
+      classStack.push((id?.name as string | undefined) ?? '');
+      // The superclass expression is evaluated outside the class body.
+      for (const child of childNodes(node)) visit(child, node);
+      classStack.pop();
+      return;
+    }
+
     // --- Function scopes -----------------------------------------------------
     if (FUNCTION_TYPES.has(node.type)) {
       const isArrow = node.type === 'ArrowFunctionExpression';
@@ -303,17 +356,19 @@ export function autoInstrument(source: string): AutoInstrumentResult {
         collectBindings(body, scope, true);
         scopes.push(scope);
 
-        const canWrap = !isConstructor(parent);
-        if (canWrap) {
-          const name = functionLabel(node, parent);
-          const pos = body.start + 1;
-          s.appendLeft(
-            pos,
-            `${ENTER_FN}(${JSON.stringify(name)},${lineOf(node.start)},${snapshotThunk(node.start + 1)});try{`,
-          );
-          s.appendLeft(body.end - 1, `}finally{${EXIT_FN}();}`);
-        }
+        // Constructors are wrapped too: the enter hook never touches `this`
+        // (the scope above is marked unsafe, so snapshots leave it out), and
+        // `super()` is legal inside the try block. Without this, switching on
+        // a constructor's breakpoint would quietly do nothing.
+        const name = functionLabel(node, parent, classStack.at(-1));
+        const pos = body.start + 1;
+        s.appendLeft(
+          pos,
+          `${ENTER_FN}(${JSON.stringify(name)},${lineOf(node.start)},${snapshotThunk(node.start + 1)});try{`,
+        );
+        s.appendLeft(body.end - 1, `}finally{${EXIT_FN}();}`);
 
+        if (Array.isArray(body.body)) injectStatementHooks(body.body as AnyNode[], false);
         for (const child of childNodes(body)) visit(child, node);
         scopes.pop();
         return;
@@ -361,6 +416,9 @@ export function autoInstrument(source: string): AutoInstrumentResult {
         }
         steps++;
 
+        if (body.type === 'BlockStatement' && Array.isArray(body.body)) {
+          injectStatementHooks(body.body as AnyNode[], true);
+        }
         for (const child of childNodes(body)) visit(child, node);
         scopes.pop();
       }
@@ -380,6 +438,9 @@ export function autoInstrument(source: string): AutoInstrumentResult {
       const scope: Scope = { kind: 'block', bindings: [], hasOwnThis: false, thisUnsafe: false };
       collectBindings(node, scope, false);
       scopes.push(scope);
+      if (node.type === 'BlockStatement' && Array.isArray(node.body)) {
+        injectStatementHooks(node.body as AnyNode[], false);
+      }
       for (const child of childNodes(node)) visit(child, node);
       scopes.pop();
       return;
@@ -397,6 +458,7 @@ export function autoInstrument(source: string): AutoInstrumentResult {
   };
   collectBindings(ast, programScope, true);
   scopes.push(programScope);
+  if (Array.isArray(ast.body)) injectStatementHooks(ast.body as AnyNode[], false);
   for (const child of childNodes(ast)) visit(child, ast);
 
   // A final frame of the top-level state, so a program with no loops at all
@@ -412,14 +474,16 @@ export function autoInstrument(source: string): AutoInstrumentResult {
 }
 
 /** A readable name for the call stack: `reverse`, `LinkedList.push`, `(anonymous)`. */
-function functionLabel(node: AnyNode, parent: AnyNode | null): string {
+function functionLabel(node: AnyNode, parent: AnyNode | null, className?: string): string {
   const id = node.id as AnyNode | undefined;
   if (id?.name) return id.name as string;
 
   if (parent?.type === 'MethodDefinition' || parent?.type === 'Property') {
     const key = parent.key as AnyNode | undefined;
     const name = (key?.name ?? key?.value) as string | undefined;
-    if (name) return String(name);
+    // Qualified so two classes with the same method name stay distinct — the
+    // breakpoint switches match on this exact string.
+    if (name) return className ? `${className}.${name}` : String(name);
   }
   if (parent?.type === 'VariableDeclarator') {
     const pid = parent.id as AnyNode | undefined;
@@ -429,9 +493,67 @@ function functionLabel(node: AnyNode, parent: AnyNode | null): string {
 }
 
 /**
+ * Every function in the source, for the per-function breakpoint switches.
+ *
+ * Reported in source order with the line the signature sits on, so clicking a
+ * switch can also reveal the function in the editor.
+ */
+export function listFunctions(source: string): FunctionInfo[] {
+  let ast: AnyNode;
+  try {
+    ast = parseJs(source) as unknown as AnyNode;
+  } catch {
+    return [];
+  }
+
+  const lineStarts: number[] = [0];
+  for (let i = 0; i < source.length; i++) {
+    if (source.charCodeAt(i) === 10) lineStarts.push(i + 1);
+  }
+  const lineAt = (pos: number) => {
+    let lo = 0;
+    let hi = lineStarts.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (lineStarts[mid] <= pos) lo = mid;
+      else hi = mid - 1;
+    }
+    return lo + 1;
+  };
+
+  const found: FunctionInfo[] = [];
+  const seen = new Set<string>();
+
+  const walk = (node: AnyNode, parent: AnyNode | null, enclosingClass: string | null): void => {
+    let currentClass = enclosingClass;
+    if (node.type === 'ClassDeclaration' || node.type === 'ClassExpression') {
+      const id = node.id as AnyNode | undefined;
+      currentClass = (id as { name?: string })?.name ?? enclosingClass;
+    }
+
+    if (FUNCTION_TYPES.has(node.type)) {
+      const name = functionLabel(node, parent);
+      if (name !== '(anonymous)') {
+        const qualified =
+          parent?.type === 'MethodDefinition' && currentClass ? `${currentClass}.${name}` : name;
+        if (!seen.has(qualified)) {
+          seen.add(qualified);
+          found.push({ name, qualified, line: lineAt(node.start) });
+        }
+      }
+    }
+
+    for (const child of childNodes(node)) walk(child, node, currentClass);
+  };
+
+  walk(ast, null, null);
+  return found.sort((a, b) => a.line - b.line);
+}
+
+/**
  * Does this source already drive the visualizer itself?
  * When it does, auto-tracing steps aside rather than doubling up on frames.
  */
 export function hasManualInstrumentation(source: string): boolean {
-  return /\bbcs\s*\.\s*(show|viz)\s*\(/.test(source);
+  return /\bbreakstep\s*\.\s*(show|viz)\s*\(/.test(source);
 }

@@ -3,16 +3,18 @@
  * Python execution worker, backed by Pyodide.
  *
  * Pyodide is ~10 MB, so it is loaded from the CDN on first use and never as part
- * of the app bundle — open BCS in TypeScript mode and you never pay for it. The
+ * of the app bundle — open Breakstep in TypeScript mode and you never pay for it. The
  * worker boots lazily on the first Python run and stays warm afterwards.
  */
 import { PYTHON_BOOTSTRAP, revivePython } from './pythonRuntime';
 import { normalize } from './normalize';
 import { createAutoTracer } from './autoTrace';
+import { toTransferable } from './sandbox';
 import { hasManualInstrumentation } from '@/analysis/autoInstrument';
 import type { WorkerRequest } from './protocol';
 import type { BenchmarkSample, LogEntry, RunError } from '@/types';
 import type { Frame, ShowOptions } from '@/types/viz';
+import type { DebugStep } from '@/types/debug';
 
 const ctx = self as unknown as DedicatedWorkerGlobalScope;
 
@@ -100,8 +102,13 @@ function toFrames(pyFrames: PyFrame[]): Frame[] {
  * Subject selection, pointer detection and captions all live in one place, so
  * the same algorithm written in either language produces the same picture.
  */
-function framesFromTraces(traces: PyTrace[], frameLimit: number): Frame[] {
+function replayTraces(
+  traces: PyTrace[],
+  frameLimit: number,
+  debug: boolean,
+): { frames: Frame[]; steps: DebugStep[] } {
   const frames: Frame[] = [];
+  const steps: DebugStep[] = [];
   let id = 0;
 
   const tracer = createAutoTracer({
@@ -111,6 +118,22 @@ function framesFromTraces(traces: PyTrace[], frameLimit: number): Frame[] {
       frames.push({ id: id++, label, view, line, meta });
       return true;
     },
+    record: debug
+      ? (kind, line, scope, stack, fn, frame) => {
+          if (steps.length >= 20_000) return false;
+          steps.push({
+            id: steps.length,
+            line,
+            kind,
+            fn,
+            depth: stack.length,
+            scope: toTransferable(scope, 5) as Record<string, unknown>,
+            stack: stack.map((e) => ({ label: e.label, depth: e.depth })),
+            frame,
+          });
+          return true;
+        }
+      : undefined,
   });
 
   for (const trace of traces) {
@@ -120,7 +143,7 @@ function framesFromTraces(traces: PyTrace[], frameLimit: number): Frame[] {
     else tracer.exit();
   }
 
-  return frames;
+  return { frames, steps };
 }
 
 ctx.postMessage({ type: 'ready' });
@@ -147,18 +170,22 @@ ctx.onmessage = async (event: MessageEvent<WorkerRequest>) => {
       // Auto-tracing steps aside when the source drives the visualizer itself.
       const autoTrace = Boolean(msg.autoTrace) && !hasManualInstrumentation(msg.code);
 
+      const debug = Boolean(msg.debug);
+
       const result = callPython(py, '_bcs_run', [
         msg.code,
         msg.params,
         msg.opLimit,
         msg.frameLimit,
         autoTrace,
+        debug,
       ]) as PyRunResult;
 
       const explicit = toFrames(result.frames ?? []);
-      const frames = explicit.length > 0
-        ? explicit
-        : framesFromTraces(result.traces ?? [], msg.frameLimit);
+      const replayed = replayTraces(result.traces ?? [], msg.frameLimit, debug);
+      // Explicit `breakstep.show` calls own the picture when there are any; the
+      // recording still drives the debugger either way.
+      const frames = explicit.length > 0 ? explicit : replayed.frames;
 
       ctx.postMessage({ type: 'log', id: msg.id, entries: result.logs ?? [] });
       ctx.postMessage({ type: 'frame', id: msg.id, frames });
@@ -177,6 +204,7 @@ ctx.onmessage = async (event: MessageEvent<WorkerRequest>) => {
           durationMs: result.durationMs,
           operations: result.operations,
           hasBenchmark: result.hasBenchmark,
+          steps: debug ? replayed.steps : undefined,
         });
       }
       return;

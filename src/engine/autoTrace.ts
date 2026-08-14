@@ -16,6 +16,7 @@
  */
 import { normalize } from './normalize';
 import type { CallStackEntry, CellState, ShowOptions, VizView } from '@/types/viz';
+import type { StepKind } from '@/types/debug';
 
 /** Index names worth surfacing as pointers, in order of preference. */
 const POINTER_NAMES = [
@@ -51,7 +52,10 @@ const MAX_POINTERS = 5;
 const MAX_META = 6;
 
 export interface AutoTracer {
-  /** Called at the top of every loop iteration. */
+  /**
+   * Called at the top of every loop iteration, and — during a debug run —
+   * before every statement. `tag` is `'stmt'` for the latter.
+   */
   step(line: number, snapshot: () => Record<string, unknown>, tag?: string): void;
   /** Called on function entry. */
   enter(name: string, line: number, snapshot: () => Record<string, unknown>): void;
@@ -66,6 +70,18 @@ export interface AutoTracerHost {
   emit(view: VizView, label: string, line: number, meta: Record<string, unknown>): boolean;
   /** Auto-tracing pauses entirely while this is false (benchmark sweeps). */
   enabled(): boolean;
+  /**
+   * Record one debugger step. Present only on a debug run; the tracer calls it
+   * for every hook, including the statement hooks the visualizer ignores.
+   */
+  record?: (
+    kind: StepKind,
+    line: number,
+    scope: Record<string, unknown>,
+    stack: CallStackEntry[],
+    fn: string | undefined,
+    frame: number | undefined,
+  ) => boolean;
 }
 
 interface Candidate {
@@ -105,13 +121,21 @@ function reachable(raw: unknown, limit = 400): Set<unknown> {
   return seen;
 }
 
+/** The live call stack, carrying the entry line so `exit` can report it. */
+interface LiveFrame extends CallStackEntry {
+  line: number;
+}
+
 export function createAutoTracer(host: AutoTracerHost): AutoTracer {
-  const callStack: CallStackEntry[] = [];
+  const callStack: LiveFrame[] = [];
   /** Function names currently on the stack, for recursion detection. */
   const active = new Map<string, number>();
   let lastSubject: string | null = null;
   const history = new Map<string, Observation>();
   let budgetSpent = false;
+
+  /** Frames emitted so far — a step points at the picture current at its time. */
+  let frameCount = 0;
 
   const record = (
     snapshot: Record<string, unknown>,
@@ -158,7 +182,28 @@ export function createAutoTracer(host: AutoTracerHost): AutoTracer {
     for (const [key, value] of scalars.slice(0, MAX_META)) meta[key] = value;
     if (callStack.length > 0) meta.depth = callStack.length;
 
-    if (!host.emit(view, label, line, meta)) budgetSpent = true;
+    if (host.emit(view, label, line, meta)) frameCount++;
+    else budgetSpent = true;
+  };
+
+  /**
+   * A statement step carries no picture of its own — it points at whatever the
+   * visualizer last drew, so scrubbing the debugger keeps the canvas in sync.
+   */
+  const recordStatement = (
+    kind: StepKind,
+    line: number,
+    snapshot: Record<string, unknown>,
+    fn?: string,
+  ): void => {
+    host.record?.(
+      kind,
+      line,
+      snapshot,
+      callStack.map((e) => ({ ...e })),
+      fn,
+      frameCount > 0 ? frameCount - 1 : undefined,
+    );
   };
 
   const safely = (fn: () => void): void => {
@@ -172,18 +217,42 @@ export function createAutoTracer(host: AutoTracerHost): AutoTracer {
 
   return {
     step(line, snapshot, tag) {
-      safely(() => record(snapshot() ?? {}, line, tag));
+      if (!host.enabled()) return;
+
+      // A statement hook only feeds the debugger; the visualizer would show a
+      // near-identical picture for every line of a function body.
+      if (tag === 'stmt') {
+        try {
+          recordStatement('statement', line, snapshot() ?? {}, callStack.at(-1)?.label);
+        } catch {
+          /* a snapshot must never take the program with it */
+        }
+        return;
+      }
+
+      safely(() => {
+        const scope = snapshot() ?? {};
+        record(scope, line, tag);
+        recordStatement('loop', line, scope, callStack.at(-1)?.label);
+      });
     },
 
     enter(name, line, snapshot) {
       const depth = callStack.length;
-      callStack.push({ label: name, depth });
+      callStack.push({ label: name, depth, line });
       const seen = active.get(name) ?? 0;
       active.set(name, seen + 1);
 
-      // Emitting on every call would drown a hot helper in frames. Recursion —
-      // the same function already on the stack — is the case worth showing.
-      if (seen > 0) safely(() => record(snapshot() ?? {}, line, name, true));
+      if (!host.enabled()) return;
+
+      safely(() => {
+        const scope = snapshot() ?? {};
+        // Emitting a frame on every call would drown a hot helper. Recursion —
+        // the same function already on the stack — is the case worth drawing.
+        if (seen > 0) record(scope, line, name, true);
+        // The debugger, though, stops at every entry: that is the point.
+        recordStatement('entry', line, scope, name);
+      });
     },
 
     exit() {
@@ -192,6 +261,8 @@ export function createAutoTracer(host: AutoTracerHost): AutoTracer {
       const seen = active.get(entry.label) ?? 1;
       if (seen <= 1) active.delete(entry.label);
       else active.set(entry.label, seen - 1);
+
+      if (host.enabled()) recordStatement('exit', entry.line, {}, entry.label);
     },
 
     depth() {

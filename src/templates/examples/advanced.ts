@@ -641,13 +641,13 @@ export const blank: Template = {
   id: 'blank',
   title: 'Blank Canvas',
   category: 'Scratch',
-  blurb: 'An empty file with the BCS API cheat-sheet. Bring your own algorithm.',
+  blurb: 'An empty file with the Breakstep API cheat-sheet. Bring your own algorithm.',
   tags: ['scratch'],
   params: [
     { name: 'n', label: 'n', type: 'number', default: 10, min: 1, max: 1000 },
   ],
   code: {
-    typescript: `// Blank canvas. Write ordinary code - BCS traces it and draws whatever data
+    typescript: `// Blank canvas. Write ordinary code - Breakstep traces it and draws whatever data
 // structures it finds, with no API calls of your own.
 //
 // Declare inputs as top-level constants and the Parameters panel edits them
@@ -669,7 +669,7 @@ function solve(size: number): number {
 
 console.log('sum 0..n-1 =', solve(n));
 `,
-    python: `# Blank canvas. Write ordinary code - BCS traces it and draws whatever data
+    python: `# Blank canvas. Write ordinary code - Breakstep traces it and draws whatever data
 # structures it finds, with no API calls of your own.
 #
 # Declare inputs as top-level constants and the Parameters panel edits them

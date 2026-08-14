@@ -606,9 +606,12 @@ describe('Header — progressive disclosure', () => {
     isDirty: false,
     theme: 'midnight' as const,
     onOpenTemplates: vi.fn(),
+    onOpenProblems: vi.fn(),
     onLanguage: vi.fn(),
     onMode: vi.fn(),
     onRun: vi.fn(),
+    onDebug: vi.fn(),
+    debugging: false,
     onAnalyze: vi.fn(),
     onCancel: vi.fn(),
     onResetCode: vi.fn(),
@@ -656,7 +659,7 @@ describe('Header — progressive disclosure', () => {
 
   it('shortens the mode badge on a phone', () => {
     const { rerender } = render(<ModeBadge mode="clean" />);
-    expect(screen.getByText(/BCS traces it automatically/)).toBeInTheDocument();
+    expect(screen.getByText(/Breakstep traces it automatically/)).toBeInTheDocument();
 
     rerender(<ModeBadge mode="clean" compact />);
     expect(screen.getByText('Plain code — auto-traced')).toBeInTheDocument();

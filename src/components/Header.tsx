@@ -2,6 +2,7 @@ import { Button, Dropdown, Segmented, Tooltip, type MenuProps } from 'antd';
 import {
   AppstoreOutlined,
   BgColorsOutlined,
+  BugOutlined,
   CaretRightOutlined,
   CheckOutlined,
   CodeOutlined,
@@ -11,6 +12,7 @@ import {
   GithubOutlined,
   LoadingOutlined,
   MoreOutlined,
+  TrophyOutlined,
   StopOutlined,
   UndoOutlined,
 } from '@ant-design/icons';
@@ -29,9 +31,15 @@ interface Props {
   theme: ThemeName;
   layout: LayoutMode;
   onOpenTemplates: () => void;
+  /** Open the LeetCode problem drawer. */
+  onOpenProblems: () => void;
   onLanguage: (language: Language) => void;
   onMode: (mode: EditorMode) => void;
   onRun: () => void;
+  /** Record a run and hand it to the debugger. */
+  onDebug: () => void;
+  /** True while a recording is loaded and the debugger owns the panel. */
+  debugging: boolean;
   onAnalyze: () => void;
   onCancel: () => void;
   onResetCode: () => void;
@@ -68,9 +76,12 @@ export function Header({
   theme,
   layout,
   onOpenTemplates,
+  onOpenProblems,
   onLanguage,
   onMode,
   onRun,
+  onDebug,
+  debugging,
   onAnalyze,
   onCancel,
   onResetCode,
@@ -81,8 +92,8 @@ export function Header({
   const compact = layout === 'compact';
 
   const modeTooltip = instrumented
-    ? 'Hide the BCS API and go back to plain code'
-    : 'Show the BCS API calls that drive the visualizer';
+    ? 'Hide the breakstep.* API and go back to plain code'
+    : 'Show the breakstep.* API calls that drive the visualizer';
 
   /**
    * Everything that does not fit on a phone lives here. Nothing is dropped —
@@ -110,6 +121,19 @@ export function Header({
       icon: instrumented ? <EyeOutlined /> : <EyeInvisibleOutlined />,
       label: instrumented ? 'Hide instrumentation' : 'Show instrumentation',
       onClick: () => onMode(instrumented ? 'clean' : 'instrumented'),
+    },
+    {
+      key: 'problems',
+      icon: <TrophyOutlined />,
+      label: 'LeetCode problems',
+      onClick: onOpenProblems,
+    },
+    {
+      key: 'debug',
+      icon: <BugOutlined />,
+      label: debugging ? 'Re-record for the debugger' : 'Debug',
+      disabled: busy,
+      onClick: onDebug,
     },
     {
       key: 'analyze',
@@ -154,8 +178,8 @@ export function Header({
             />
           </svg>
         </span>
-        <span className={styles.wordmark}>BCS</span>
-        <span className={styles.tagline}>Browser Code Studio</span>
+        <span className={styles.wordmark}>Breakstep</span>
+        <span className={styles.tagline}>data structures, step by step</span>
       </div>
 
       <Button
@@ -171,6 +195,17 @@ export function Header({
           </Tooltip>
         )}
       </Button>
+
+      <Tooltip title="Paste a LeetCode link and get the technique, the dataset and a solution">
+        <Button
+          className={styles.problemsButton}
+          icon={<TrophyOutlined />}
+          onClick={onOpenProblems}
+          aria-label="LeetCode problems"
+        >
+          <span className={styles.problemsLabel}>Problems</span>
+        </Button>
+      </Tooltip>
 
       {!compact && (
         <Segmented<Language>
@@ -192,7 +227,7 @@ export function Header({
           <>
             {/*
               The instrumentation toggle. Clean is the default: ordinary CS code,
-              traced automatically. Revealing the BCS calls hands over full
+              traced automatically. Revealing the breakstep.* calls hands over full
               control — and switches auto-tracing off, since the code now drives
               the visualizer itself.
             */}
@@ -225,7 +260,7 @@ export function Header({
               <Button className={styles.iconOnly} type="text" icon={<BgColorsOutlined />} aria-label="Theme" />
             </Dropdown>
 
-            <Tooltip title="BCS is open source">
+            <Tooltip title="Breakstep is open source">
               <Button
                 className={styles.desktopOnly}
                 type="text"
@@ -235,6 +270,19 @@ export function Header({
                 rel="noreferrer noopener"
                 aria-label="Source"
               />
+            </Tooltip>
+
+            <Tooltip title="Record a run and step through it line by line">
+              <Button
+                className={debugging ? styles.modeOn : undefined}
+                icon={<BugOutlined />}
+                onClick={onDebug}
+                disabled={busy}
+                aria-label="Debug"
+                aria-pressed={debugging}
+              >
+                <span className={styles.analyzeLabel}>Debug</span>
+              </Button>
             </Tooltip>
 
             <Tooltip title="Sweep input sizes and fit the growth curve">
@@ -285,7 +333,7 @@ export function ModeBadge({ mode, compact }: { mode: EditorMode; compact?: boole
           ? 'Plain code — auto-traced'
           : 'Instrumented'
         : clean
-          ? 'Plain code — BCS traces it automatically'
+          ? 'Plain code — Breakstep traces it automatically'
           : 'Instrumented — your breakstep.* calls drive the visualizer'}
     </span>
   );

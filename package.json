@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Breakstep \u2014 an in-browser editor for data structures & algorithms with live visualization and complexity analysis.",
+  "description": "Breakstep \u2014 step through data structures and algorithms in the browser: run, debug, visualize and complexity-analyze TypeScript, JavaScript and Python.",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

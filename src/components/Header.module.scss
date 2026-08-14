@@ -60,6 +60,11 @@
   min-width: 0;
 }
 
+/** The LeetCode entry point, next to the template picker. */
+.problemsButton {
+  flex-shrink: 0;
+}
+
 .templateName {
   @include truncate;
   max-width: 190px;
@@ -171,6 +176,12 @@
 
 @include below($bp-lg) {
   .modeLabel {
+    display: none;
+  }
+
+  // The LeetCode button keeps its icon everywhere; the word is the first
+  // thing to go, since the tooltip still says what it does.
+  .problemsLabel {
     display: none;
   }
 

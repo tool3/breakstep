@@ -1,0 +1,335 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+  @include scrollbars;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+// --- Paste a link ------------------------------------------------------------
+
+.searchRow {
+  padding: $space-4;
+  border-bottom: 1px solid var(--breakstep-border);
+  background: var(--breakstep-panel-alt);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.privacy {
+  margin: $space-2 0 0;
+  @include mono(10px);
+  color: var(--breakstep-text-faint);
+  line-height: 1.6;
+}
+
+.notice {
+  padding: $space-3 $space-4 0;
+}
+
+// --- Sections ----------------------------------------------------------------
+
+.section {
+  padding: $space-4;
+  border-bottom: 1px solid var(--breakstep-border);
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+}
+
+.heading {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--breakstep-text-faint);
+}
+
+.count {
+  @include mono(9px);
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--breakstep-bg-deep);
+  border: 1px solid var(--breakstep-border);
+  color: var(--breakstep-text-dim);
+}
+
+// --- Recommended techniques --------------------------------------------------
+
+.techniques {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+}
+
+.technique {
+  border: 1px solid var(--breakstep-border);
+  border-radius: $radius-md;
+  padding: $space-3;
+  background: var(--breakstep-panel-alt);
+
+  // The first recommendation is the one to read; the rest are alternatives.
+  &[data-rank='1'] {
+    border-color: #{rgba(#5b8cff, 0.45)};
+    background: var(--breakstep-accent-soft);
+  }
+}
+
+.techniqueHead {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: $space-2;
+}
+
+.rank {
+  @include mono(9px);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--breakstep-text-faint);
+}
+
+.techniqueName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--breakstep-text);
+}
+
+.techniqueCost {
+  @include mono(10px);
+  color: var(--breakstep-accent-text);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.techniqueWhy {
+  margin: $space-2 0 0;
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--breakstep-text-dim);
+}
+
+.patternLink {
+  padding: 0;
+  height: auto;
+  font-size: 11px;
+}
+
+// --- The problem -------------------------------------------------------------
+
+.problemHead {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: $space-2;
+}
+
+.number {
+  @include mono(11px);
+  color: var(--breakstep-text-faint);
+}
+
+.problemTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--breakstep-text);
+}
+
+.prompt {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--breakstep-text-dim);
+}
+
+.topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.topic {
+  @include mono(9px);
+  padding: 1px 6px;
+  border-radius: $radius-sm;
+  background: var(--breakstep-bg-deep);
+  border: 1px solid var(--breakstep-border);
+  color: var(--breakstep-text-faint);
+}
+
+// --- Examples ----------------------------------------------------------------
+
+.examples,
+.constraints {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.example {
+  display: flex;
+  gap: $space-3;
+  padding: $space-2;
+  border-radius: $radius-md;
+  background: var(--breakstep-panel-alt);
+  border: 1px solid var(--breakstep-border);
+}
+
+.exampleLabel {
+  @include mono(10px);
+  color: var(--breakstep-text-faint);
+  flex-shrink: 0;
+}
+
+.exampleBody {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.exampleIn,
+.exampleOut {
+  @include mono(11px);
+  word-break: break-word;
+}
+
+.exampleIn {
+  color: var(--breakstep-text-dim);
+}
+
+.exampleOut {
+  color: var(--breakstep-mint);
+}
+
+.exampleNote {
+  font-size: 11px;
+  color: var(--breakstep-text-faint);
+  line-height: 1.6;
+}
+
+.constraints code {
+  @include mono(11px);
+  color: var(--breakstep-text-dim);
+}
+
+// --- Actions -----------------------------------------------------------------
+
+.actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: $space-3;
+  padding: $space-4;
+  border-bottom: 1px solid var(--breakstep-border);
+  background: var(--breakstep-panel-alt);
+}
+
+.langHint {
+  @include mono(10px);
+  color: var(--breakstep-text-faint);
+}
+
+// --- Browse ------------------------------------------------------------------
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.groupName {
+  @include mono(10px);
+  color: var(--breakstep-accent-text);
+}
+
+.groupList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.groupItem {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  width: 100%;
+  min-height: 34px;
+  padding: 5px $space-2;
+  border: 1px solid transparent;
+  border-radius: $radius-sm;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--breakstep-panel-alt);
+  }
+
+  &[data-active='true'] {
+    border-color: var(--breakstep-border-strong);
+    background: var(--breakstep-accent-soft);
+  }
+}
+
+.groupNumber {
+  @include mono(10px);
+  color: var(--breakstep-text-faint);
+  min-width: 26px;
+}
+
+.groupTitle {
+  font-size: 12px;
+  color: var(--breakstep-text-dim);
+  flex: 1;
+  min-width: 0;
+  @include truncate;
+}
+
+.groupTag {
+  flex-shrink: 0;
+  font-size: 9px;
+  margin: 0;
+}
+
+.loadedDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--breakstep-mint);
+  flex-shrink: 0;
+}
+
+// --- Narrow ------------------------------------------------------------------
+
+@include below(480px) {
+  .searchRow,
+  .section,
+  .actions {
+    padding: $space-3;
+  }
+
+  .actions :global(.ant-btn) {
+    flex: 1;
+  }
+}

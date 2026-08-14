@@ -38,6 +38,8 @@ export interface RunOptions {
   frameLimit?: number;
   /** Let plain textbook code visualize itself. Defaults to on. */
   autoTrace?: boolean;
+  /** Record the run so the debugger can walk it afterwards. */
+  debug?: boolean;
   onProgress?: (update: { frames?: Frame[]; logs?: LogEntry[]; detail?: string }) => void;
 }
 
@@ -168,6 +170,7 @@ export function createEngine(): EngineHandle {
         opLimit: options.opLimit ?? DEFAULT_OP_LIMIT,
         frameLimit: options.frameLimit ?? DEFAULT_FRAME_LIMIT,
         autoTrace: options.autoTrace ?? true,
+        debug: options.debug ?? false,
       };
 
       return dispatch<RunResult>(kind, request, options.timeoutMs ?? DEFAULT_TIMEOUT_MS, {
@@ -197,6 +200,7 @@ export function createEngine(): EngineHandle {
               durationMs: msg.durationMs,
               operations: msg.operations,
               returnValue: msg.returnValue,
+              steps: msg.steps,
             };
           }
           if (msg.type === 'error') {

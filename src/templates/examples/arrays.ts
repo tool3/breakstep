@@ -138,7 +138,7 @@ const result = twoSumSorted(nums, target);
 breakstep.log('indices:', result);
 if (result) breakstep.log('values: ', nums[result[0]], '+', nums[result[1]]);
 
-// The benchmark harness: BCS runs \`run\` at growing \`n\` and fits the curve.
+// The benchmark harness: Breakstep runs \`run\` at growing \`n\` and fits the curve.
 breakstep.bench({
   input: (n) => Array.from({ length: n }, (_, i) => i * 2),
   run: (arr: number[]) => twoSumSorted(arr, -1), // worst case: never found
@@ -189,7 +189,7 @@ print("indices:", result)
 if result:
     print("values:", nums[result[0]], "+", nums[result[1]])
 
-# The benchmark harness: BCS runs \`run\` at growing \`n\` and fits the curve.
+# The benchmark harness: Breakstep runs \`run\` at growing \`n\` and fits the curve.
 breakstep.bench(
     input=lambda n: [i * 2 for i in range(n)],
     run=lambda arr: two_sum_sorted(arr, -1),  # worst case: never found

@@ -1,6 +1,8 @@
 import type { Frame } from './viz';
+import type { DebugStep } from './debug';
 
 export * from './viz';
+export * from './debug';
 
 export type Language = 'typescript' | 'javascript' | 'python';
 
@@ -41,6 +43,8 @@ export interface RunResult {
   operations?: number;
   /** The value returned by the entry function, if any. */
   returnValue?: unknown;
+  /** Recorded execution, present only when the run was started as a debug run. */
+  steps?: DebugStep[];
 }
 
 /** A knob rendered in the Parameters panel and injected into user code. */
@@ -149,7 +153,7 @@ export interface Template {
   params: ParamSpec[];
 
   /**
-   * Plain code, as it would appear in a computer-science class: no BCS API
+   * Plain code, as it would appear in a computer-science class: no Breakstep API
    * anywhere. This is what the editor shows by default; the run is auto-traced
    * so it visualizes itself.
    */

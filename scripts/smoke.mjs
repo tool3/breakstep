@@ -47,7 +47,7 @@ try {
   console.log('▸ Loading the app');
   await page.goto(base, { waitUntil: 'networkidle' });
 
-  check('the header renders', await page.getByText('BCS', { exact: true }).isVisible());
+  check('the header renders', await page.getByText('Breakstep', { exact: true }).isVisible());
   check(
     'the default template is selected',
     await page.getByRole('button', { name: /Template: Linked List/ }).isVisible(),
@@ -73,7 +73,7 @@ try {
   );
   // The headline of the redesign: what you see first is ordinary CS code.
   check(
-    'the default view is plain code with no BCS API',
+    'the default view is plain code with no Breakstep API',
     !/breakstep\s*\./.test(editorText),
     JSON.stringify(editorText.slice(0, 120)),
   );
@@ -166,6 +166,89 @@ try {
   const jsOutput = await page.locator('[class*="OutputPanel"]').first().innerText();
   check('the JavaScript variant runs', jsOutput.includes('vertices'), jsOutput.slice(0, 120));
 
+  console.log('▸ Debugging a run');
+  // Back to TypeScript and a template with named functions to step through.
+  await page.locator('.ant-segmented-item-label', { hasText: 'TypeScript' }).click();
+  await page.waitForTimeout(900);
+  await page.getByRole('button', { name: 'Debug', exact: true }).click();
+  await page.waitForTimeout(3000);
+
+  check(
+    'the debugger recorded a run',
+    await page.getByRole('button', { name: 'Step into' }).isVisible(),
+  );
+  const firstPosition = await page.locator('[class*="positionText"]').first().innerText();
+  await page.getByRole('button', { name: 'Step into' }).click();
+  await page.waitForTimeout(300);
+  const secondPosition = await page.locator('[class*="positionText"]').first().innerText();
+  check('stepping moves the cursor', firstPosition !== secondPosition, `${firstPosition} -> ${secondPosition}`);
+
+  check(
+    'the paused line is highlighted in the editor',
+    (await page.locator('[class*="activeLine"]').count()) > 0,
+  );
+  check(
+    'variables are listed for the current step',
+    (await page.locator('[class*="scopeRow"]').count()) > 0,
+  );
+  check(
+    'every function gets a breakpoint switch',
+    (await page.getByRole('switch').count()) > 0,
+  );
+  check(
+    'the visualizer follows the debugger',
+    await page.getByText('following the debugger').isVisible(),
+  );
+
+  await page.getByRole('button', { name: 'Stop debugging' }).click();
+  await page.waitForTimeout(400);
+  check(
+    'leaving the debugger restores the inputs panel',
+    (await page.locator('[class*="ParamsPanel"]').count()) > 0 &&
+      (await page.getByRole('button', { name: 'Step into' }).count()) === 0,
+  );
+
+  console.log('▸ Loading a LeetCode problem');
+  await page.getByRole('button', { name: 'LeetCode problems' }).click();
+  await page.waitForTimeout(500);
+  await page.getByLabel('LeetCode problem URL').fill('https://leetcode.com/problems/koko-eating-bananas/');
+  await page.getByRole('button', { name: /Find/ }).click();
+  await page.waitForTimeout(400);
+
+  check(
+    'the problem is recognised',
+    await page.getByRole('heading', { name: 'Koko Eating Bananas' }).isVisible(),
+  );
+  check(
+    'a technique is recommended',
+    await page.getByRole('button', { name: /Open the binary search template/ }).isVisible(),
+  );
+  check('the exact dataset is shown', await page.getByText('piles = [3,6,7,11], h = 8').isVisible());
+
+  await page.getByRole('button', { name: /Reveal the solution/ }).click();
+  await page.waitForTimeout(1200);
+  const revealed = await page.locator('.monaco-editor').first().innerText();
+  check(
+    'revealing replaces the editor with the solution',
+    revealed.includes('minEatingSpeed') && !revealed.includes('TODO'),
+    revealed.slice(0, 120),
+  );
+
+  await page.getByRole('button', { name: 'Run', exact: true }).click();
+  await page.waitForTimeout(2500);
+  await page.getByRole('tab', { name: /Output/ }).click();
+  const solutionOutput = await page.locator('[class*="OutputPanel"]').first().innerText();
+  check(
+    'the revealed solution answers the examples',
+    solutionOutput.includes('example 1 -> 4') && solutionOutput.includes('example 2 -> 30'),
+    solutionOutput.slice(0, 200),
+  );
+
+  // Back to a built-in template so the sections below test what they say.
+  await page.locator('button[aria-label^="Template:"]').click();
+  await page.getByRole('button', { name: /^Graph/ }).first().click();
+  await page.waitForTimeout(800);
+
   console.log('▸ Switching themes');
   check(
     'midnight is the default theme',
@@ -191,6 +274,7 @@ try {
     await page.getByRole('tab', { name: /Output/ }).click();
     await page.waitForFunction(
       () => document.body.innerText.includes('finished') || document.body.innerText.includes('failed'),
+      null,
       { timeout: 180_000 },
     );
     const pyOutput = await page.locator('[class*="OutputPanel"]').first().innerText();
@@ -199,6 +283,24 @@ try {
 
     await page.getByRole('tab', { name: /Visualize/ }).click();
     check('python produced a visualization', await page.locator('svg circle').first().isVisible());
+
+    // The debugger records Python through the same replay path as JavaScript.
+    await page.getByRole('button', { name: 'Debug', exact: true }).click();
+    await page
+      .getByRole('button', { name: 'Step into' })
+      .waitFor({ state: 'visible', timeout: 120_000 });
+    check('python is debuggable too', await page.getByRole('button', { name: 'Step into' }).isVisible());
+    const pyStart = await page.locator('[class*="positionText"]').first().innerText();
+    await page.getByRole('button', { name: 'Step into' }).click();
+    await page.waitForTimeout(300);
+    const pyNext = await page.locator('[class*="positionText"]').first().innerText();
+    check('python steps advance', pyStart !== pyNext, `${pyStart} -> ${pyNext}`);
+    check(
+      'python reports variables in scope',
+      (await page.locator('[class*="scopeRow"]').count()) > 0,
+    );
+    await page.getByRole('button', { name: 'Stop debugging' }).click();
+    await page.waitForTimeout(300);
   }
 
   console.log('▸ Checking responsive layout');

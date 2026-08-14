@@ -1,5 +1,5 @@
 /**
- * Monaco bootstrap: bundled (not CDN) workers, BCS-matched themes, and the
+ * Monaco bootstrap: bundled (not CDN) workers, Breakstep-matched themes, and the
  * `breakstep` ambient types so the API autocompletes inside the editor.
  *
  * Bundling Monaco rather than loading it from a CDN keeps the app working
@@ -7,7 +7,7 @@
  * Monaco into its own chunk.
  */
 // Importing the `monaco-editor` barrel pulls in every language Monaco ships
-// (~3.3 MB). BCS needs three, so the editor core and those three grammars are
+// (~3.3 MB). Breakstep needs three, so the editor core and those three grammars are
 // imported explicitly instead — roughly a quarter of the bytes.
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 
@@ -44,7 +44,7 @@ import 'monaco-editor/esm/vs/basic-languages/python/python.contribution';
 import { loader } from '@monaco-editor/react';
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
 import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker';
-import { BCS_API_DTS } from './bcsApiTypes';
+import { BREAKSTEP_API_DTS } from './breakstepApiTypes';
 
 export const MONACO_THEMES = {
   midnight: 'breakstep-midnight',
@@ -186,8 +186,8 @@ export function setupMonaco(): typeof monaco {
   ts.typescriptDefaults.setCompilerOptions(compilerOptions);
   ts.javascriptDefaults.setCompilerOptions({ ...compilerOptions, strict: false, checkJs: false });
 
-  ts.typescriptDefaults.addExtraLib(BCS_API_DTS, 'ts:breakstep-runtime.d.ts');
-  ts.javascriptDefaults.addExtraLib(BCS_API_DTS, 'ts:breakstep-runtime.d.ts');
+  ts.typescriptDefaults.addExtraLib(BREAKSTEP_API_DTS, 'ts:breakstep-runtime.d.ts');
+  ts.javascriptDefaults.addExtraLib(BREAKSTEP_API_DTS, 'ts:breakstep-runtime.d.ts');
 
   // 2304 "cannot find name" would fire for injected globals in JS mode, and
   // 1375 complains about top-level await outside a module.

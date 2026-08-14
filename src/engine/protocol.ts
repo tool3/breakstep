@@ -1,6 +1,7 @@
 /** Message contract shared by the main thread and both execution workers. */
 import type { BenchmarkSample, LogEntry, ParamValues, RunError } from '@/types';
 import type { Frame } from '@/types/viz';
+import type { DebugStep } from '@/types/debug';
 
 export interface RunRequest {
   type: 'run';
@@ -16,6 +17,8 @@ export interface RunRequest {
    * Ignored when the source already calls `breakstep.show`.
    */
   autoTrace: boolean;
+  /** Record a step per statement so the run can be debugged afterwards. */
+  debug?: boolean;
 }
 
 export interface BenchRequest {
@@ -49,6 +52,8 @@ export interface DoneMessage {
   returnValue?: unknown;
   /** True when the code registered a `breakstep.bench(...)` harness. */
   hasBenchmark: boolean;
+  /** The recorded execution, when the run was a debug run. */
+  steps?: DebugStep[];
 }
 
 export interface ErrorMessage {

@@ -253,7 +253,7 @@ breakstep.bench(input=lambda n: ["key" + str(i) for i in range(n)], run=_bench)
   instrumented: {
     typescript: `// Hash map — the same structure, drawn explicitly.
 //
-// Showing \`this\` rather than \`this.buckets\` lets BCS read the real bucket
+// Showing \`this\` rather than \`this.buckets\` lets Breakstep read the real bucket
 // array, so the picture is the map's actual collision structure and not a
 // re-hash into invented buckets.
 
@@ -350,7 +350,7 @@ breakstep.bench({
 `,
     python: `# Hash map - the same structure, drawn explicitly.
 #
-# Showing \`self\` rather than \`self.buckets\` lets BCS read the real bucket
+# Showing \`self\` rather than \`self.buckets\` lets Breakstep read the real bucket
 # list, so the picture is the map's actual collision structure and not a
 # re-hash into invented buckets.
 

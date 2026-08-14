@@ -1,11 +1,12 @@
-# BCS — Browser Code Studio
+# Breakstep
 
 An in-browser studio for data structures and algorithms. Pick a template, edit the
 code, run it, watch it draw itself, and get a complexity verdict backed by an
 actual measurement.
 
-Think of it as the companion to NeetCode or LeetCode that has no problems in it —
-just a place to *see* what your code does.
+Think of it as the companion to NeetCode or LeetCode: a place to *see* what your
+code does, step through it line by line, and — when you do want a problem — paste
+a LeetCode link and get the technique, the dataset and a worked solution.
 
 Everything runs client-side. There is no backend, no account, and no network call
 after the page loads (except the one-time Pyodide download if you switch to
@@ -23,7 +24,7 @@ loop, `console.log`. No app-specific API anywhere.
 tab. An instrumented operation counter stops infinite loops, and a hard timeout
 terminates the worker if anything survives that.
 
-**Visualize** — plain code visualizes itself. BCS rewrites the source so it
+**Visualize** — plain code visualizes itself. Breakstep rewrites the source so it
 reports its own state at every loop iteration and function call, then works out
 what the picture is about: a `{val, next}` chain draws as a linked list (cycles
 included), a `left`/`right` node draws as a tree, an adjacency map draws as a
@@ -37,6 +38,22 @@ switches auto-tracing off, so the two never fight.
 **Tune** — inputs are top-level constants (`const values = [1, 2, 3];`), and the
 Parameters panel edits *those literals in the editor*. Move a slider and the code
 changes. Nothing is substituted behind your back.
+
+**Debug** — press **Debug** instead of Run and the whole execution is recorded,
+then replayed under your control: step in, step over, step out, continue, and
+*step backwards*, which no live debugger can do. The paused line is highlighted
+in the editor, the variables in scope and the call stack are listed beside it,
+and the visualizer follows the cursor — so the picture and the line that produced
+it are always the same moment. Every function gets its own switch: leave it off
+and the debugger walks straight through, turn it on and `continue` stops there.
+Clicking the gutter sets an ordinary line breakpoint.
+
+**Solve** — paste any LeetCode URL. Breakstep matches it against an offline
+catalogue of 24 problems and gives you the recommended technique (ranked, with
+the reason it fits *this* problem), the exact example datasets, the constraints,
+and two buttons: load the starter code, or reveal a worked solution straight into
+the editor. Problems the catalogue does not have still get a technique suggested
+from the problem name, clearly marked as a guess.
 
 **Analyze** — two independent answers to "what is the complexity?":
 
@@ -80,6 +97,10 @@ for, carrying the structure it operates on.
 **Worked examples (15)** — the original catalogue, preserved and still runnable,
 including the DP table and flood-fill templates that fit neither group above.
 
+**LeetCode (24)** — three problems per pattern, each with its prompt restated,
+its published example datasets, ranked technique recommendations, a starter stub
+and a solution. Loaded problems join the picker like any other template.
+
 **Scratch (1)** — a blank canvas with the API cheat sheet.
 
 ---
@@ -93,9 +114,10 @@ npm run dev            # http://localhost:5173
 
 ```bash
 npm run build          # typecheck + production bundle into dist/
-npm test               # 854 unit tests
+npm test               # 1047 unit tests
 npm run smoke          # end-to-end run in a real Chrome
 npm run smoke:python   # …including the Pyodide path (slow: downloads ~10 MB)
+npm run responsive     # 16 device profiles, asserting nothing breaks
 npm run screenshots    # capture every visualizer to screenshots/
 ```
 
@@ -107,8 +129,8 @@ Requires Node 20+. The smoke tests use Playwright driving your installed Chrome.
 
 | | **Plain code** (default) | **Instrumented** |
 | --- | --- | --- |
-| What you read | Ordinary CS code, no BCS API | The same lesson with explicit `breakstep.*` calls |
-| How it draws | Auto-traced — BCS infers the subject | You decide, frame by frame |
+| What you read | Ordinary CS code, no Breakstep API | The same lesson with explicit `breakstep.*` calls |
+| How it draws | Auto-traced — Breakstep infers the subject | You decide, frame by frame |
 | Inputs | Top-level constants the panel rewrites | `breakstep.param('name')` |
 | Benchmark | Harness appended on your behalf | Visible in the source |
 
@@ -186,11 +208,17 @@ src/
     staticPy.ts        the same, driven by Python's indentation
     fit.ts             score growth models against measured operation counts
   components/        panels and the ten visualizers
+  leetcode/          the offline problem catalogue
+    types.ts           what a problem is: prompt, dataset, techniques, sources
+    catalogue.ts       24 problems, three per pattern
+    recommend.ts       URL → slug, then catalogue lookup or keyword guess
+    toTemplate.ts      wrap a problem as an ordinary template
   templates/
     structures/        the twelve classic structures
     patterns/          the eight classic techniques, on named problems
     examples/          the original catalogue, preserved
   hooks/             workspace state, theme, persistence
+    useDebugger.ts     the debug cursor: search a recording, both directions
 ```
 
 A few decisions worth knowing about:
@@ -213,6 +241,32 @@ analyzed correctly. Recursion is counted per *execution path*, so
 `fib(n-1) + fib(n-2)` branches twice while `cond ? bs(lo, mid) : bs(mid, hi)`
 branches once. That single distinction is the difference between calling binary
 search O(n) and O(log n).
+
+**The debugger records, then replays.** Pausing a real execution would mean
+`SharedArrayBuffer` and `Atomics.wait`, which needs cross-origin isolation headers
+— fine on Vercel, impossible on a plain file server, and still no help for
+Pyodide. So a debug run instead records every statement, function entry and exit
+along with the variables in scope, and the panel walks that array. The cost is a
+step budget (20 000 steps) and slower debug runs. The payoff is that **step
+backwards** is just `index - 1`, the controls stay instant on a phone, and
+JavaScript and Python go through exactly the same replay path. Each step also
+carries the index of the frame that was current when it happened, which is what
+keeps the visualizer and the paused line in sync.
+
+**Method names are recorded qualified.** A step inside `LinkedList.push` reports
+as `LinkedList.push`, not `push`, so switching on a breakpoint for one class
+cannot stop inside another class's method of the same name. Constructors are
+instrumented too, including derived ones — the entry hook never touches `this`,
+and `super()` is legal inside the injected `try`.
+
+**LeetCode support is entirely offline.** Breakstep never calls leetcode.com:
+there is no API to call without an account, scraping would break the site's terms,
+and a static site has nowhere to put a proxy. Instead the catalogue is written
+here — prompts restated in our own words, the published example datasets, and
+solutions that the test suite executes and verifies on every build. A pasted URL
+is parsed for its slug and looked up. A slug that is not in the catalogue still
+gets a technique suggested from keywords in its name, and the UI says plainly
+that it is a guess.
 
 **Every verdict ships with its evidence.** The static pass is a heuristic and says
 so, with a confidence score and the reasoning that produced it. The empirical
@@ -262,12 +316,18 @@ a real cycle rather than an infinite copy.
 | `components/*.test.tsx`| every visualizer, both layout engines, all panels                  |
 | `hooks/*.test.tsx`     | workspace state machine, persistence, theming                      |
 | `templates/*.test.ts`  | **both faces of every template run, draw, bind their parameters, and measure the complexity they document** |
-| `scripts/smoke.mjs`    | real Chrome: Monaco boots, workers load, Pyodide executes          |
+| `leetcode/*.test.ts`   | **every catalogue solution runs and reproduces its stated output**  |
+| `scripts/smoke.mjs`    | real Chrome: Monaco boots, workers load, Pyodide executes, the debugger steps, a problem reveals |
+| `scripts/responsive.mjs` | 16 device profiles: layout mode, overflow, tap targets, reachability |
+
+Every solution in the LeetCode catalogue is executed by the test suite and its
+output compared, line for line, against the answers the problem statement
+publishes. A solution that stops being correct fails the build.
 
 The template contract tests are the ones that matter most. A template that throws,
 captures nothing, or disagrees with its own documented complexity is a broken
 lesson — so for all 16 templates, in both modes and both JS dialects, the suite
-asserts that the plain source contains no BCS API, auto-traces frames anyway,
+asserts that the plain source contains no Breakstep API, auto-traces frames anyway,
 logs something, binds every parameter to a real constant, survives a
 parameter round trip, and measures the complexity it claims.
 
@@ -288,7 +348,7 @@ Anything that can serve a directory works equally well (`npm run build`, then ho
 **Bundle note.** Monaco is ~770 kB gzipped and is genuinely that size; it is code
 split behind a `Suspense` boundary, so the shell, the visualizers and the analysis
 panels all paint before it arrives. Pyodide (~10 MB) is fetched from a CDN on the
-first Python run only — open BCS in TypeScript mode and you never pay for it.
+first Python run only — open Breakstep in TypeScript mode and you never pay for it.
 
 ---
 
@@ -307,7 +367,7 @@ first Python run only — open BCS in TypeScript mode and you never pay for it.
 Drop a `Template` into `src/templates/structures/`, `patterns/` or `examples/`
 and add it to the matching array in `index.ts`. It needs three source sets:
 
-- `code` — plain CS code, no BCS API, inputs as top-level constants
+- `code` — plain CS code, no Breakstep API, inputs as top-level constants
 - `instrumented` — the same lesson with explicit `breakstep.*` calls
 - `bench` — the `breakstep.bench(…)` harness appended in clean mode
 

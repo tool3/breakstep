@@ -36,8 +36,19 @@ class _Instrumenter(ast.NodeTransformer):
     of bindings that currently exist.
     """
 
-    def __init__(self, auto=False):
+    def __init__(self, auto=False, debug=False):
         self.auto = auto
+        self.debug = debug
+        # Methods report as \`Class.method\`, matching the names the debug panel
+        # lists, so a breakpoint switch cannot stop in the wrong class.
+        self.method_owner = {}
+
+    def visit_ClassDef(self, node):
+        for statement in node.body:
+            if isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                self.method_owner[id(statement)] = node.name
+        self.generic_visit(node)
+        return node
 
     def _op(self):
         return ast.Expr(
@@ -52,6 +63,10 @@ class _Instrumenter(ast.NodeTransformer):
                 values=[ast.Name(id="_bcs_capturing", ctx=ast.Load()), call],
             )
         )
+
+    def _fn_label(self, node):
+        owner = self.method_owner.get(id(node))
+        return "%s.%s" % (owner, node.name) if owner else node.name
 
     def _scope(self):
         return ast.Call(func=ast.Name(id="locals", ctx=ast.Load()), args=[], keywords=[])
@@ -98,7 +113,7 @@ class _Instrumenter(ast.NodeTransformer):
             self._guarded(
                 "_bcs_enter",
                 [
-                    ast.Constant(value=node.name),
+                    ast.Constant(value=self._fn_label(node)),
                     ast.Constant(value=node.lineno),
                     self._scope(),
                 ],
@@ -112,6 +127,61 @@ class _Instrumenter(ast.NodeTransformer):
     visit_While = _loop
     visit_FunctionDef = _function
     visit_AsyncFunctionDef = _function
+
+    # -- statement-level hooks (debug runs only) --------------------------
+    #
+    # Python has no temporal dead zone, so \`locals()\` is always safe to read;
+    # the only care needed is not to displace a docstring and not to walk into
+    # class bodies, where the statements are definitions rather than steps.
+    BODY_FIELDS = ("body", "orelse", "finalbody")
+
+    def add_statement_hooks(self, tree):
+        if not self.debug:
+            return tree
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef):
+                continue
+
+            for field in self.BODY_FIELDS:
+                body = getattr(node, field, None)
+                if not isinstance(body, list) or not body:
+                    continue
+                # A loop's own hook already fires at the top of its body.
+                skip_first = field == "body" and isinstance(
+                    node, (ast.For, ast.AsyncFor, ast.While)
+                )
+                setattr(node, field, self._interleave(body, skip_first))
+
+        return tree
+
+    def _interleave(self, body, skip_first):
+        out = []
+        for index, statement in enumerate(body):
+            leading_docstring = (
+                index == 0
+                and isinstance(statement, ast.Expr)
+                and isinstance(statement.value, ast.Constant)
+                and isinstance(statement.value.value, str)
+            )
+            already_hooked = index == 0 and skip_first
+            definition = isinstance(
+                statement, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+            )
+            # Hooks injected by the earlier pass carry no source position —
+            # that is what marks them as ours rather than the user's.
+            is_hook = getattr(statement, "lineno", None) is None
+
+            if not (leading_docstring or already_hooked or definition or is_hook):
+                out.append(
+                    self._guarded(
+                        "_bcs_step",
+                        [ast.Constant(value=statement.lineno), self._scope(),
+                         ast.Constant(value="stmt")],
+                    )
+                )
+            out.append(statement)
+        return out
 
     def _wrap_elt(self, node, attr="elt"):
         self.generic_visit(node)
@@ -145,6 +215,7 @@ class _Bcs:
         self.ops = 0
         self.op_limit = 20000000
         self.frame_limit = 2000
+        self.step_limit = 20000
         self.capturing = True
         self._label = None
         self._bench = None
@@ -226,7 +297,10 @@ class _Bcs:
     # These only record; the JavaScript side runs the same subject-selection
     # logic it uses for JS, so both languages produce identical pictures.
     def trace_step(self, line, scope, tag=None):
-        if len(self.traces) >= self.frame_limit:
+        # Statement steps feed only the debugger, so they get their own budget:
+        # a debug run records far more of them than there are frames.
+        limit = self.step_limit if tag == "stmt" else self.frame_limit
+        if len(self.traces) >= limit:
             return
         self.traces.append(
             {"k": "step", "line": line, "tag": tag, "scope": _encode(_clean_scope(scope))}
@@ -342,9 +416,11 @@ def _encode(obj, seen=None, depth=0):
     }
 
 
-def _prepare(source, auto=False):
+def _prepare(source, auto=False, debug=False):
     tree = ast.parse(source, filename="<breakstep>", mode="exec")
-    tree = _Instrumenter(auto=auto).visit(tree)
+    instrumenter = _Instrumenter(auto=auto, debug=debug)
+    tree = instrumenter.visit(tree)
+    tree = instrumenter.add_statement_hooks(tree)
     ast.fix_missing_locations(tree)
     return compile(tree, "<breakstep>", "exec")
 
@@ -374,12 +450,13 @@ def _make_globals(breakstep, params):
 _BCS = _Bcs()
 
 
-def _bcs_run(source, params, op_limit, frame_limit, auto_trace=False):
+def _bcs_run(source, params, op_limit, frame_limit, auto_trace=False, debug=False):
     """Execute user code once. Returns a JSON string the worker relays."""
     breakstep = _Bcs()
     breakstep.params = params or {}
     breakstep.op_limit = op_limit
     breakstep.frame_limit = frame_limit
+    breakstep.step_limit = 20000 if debug else frame_limit
     global _BCS
     _BCS = breakstep
 
@@ -387,7 +464,7 @@ def _bcs_run(source, params, op_limit, frame_limit, auto_trace=False):
     started = time.perf_counter()
     error = None
     try:
-        code = _prepare(source, auto=auto_trace)
+        code = _prepare(source, auto=auto_trace, debug=debug)
     except SyntaxError as e:
         return json.dumps(
             {
@@ -444,7 +521,7 @@ def _bcs_bench(source, params, sizes, op_limit):
     g = _make_globals(breakstep, breakstep.params)
 
     try:
-        exec(_prepare(source, auto=False), g)
+        exec(_prepare(source, auto=False, debug=False), g)
     except BaseException as e:
         return json.dumps({"samples": [], "error": type(e).__name__ + ": " + str(e)})
 

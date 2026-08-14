@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Drawer, Empty, Input, Tag } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
-import { TEMPLATES, templatesByCategory } from '@/templates';
+import { allTemplates, templatesByCategory } from '@/templates';
 import { prettyClass } from './ComplexityPanel';
 import styles from './TemplatePicker.module.scss';
 
@@ -21,11 +21,12 @@ export function TemplatePicker({ open, currentId, compact, onSelect, onClose }: 
     const needle = query.trim().toLowerCase();
     if (!needle) return templatesByCategory();
 
-    const matches = TEMPLATES.filter((t) =>
+    const all = allTemplates();
+    const matches = all.filter((t) =>
       [t.title, t.blurb, t.category, ...t.tags].join(' ').toLowerCase().includes(needle),
     );
 
-    const byCategory = new Map<string, typeof TEMPLATES>();
+    const byCategory = new Map<string, typeof all>();
     for (const t of matches) {
       if (!byCategory.has(t.category)) byCategory.set(t.category, []);
       byCategory.get(t.category)!.push(t);

@@ -97,10 +97,10 @@ describe.each(TEMPLATES.map((t) => [t.id, t] as [string, Template]))('template: 
 
   // --- The plain-code face --------------------------------------------------
 
-  it('clean source contains no BCS API at all', () => {
+  it('clean source contains no breakstep API at all', () => {
     for (const language of ['typescript', 'python'] as const) {
       const source = templateSource(template, language, 'clean');
-      expect(source, `${template.id} (${language})`).not.toMatch(/\bbcs\s*\./);
+      expect(source, `${template.id} (${language})`).not.toMatch(/\bbreakstep\s*\./);
     }
   });
 
@@ -153,10 +153,10 @@ describe.each(TEMPLATES.map((t) => [t.id, t] as [string, Template]))('template: 
     expect(result.bench).toBeDefined();
   });
 
-  it('instrumented source uses the BCS API', () => {
+  it('instrumented source uses the breakstep API', () => {
     for (const language of ['typescript', 'python'] as const) {
       const source = templateSource(template, language, 'instrumented');
-      expect(source).toMatch(/\bbcs\.(show|bench|param)/);
+      expect(source).toMatch(/\bbreakstep\.(show|bench|param)/);
     }
   });
 

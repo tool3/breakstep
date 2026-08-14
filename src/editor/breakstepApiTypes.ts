@@ -5,7 +5,7 @@
  * checker from flagging the injected globals. It has to be a string rather than
  * a real `.d.ts` because Monaco's TS worker takes source text, not modules.
  */
-export const BCS_API_DTS = `
+export const BREAKSTEP_API_DTS = `
 /** Highlight states available to \`show\`. */
 type BcsState =
   | 'default' | 'active' | 'compare' | 'visited'

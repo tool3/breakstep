@@ -195,7 +195,33 @@ for (const profile of PROFILES) {
     await page.keyboard.press('Escape');
     await page.waitForTimeout(400);
 
-    // --- 8. Parameters must be operable --------------------------------------
+    // --- 8. The LeetCode drawer must fit too ---------------------------------
+    await page.locator('button[aria-label="LeetCode problems"]').click();
+    await page.waitForTimeout(500);
+
+    const problemDrawer = await page.evaluate(() => {
+      const el = document.querySelector('.ant-drawer-content-wrapper');
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return { width: r.width, viewport: window.innerWidth };
+    });
+    if (!problemDrawer) problems.push('problem drawer did not open');
+    else if (problemDrawer.width > problemDrawer.viewport + 1) {
+      problems.push(
+        `problem drawer ${Math.round(problemDrawer.width)}px wide on a ${problemDrawer.viewport}px screen`,
+      );
+    }
+
+    const urlField = await page
+      .getByLabel('LeetCode problem URL')
+      .isVisible()
+      .catch(() => false);
+    if (!urlField) problems.push('the problem URL field is not reachable');
+
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(400);
+
+    // --- 9. Parameters must be operable --------------------------------------
     if (mode === 'compact') {
       await page.locator('[role="tablist"] [role="tab"]').nth(1).click();
       await page.waitForTimeout(300);

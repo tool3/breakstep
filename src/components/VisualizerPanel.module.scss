@@ -195,3 +195,16 @@
   border-radius: 3px;
   border: 1px solid;
 }
+
+/** Shown while the debugger owns the transport. */
+.following {
+  @include mono(9px);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 1px 6px;
+  border-radius: $radius-sm;
+  color: var(--breakstep-mint);
+  border: 1px solid #{rgba(#35d6a0, 0.4)};
+  white-space: nowrap;
+  flex-shrink: 0;
+}

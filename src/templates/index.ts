@@ -84,18 +84,42 @@ export const TEMPLATES: Template[] = [
 ];
 
 /** Category order in the picker; anything unlisted sorts to the end. */
-export const CATEGORY_ORDER = ['Data structures', 'Patterns', 'Worked examples', 'Scratch'];
+export const CATEGORY_ORDER = [
+  'LeetCode',
+  'Data structures',
+  'Patterns',
+  'Worked examples',
+  'Scratch',
+];
 
 export const DEFAULT_TEMPLATE_ID = 'linked-list';
 
+/**
+ * Templates added at runtime — currently the LeetCode problems, which only
+ * exist once someone loads one. They behave exactly like built-in templates
+ * from here on: the picker lists them, edits are stored per id, and Reset code
+ * goes back to the starter.
+ */
+const registered = new Map<string, Template>();
+
+export function registerTemplate(template: Template): Template {
+  registered.set(template.id, template);
+  return template;
+}
+
+/** Every template, built-in and registered, in picker order. */
+export function allTemplates(): Template[] {
+  return [...TEMPLATES, ...registered.values()];
+}
+
 export function getTemplate(id: string): Template {
-  return TEMPLATES.find((t) => t.id === id) ?? TEMPLATES[0];
+  return TEMPLATES.find((t) => t.id === id) ?? registered.get(id) ?? TEMPLATES[0];
 }
 
 /** Category → templates, preserving the declaration order within each group. */
 export function templatesByCategory(): { category: string; items: Template[] }[] {
   const groups = new Map<string, Template[]>();
-  for (const t of TEMPLATES) {
+  for (const t of allTemplates()) {
     if (!groups.has(t.category)) groups.set(t.category, []);
     groups.get(t.category)!.push(t);
   }
@@ -136,7 +160,7 @@ export function templateSource(
 /**
  * The benchmark harness appended when running the clean variant.
  *
- * Clean code contains no BCS API at all, so the Analyze tab would have nothing
+ * Clean code contains no Breakstep API at all, so the Analyze tab would have nothing
  * to sweep. This is the one piece the runner adds on the user's behalf — and it
  * is right there in the instrumented view, not hidden.
  */
@@ -151,8 +175,8 @@ export function templateBench(template: Template, language: Language): string {
 
 /** Marks the boundary between the user's code and the appended harness. */
 export const BENCH_BANNER = {
-  typescript: '// ─── benchmark harness (added by BCS in clean mode) ───',
-  python: '# --- benchmark harness (added by BCS in clean mode) ---',
+  typescript: '// ─── benchmark harness (added by Breakstep in clean mode) ───',
+  python: '# --- benchmark harness (added by Breakstep in clean mode) ---',
 } as const;
 
 /** Assemble what actually executes: the editor buffer, plus the harness in clean mode. */

@@ -26,3 +26,28 @@
   margin-left: 4px;
   border-radius: 2px;
 }
+
+// --- Debugger decorations ---------------------------------------------------
+// Monaco applies these by class name, so they must not be nested.
+
+.breakpointGlyph {
+  background: var(--breakstep-red);
+  border-radius: 50%;
+  width: 10px !important;
+  height: 10px;
+  margin-left: 6px;
+  margin-top: 5px;
+  cursor: pointer;
+}
+
+.activeLine {
+  background: #{rgba(#f2a53c, 0.14)};
+  border-left: 2px solid var(--breakstep-amber);
+}
+
+.activeGlyph {
+  background: var(--breakstep-amber);
+  width: 4px !important;
+  margin-left: 4px;
+  border-radius: 2px;
+}

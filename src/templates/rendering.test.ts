@@ -1,5 +1,5 @@
 /**
- * The structure templates rely on BCS reading their class name to pick a
+ * The structure templates rely on Breakstep reading their class name to pick a
  * renderer — a `Stack` and a `Queue` are both an array underneath, and only the
  * name says which way up to draw it. This holds that contract.
  */

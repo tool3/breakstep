@@ -590,7 +590,7 @@ breakstep.bench(input=lambda n: ["v" + str(i) + ">v" + str(i + 1) for i in range
   instrumented: {
     typescript: `// DAG — the same structure, drawn explicitly.
 //
-// \`directed: true\` keeps the arrowheads: without it BCS infers direction from
+// \`directed: true\` keeps the arrowheads: without it Breakstep infers direction from
 // whether edges are reciprocal, and a DAG's never are.
 
 const dependencies = breakstep.param<string[]>('dependencies', ['lex>parse', 'parse>compile']);
@@ -697,7 +697,7 @@ breakstep.bench({
 `,
     python: `# DAG - the same structure, drawn explicitly.
 #
-# \`directed=True\` keeps the arrowheads: without it BCS infers direction from
+# \`directed=True\` keeps the arrowheads: without it Breakstep infers direction from
 # whether edges are reciprocal, and a DAG's never are.
 
 from collections import deque
