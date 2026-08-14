@@ -1,0 +1,19 @@
+node_modules/
+dist/
+dist-ssr/
+coverage/
+*.local
+
+# Playwright / smoke-test artifacts
+screenshots/
+smoke-screenshot.png
+smoke-failure.png
+test-results/
+
+.DS_Store
+.vercel
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.log
+npm-debug.log*

@@ -1,0 +1,353 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: $space-4;
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+  @include scrollbars;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+
+  @include below(480px) {
+    padding: $space-3 $space-2;
+    gap: $space-4;
+  }
+}
+
+.footer {
+  padding: $space-3 $space-4;
+  border-top: 1px solid var(--breakstep-border);
+  background: var(--breakstep-panel-alt);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+}
+
+.heading {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--breakstep-text-faint);
+}
+
+.staleAlert {
+  margin-bottom: -$space-2;
+}
+
+// --- Headline verdicts ------------------------------------------------------
+
+.verdicts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: $space-3;
+
+  // Two up rather than one: the verdicts are the headline and deserve to stay
+  // comparable side by side even on the narrowest phone.
+  @include below(420px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: $space-2;
+  }
+}
+
+.verdict {
+  @include panel;
+  background: var(--breakstep-panel-alt);
+  padding: $space-3;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.verdictLabel {
+  @include mono(9px);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--breakstep-text-faint);
+}
+
+.verdictValue {
+  @include mono(20px);
+  font-weight: 600;
+  color: var(--breakstep-accent-text);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+
+  @include below(420px) {
+    font-size: 16px;
+  }
+}
+
+.verdictSub {
+  font-size: 11px;
+  color: var(--breakstep-text-dim);
+  line-height: 1.4;
+}
+
+.verdictAlert {
+  font-size: 12px;
+}
+
+// --- Static notes -----------------------------------------------------------
+
+.notes {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.note {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--breakstep-text-dim);
+
+  code {
+    background: var(--breakstep-bg-deep);
+    border: 1px solid var(--breakstep-border);
+    border-radius: $radius-sm;
+    padding: 0 4px;
+    color: var(--breakstep-accent-text);
+    font-size: 11px;
+  }
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+// --- Progress ---------------------------------------------------------------
+
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.progressText {
+  @include mono(11px);
+  color: var(--breakstep-text-dim);
+}
+
+// --- Samples table ----------------------------------------------------------
+
+// The table is the one thing here with an irreducible minimum width.
+.tableWrap {
+  width: 100%;
+  overflow-x: auto;
+  @include scrollbars;
+}
+
+.table {
+  width: 100%;
+  min-width: 320px;
+  border-collapse: collapse;
+  @include mono(11px);
+
+  caption-side: bottom;
+
+  th,
+  td {
+    text-align: right;
+    padding: 5px 8px;
+    border-bottom: 1px solid var(--breakstep-border);
+  }
+
+  th {
+    color: var(--breakstep-text-faint);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 9px;
+  }
+
+  td {
+    color: var(--breakstep-text-dim);
+  }
+
+  td:first-child,
+  th:first-child {
+    text-align: left;
+    color: var(--breakstep-text);
+  }
+
+  tbody tr:hover td {
+    background: var(--breakstep-panel-alt);
+    color: var(--breakstep-text);
+  }
+}
+
+.tableCaption {
+  @include mono(10px);
+  color: var(--breakstep-text-faint);
+  text-align: left;
+  padding-top: $space-2;
+  line-height: 1.5;
+}
+
+// --- Ranking bars -----------------------------------------------------------
+
+.ranking {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.rankingTitle {
+  @include mono(9px);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--breakstep-text-faint);
+  margin-bottom: 2px;
+}
+
+.rankRow {
+  display: grid;
+  grid-template-columns: 74px 1fr 38px;
+  align-items: center;
+  gap: $space-2;
+
+  @include below(420px) {
+    grid-template-columns: 62px 1fr 32px;
+  }
+}
+
+.rankClass {
+  @include mono(11px);
+  color: var(--breakstep-text-dim);
+}
+
+.rankBar {
+  height: 6px;
+  border-radius: $radius-pill;
+  background: var(--breakstep-bg-deep);
+  overflow: hidden;
+}
+
+.rankFill,
+.rankFillBest {
+  height: 100%;
+  border-radius: $radius-pill;
+  transition: width 320ms $ease-out;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+.rankFill {
+  background: var(--breakstep-border-strong);
+}
+
+.rankFillBest {
+  background: var(--breakstep-mint);
+}
+
+.rankScore {
+  @include mono(10px);
+  color: var(--breakstep-text-faint);
+  text-align: right;
+}
+
+// --- Projection -------------------------------------------------------------
+
+.projection {
+  @include panel;
+  background: var(--breakstep-panel-alt);
+  padding: $space-3;
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.projectionTitle {
+  @include mono(9px);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--breakstep-text-faint);
+}
+
+.projectionGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: $space-3;
+}
+
+.projectionCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.projectionN {
+  @include mono(10px);
+  color: var(--breakstep-text-faint);
+}
+
+.projectionOps {
+  @include mono(13px);
+  color: var(--breakstep-text);
+  font-weight: 600;
+}
+
+.projectionNote {
+  @include mono(10px);
+  color: var(--breakstep-text-faint);
+  line-height: 1.5;
+}
+
+// --- Empty state ------------------------------------------------------------
+
+.empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $space-3;
+  padding: $space-6 $space-4;
+  text-align: center;
+}
+
+.emptyIcon {
+  font-size: 26px;
+  color: var(--breakstep-text-faint);
+}
+
+.emptyTitle {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--breakstep-text);
+}
+
+.emptyHint {
+  max-width: 420px;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--breakstep-text-dim);
+  margin: 0;
+
+  code {
+    background: var(--breakstep-bg-deep);
+    border: 1px solid var(--breakstep-border);
+    border-radius: $radius-sm;
+    padding: 1px 5px;
+    color: var(--breakstep-accent-text);
+  }
+}

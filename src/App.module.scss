@@ -1,0 +1,264 @@
+.antRoot {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--breakstep-bg);
+}
+
+.main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--breakstep-panel);
+}
+
+.editorPane {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.editorLoading {
+  padding: $space-5;
+}
+
+/** Compact layout shows one pane at a time, chosen from the bottom bar. */
+.compactPane {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--breakstep-panel);
+  overflow: hidden;
+}
+
+// --- Tabs -------------------------------------------------------------------
+
+.tabs {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+
+  // antd renders its own wrappers; these need to flex so the panel body can
+  // own the scrolling rather than the page.
+  :global(.ant-tabs-nav) {
+    margin: 0;
+    padding: 0 $space-3;
+    background: var(--breakstep-panel-alt);
+    border-bottom: 1px solid var(--breakstep-border);
+    flex-shrink: 0;
+  }
+
+  :global(.ant-tabs-content-holder) {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+  }
+
+  :global(.ant-tabs-content) {
+    height: 100%;
+    min-height: 0;
+  }
+
+  // Only the ACTIVE pane becomes a flex column. Styling every pane would
+  // override antd's `display: none` on the hidden ones and stack all three
+  // panels on top of each other.
+  :global(.ant-tabs-tabpane-active) {
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  :global(.ant-tabs-tabpane-hidden) {
+    display: none;
+  }
+}
+
+.tabLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+}
+
+.badge {
+  @include mono(9px);
+  background: var(--breakstep-bg-deep);
+  border: 1px solid var(--breakstep-border);
+  border-radius: $radius-pill;
+  padding: 0 6px;
+  line-height: 15px;
+  color: var(--breakstep-text-faint);
+}
+
+.badgeError {
+  @include mono(9px);
+  background: var(--breakstep-red);
+  color: #fff;
+  border-radius: 50%;
+  width: 15px;
+  height: 15px;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+}
+
+// --- Bottom bar (compact only) ----------------------------------------------
+
+.bottomBar {
+  display: flex;
+  flex-shrink: 0;
+  border-top: 1px solid var(--breakstep-border);
+  background: var(--breakstep-panel);
+  // Clear the iOS home indicator without leaving a gap on other devices.
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.bottomTab {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 7px 2px;
+  min-height: 52px;
+  border: 0;
+  background: transparent;
+  color: var(--breakstep-text-faint);
+  cursor: pointer;
+  font: inherit;
+  // Stop iOS firing a 300ms delay or flashing a grey overlay.
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+
+  &:active {
+    background: var(--breakstep-panel-alt);
+  }
+}
+
+.bottomTabActive {
+  color: var(--breakstep-accent-text);
+
+  // A top rule reads as "selected" without needing a filled background.
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    height: 2px;
+    background: var(--breakstep-accent);
+  }
+}
+
+.bottomIcon {
+  font-size: 17px;
+  line-height: 1;
+}
+
+.bottomLabel {
+  @include mono(9px);
+  letter-spacing: 0.02em;
+  @include truncate;
+  max-width: 100%;
+}
+
+.bottomDot,
+.bottomDotError {
+  position: absolute;
+  top: 6px;
+  right: 50%;
+  margin-right: -16px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.bottomDot {
+  background: var(--breakstep-accent);
+}
+
+.bottomDotError {
+  background: var(--breakstep-red);
+}
+
+// A phone in landscape has ~390px of height; the bar has to shrink.
+@media (max-height: 460px) {
+  .bottomTab {
+    min-height: 40px;
+    padding: 4px 2px;
+  }
+
+  .bottomLabel {
+    display: none;
+  }
+}
+
+// --- Footer -----------------------------------------------------------------
+
+.footer {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  height: 28px;
+  padding: 0 $space-4;
+  flex-shrink: 0;
+  border-top: 1px solid var(--breakstep-border);
+  background: var(--breakstep-panel);
+  @include mono(10px);
+  color: var(--breakstep-text-faint);
+}
+
+.footerItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  @include truncate;
+  max-width: 60%;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.footerHint {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+
+  kbd {
+    background: var(--breakstep-bg-deep);
+    border: 1px solid var(--breakstep-border);
+    border-bottom-width: 2px;
+    border-radius: $radius-sm;
+    padding: 0 4px;
+    font-size: 9px;
+    line-height: 14px;
+    color: var(--breakstep-text-dim);
+  }
+
+  @include below($bp-lg) {
+    display: none;
+  }
+}

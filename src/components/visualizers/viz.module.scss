@@ -1,0 +1,414 @@
+// Shared vocabulary for every visualizer: one cell, one state palette, one
+// set of connector styles. Adding a structure should never mean inventing a
+// new colour language.
+
+.canvas {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $space-4;
+  min-height: 100%;
+  padding: $space-5 $space-4;
+}
+
+.row {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.column {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 6px;
+}
+
+.slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+}
+
+.cell {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  height: 44px;
+  padding: 0 6px;
+  border-radius: $radius-md;
+  border: 1px solid var(--breakstep-border-strong);
+  background: var(--breakstep-panel-alt);
+  color: var(--breakstep-text);
+  @include mono(13px);
+  font-weight: 500;
+  transition: background 160ms $ease-out, border-color 160ms $ease-out,
+    color 160ms $ease-out, transform 160ms $ease-out;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+.small {
+  min-width: 34px;
+  height: 34px;
+  font-size: 11px;
+}
+
+.index {
+  @include mono(10px);
+  color: var(--breakstep-text-faint);
+  letter-spacing: 0.02em;
+}
+
+.note {
+  @include mono(10px);
+  color: var(--breakstep-text-dim);
+  max-width: 60px;
+  @include truncate;
+}
+
+// --- States ---------------------------------------------------------------
+// Every visualizer maps a `CellState` onto exactly these classes.
+
+.stateActive {
+  background: var(--breakstep-accent-soft);
+  border-color: var(--breakstep-accent);
+  color: var(--breakstep-accent-text);
+  transform: translateY(-2px);
+}
+
+.stateCompare {
+  background: var(--breakstep-amber-soft);
+  border-color: var(--breakstep-amber);
+  color: var(--breakstep-amber);
+}
+
+.stateVisited {
+  background: var(--breakstep-violet-soft);
+  border-color: #{rgba(#a97bff, 0.5)};
+  color: var(--breakstep-violet);
+}
+
+.stateMatch {
+  background: var(--breakstep-mint-soft);
+  border-color: var(--breakstep-mint);
+  color: var(--breakstep-mint);
+  font-weight: 600;
+}
+
+.stateSorted {
+  background: var(--breakstep-mint-soft);
+  border-color: #{rgba(#39d3a0, 0.4)};
+  color: var(--breakstep-mint);
+}
+
+.stateMuted {
+  opacity: 0.35;
+  border-style: dashed;
+}
+
+.stateError {
+  background: var(--breakstep-red-soft);
+  border-color: var(--breakstep-red);
+  color: var(--breakstep-red);
+}
+
+// --- Pointers -------------------------------------------------------------
+
+.pointers {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  min-height: 18px;
+}
+
+.pointer {
+  @include mono(10px);
+  color: var(--breakstep-accent-text);
+  background: var(--breakstep-accent-soft);
+  border: 1px solid #{rgba(#5b8cff, 0.35)};
+  border-radius: $radius-sm;
+  padding: 0 5px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.pointerArrow {
+  display: block;
+  text-align: center;
+  color: var(--breakstep-accent);
+  font-size: 11px;
+  line-height: 1;
+}
+
+// --- Connectors -----------------------------------------------------------
+
+.arrow {
+  color: var(--breakstep-text-faint);
+  @include mono(14px);
+  align-self: center;
+  user-select: none;
+}
+
+.svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.edge {
+  stroke: var(--breakstep-border-strong);
+  stroke-width: 1.6;
+  fill: none;
+}
+
+.edgeActive {
+  stroke: var(--breakstep-accent);
+  stroke-width: 2.2;
+}
+
+.edgeVisited {
+  stroke: var(--breakstep-violet);
+}
+
+.edgeMatch {
+  stroke: var(--breakstep-mint);
+  stroke-width: 2.2;
+}
+
+.nodeCircle {
+  fill: var(--breakstep-panel-alt);
+  stroke: var(--breakstep-border-strong);
+  stroke-width: 1.5;
+  transition: fill 160ms $ease-out, stroke 160ms $ease-out;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+.nodeLabel {
+  @include mono(12px);
+  fill: var(--breakstep-text);
+  text-anchor: middle;
+  dominant-baseline: central;
+  user-select: none;
+  pointer-events: none;
+}
+
+.nodeSub {
+  @include mono(9px);
+  fill: var(--breakstep-text-faint);
+  text-anchor: middle;
+  user-select: none;
+  pointer-events: none;
+}
+
+.edgeWeight {
+  @include mono(10px);
+  fill: var(--breakstep-text-dim);
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: var(--breakstep-panel);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+// SVG node fills reuse the same palette as the HTML cells.
+.nodeActive {
+  fill: var(--breakstep-accent-soft);
+  stroke: var(--breakstep-accent);
+}
+
+.nodeCompare {
+  fill: var(--breakstep-amber-soft);
+  stroke: var(--breakstep-amber);
+}
+
+.nodeVisited {
+  fill: var(--breakstep-violet-soft);
+  stroke: var(--breakstep-violet);
+}
+
+.nodeMatch {
+  fill: var(--breakstep-mint-soft);
+  stroke: var(--breakstep-mint);
+}
+
+.nodeMuted {
+  opacity: 0.35;
+}
+
+.nodeError {
+  fill: var(--breakstep-red-soft);
+  stroke: var(--breakstep-red);
+}
+
+.terminalRing {
+  fill: none;
+  stroke: var(--breakstep-mint);
+  stroke-width: 1.4;
+}
+
+// --- Structure chrome -----------------------------------------------------
+
+.caption {
+  @include mono(11px);
+  color: var(--breakstep-text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.scrollArea {
+  width: 100%;
+  overflow: auto;
+  display: flex;
+  justify-content: center;
+  @include scrollbars;
+}
+
+.matrix {
+  display: grid;
+  gap: 3px;
+  justify-content: center;
+}
+
+.matrixRow {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+
+.rowLabel {
+  @include mono(10px);
+  color: var(--breakstep-text-faint);
+  width: 22px;
+  text-align: right;
+  padding-right: 4px;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  max-width: 560px;
+}
+
+.stackFrame {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: $radius-md;
+  border: 1px solid var(--breakstep-border-strong);
+  background: var(--breakstep-panel-alt);
+  @include mono(12px);
+}
+
+.stackDepth {
+  color: var(--breakstep-text-faint);
+  min-width: 26px;
+}
+
+.bucket {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+}
+
+.bucketIndex {
+  @include mono(10px);
+  color: var(--breakstep-text-faint);
+  width: 30px;
+  text-align: right;
+  border-right: 1px solid var(--breakstep-border);
+  padding-right: 8px;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.entry {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: $radius-sm;
+  border: 1px solid var(--breakstep-border-strong);
+  background: var(--breakstep-panel-alt);
+  @include mono(11px);
+}
+
+.entryKey {
+  color: var(--breakstep-accent-text);
+}
+
+.entrySep {
+  color: var(--breakstep-text-faint);
+}
+
+.emptyBucket {
+  @include mono(11px);
+  color: var(--breakstep-text-faint);
+  font-style: italic;
+}
+
+.raw {
+  @include mono(12px);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-width: 100%;
+  max-height: 100%;
+  overflow: auto;
+  color: var(--breakstep-text-dim);
+  background: var(--breakstep-panel-alt);
+  border: 1px solid var(--breakstep-border);
+  border-radius: $radius-md;
+  padding: $space-3;
+  @include scrollbars;
+}
+
+.cycleBadge {
+  @include mono(10px);
+  color: var(--breakstep-amber);
+  background: var(--breakstep-amber-soft);
+  border: 1px solid #{rgba(#f0a13a, 0.4)};
+  border-radius: $radius-pill;
+  padding: 2px 8px;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-3;
+  justify-content: center;
+  padding-top: $space-2;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  @include mono(10px);
+  color: var(--breakstep-text-faint);
+}
+
+.legendSwatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  border: 1px solid var(--breakstep-border-strong);
+}

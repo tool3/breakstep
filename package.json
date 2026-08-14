@@ -1,0 +1,53 @@
+{
+  "name": "breakstep",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Breakstep \u2014 an in-browser editor for data structures & algorithms with live visualization and complexity analysis.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc -b",
+    "smoke": "npm run build && node scripts/smoke.mjs",
+    "smoke:python": "npm run build && node scripts/smoke.mjs --python",
+    "screenshots": "npm run build && node scripts/shots.mjs",
+    "responsive": "npm run build && node scripts/responsive.mjs",
+    "responsive:shots": "npm run build && node scripts/responsive.mjs --shots"
+  },
+  "dependencies": {
+    "@ant-design/icons": "^6.3.2",
+    "@ant-design/v5-patch-for-react-19": "^1.0.3",
+    "@monaco-editor/react": "^4.7.0",
+    "acorn": "^8.14.0",
+    "acorn-walk": "^8.3.4",
+    "antd": "^5.24.2",
+    "magic-string": "^0.30.17",
+    "monaco-editor": "^0.52.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "sucrase": "^3.35.0"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.2.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^26.2.0",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "jsdom": "^26.0.0",
+    "playwright": "^1.62.1",
+    "sass": "^1.85.0",
+    "typescript": "^5.7.3",
+    "vite": "^6.1.0",
+    "vitest": "^3.0.5"
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true
+  }
+}

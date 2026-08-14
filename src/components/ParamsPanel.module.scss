@@ -1,0 +1,123 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  padding: $space-3 $space-4;
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1;
+  @include scrollbars;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+
+  @include below(480px) {
+    padding: $space-3 $space-2;
+  }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title {
+  @include mono(10px);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--breakstep-text-faint);
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: $space-3 $space-4;
+
+  // Below ~210px per column the grid would overflow rather than reflow.
+  @include below(480px) {
+    grid-template-columns: 1fr;
+    gap: $space-3;
+  }
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--breakstep-text-dim);
+}
+
+.info {
+  color: var(--breakstep-text-faint);
+  font-size: 11px;
+  cursor: help;
+}
+
+.control {
+  min-width: 0;
+}
+
+.sliderRow {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+}
+
+.slider {
+  flex: 1;
+  margin: 0;
+  min-width: 60px;
+}
+
+.number {
+  width: 74px;
+  flex-shrink: 0;
+
+  @media (pointer: coarse) {
+    width: 84px;
+  }
+}
+
+.hint {
+  margin: 0;
+  @include mono(10px);
+  color: var(--breakstep-text-faint);
+  line-height: 1.6;
+
+  code {
+    background: var(--breakstep-bg-deep);
+    border: 1px solid var(--breakstep-border);
+    border-radius: $radius-sm;
+    padding: 1px 4px;
+    color: var(--breakstep-accent-text);
+  }
+}
+
+.none {
+  margin: 0;
+  @include mono(11px);
+  color: var(--breakstep-text-faint);
+}
+
+.unbound {
+  opacity: 0.55;
+}
+
+.unboundTag {
+  @include mono(9px);
+  color: var(--breakstep-amber);
+  background: var(--breakstep-amber-soft);
+  border: 1px solid #{rgba(#f2a53c, 0.35)};
+  border-radius: $radius-sm;
+  padding: 0 5px;
+  line-height: 15px;
+  cursor: help;
+}

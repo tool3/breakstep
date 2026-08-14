@@ -1,0 +1,28 @@
+.panel {
+  height: 100%;
+  min-height: 0;
+  position: relative;
+  background: var(--breakstep-bg);
+}
+
+.editor {
+  height: 100%;
+}
+
+.loading {
+  padding: $space-5;
+}
+
+// Applied by Monaco through a decoration, so it must survive CSS-module
+// hashing — `:global` is not needed because the class name is passed in.
+.errorLine {
+  background: #{rgba(#f2555a, 0.1)};
+  border-left: 2px solid var(--breakstep-red);
+}
+
+.errorGlyph {
+  background: var(--breakstep-red);
+  width: 4px !important;
+  margin-left: 4px;
+  border-radius: 2px;
+}

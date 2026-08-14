@@ -1,0 +1,94 @@
+// Sass-level primitives only — no CSS is emitted from this file, because Vite
+// injects it into the top of every module. Runtime-themeable values live as CSS
+// custom properties in `global.scss`.
+
+$radius-sm: 4px;
+$radius-md: 6px;
+$radius-lg: 10px;
+$radius-pill: 999px;
+
+$space-1: 4px;
+$space-2: 8px;
+$space-3: 12px;
+$space-4: 16px;
+$space-5: 24px;
+$space-6: 32px;
+
+$bp-sm: 640px;
+$bp-md: 900px;
+$bp-lg: 1200px;
+$bp-xl: 1500px;
+
+$font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+$font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, 'Helvetica Neue', sans-serif;
+
+$ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+$ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+@mixin mono($size: 12px) {
+  font-family: $font-mono;
+  font-size: $size;
+  font-variant-ligatures: none;
+  font-feature-settings: 'tnum' 1;
+}
+
+@mixin panel {
+  background: var(--breakstep-panel);
+  border: 1px solid var(--breakstep-border);
+  border-radius: $radius-lg;
+}
+
+/// Thin, unobtrusive scrollbars that match the panel chrome.
+@mixin scrollbars {
+  scrollbar-width: thin;
+  scrollbar-color: var(--breakstep-border-strong) transparent;
+
+  &::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: var(--breakstep-border-strong);
+    border-radius: $radius-pill;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: var(--breakstep-text-faint);
+    background-clip: content-box;
+  }
+}
+
+/// Focus ring used everywhere instead of the browser default.
+@mixin focus-ring($offset: 2px) {
+  outline: 2px solid var(--breakstep-accent);
+  outline-offset: $offset;
+}
+
+@mixin truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@mixin below($bp) {
+  @media (max-width: #{$bp - 1px}) {
+    @content;
+  }
+}
+
+@mixin from($bp) {
+  @media (min-width: $bp) {
+    @content;
+  }
+}
+
+/// Respect users who asked the OS to calm animation down.
+@mixin motion-safe {
+  @media (prefers-reduced-motion: no-preference) {
+    @content;
+  }
+}

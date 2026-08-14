@@ -1,0 +1,244 @@
+/**
+ * Theme tokens and global resets.
+ *
+ * Three themes, selected by `data-theme` on <html>: `midnight` (default,
+ * near-black neutral), `slate` (cooler and blue-tinted) and `light`. Every
+ * colour any component uses comes from a token defined here, which is what
+ * keeps them from drifting apart as the app grows.
+ */
+
+/**
+ * Midnight — the default. Near-black neutral greys with no blue cast, so the
+ * accent colours in the visualizers are the only chroma on screen.
+ */
+:root,
+:root[data-theme='midnight'] {
+  --breakstep-bg: #08090b;
+  --breakstep-bg-deep: #030304;
+  --breakstep-panel: #0d0e11;
+  --breakstep-panel-alt: #111216;
+  --breakstep-elevated: #17181d;
+  --breakstep-border: #1d1e23;
+  --breakstep-border-strong: #2c2e35;
+
+  --breakstep-text: #e3e5ea;
+  --breakstep-text-dim: #949aa5;
+  --breakstep-text-faint: #5d626c;
+
+  --breakstep-accent: #5f8dff;
+  --breakstep-accent-soft: #{rgba(#5f8dff, 0.15)};
+  --breakstep-accent-text: #93b3ff;
+
+  --breakstep-mint: #35d6a0;
+  --breakstep-mint-soft: #{rgba(#35d6a0, 0.14)};
+  --breakstep-amber: #f2a53c;
+  --breakstep-amber-soft: #{rgba(#f2a53c, 0.15)};
+  --breakstep-violet: #b183ff;
+  --breakstep-violet-soft: #{rgba(#b183ff, 0.15)};
+  --breakstep-red: #f4585d;
+  --breakstep-red-soft: #{rgba(#f4585d, 0.15)};
+
+  --breakstep-shadow: 0 12px 34px #{rgba(#000, 0.6)};
+  --breakstep-grid-line: #{rgba(#8e96a6, 0.07)};
+
+  color-scheme: dark;
+}
+
+/** Slate — the original cooler, blue-tinted dark. */
+:root[data-theme='slate'] {
+  --breakstep-bg: #0b0e14;
+  --breakstep-bg-deep: #070a0f;
+  --breakstep-panel: #11151d;
+  --breakstep-panel-alt: #151a24;
+  --breakstep-elevated: #1a2029;
+  --breakstep-border: #222834;
+  --breakstep-border-strong: #2f3745;
+
+  --breakstep-text: #d8dee9;
+  --breakstep-text-dim: #98a2b3;
+  --breakstep-text-faint: #626d80;
+
+  --breakstep-accent: #5b8cff;
+  --breakstep-accent-soft: #{rgba(#5b8cff, 0.14)};
+  --breakstep-accent-text: #8fb2ff;
+
+  --breakstep-mint: #39d3a0;
+  --breakstep-mint-soft: #{rgba(#39d3a0, 0.14)};
+  --breakstep-amber: #f0a13a;
+  --breakstep-amber-soft: #{rgba(#f0a13a, 0.15)};
+  --breakstep-violet: #a97bff;
+  --breakstep-violet-soft: #{rgba(#a97bff, 0.15)};
+  --breakstep-red: #f2555a;
+  --breakstep-red-soft: #{rgba(#f2555a, 0.15)};
+
+  --breakstep-shadow: 0 10px 30px #{rgba(#000, 0.45)};
+  --breakstep-grid-line: #{rgba(#5b8cff, 0.06)};
+
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  --breakstep-bg: #f6f7f9;
+  --breakstep-bg-deep: #eceef2;
+  --breakstep-panel: #ffffff;
+  --breakstep-panel-alt: #f8f9fb;
+  --breakstep-elevated: #ffffff;
+  --breakstep-border: #e0e4ea;
+  --breakstep-border-strong: #c8cfd9;
+
+  --breakstep-text: #1c2430;
+  --breakstep-text-dim: #5a6675;
+  --breakstep-text-faint: #8b95a5;
+
+  --breakstep-accent: #2f6bea;
+  --breakstep-accent-soft: #{rgba(#2f6bea, 0.1)};
+  --breakstep-accent-text: #2558c4;
+
+  --breakstep-mint: #0f9d6f;
+  --breakstep-mint-soft: #{rgba(#0f9d6f, 0.12)};
+  --breakstep-amber: #c47c14;
+  --breakstep-amber-soft: #{rgba(#c47c14, 0.14)};
+  --breakstep-violet: #7c4ddb;
+  --breakstep-violet-soft: #{rgba(#7c4ddb, 0.12)};
+  --breakstep-red: #d13b41;
+  --breakstep-red-soft: #{rgba(#d13b41, 0.12)};
+
+  --breakstep-shadow: 0 8px 24px #{rgba(#0b1220, 0.1)};
+  --breakstep-grid-line: #{rgba(#2f6bea, 0.06)};
+
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+#root {
+  // `dvh` tracks mobile browser chrome as it collapses; `100%` alone leaves a
+  // gap under the footer on iOS Safari.
+  height: 100dvh;
+}
+
+body {
+  background: var(--breakstep-bg);
+  color: var(--breakstep-text);
+  font-family: $font-ui;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overscroll-behavior: none;
+
+  // The app owns its own scrolling regions; the document itself never moves.
+  // Without this an iOS keyboard or a rubber-band drag shifts the whole shell.
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  // Stop a double-tap zooming the UI while leaving pinch-zoom available.
+  touch-action: manipulation;
+}
+
+:focus-visible {
+  @include focus-ring;
+}
+
+code,
+kbd,
+pre {
+  @include mono(12px);
+}
+
+::selection {
+  background: var(--breakstep-accent-soft);
+}
+
+// --- Ant Design bridge -----------------------------------------------------
+// antd renders into portals, so a handful of its surfaces need the same tokens
+// rather than component-scoped module styles.
+.ant-tooltip-inner,
+.ant-popover-inner {
+  background: var(--breakstep-elevated) !important;
+  color: var(--breakstep-text) !important;
+  border: 1px solid var(--breakstep-border) !important;
+  box-shadow: var(--breakstep-shadow) !important;
+}
+
+.ant-tooltip-arrow::before,
+.ant-popover-arrow::before {
+  background: var(--breakstep-elevated) !important;
+}
+
+.ant-select-dropdown,
+.ant-dropdown-menu {
+  background: var(--breakstep-elevated) !important;
+  border: 1px solid var(--breakstep-border) !important;
+  box-shadow: var(--breakstep-shadow) !important;
+}
+
+.ant-modal-content,
+.ant-drawer-content {
+  background: var(--breakstep-panel) !important;
+}
+
+.ant-segmented {
+  background: var(--breakstep-bg-deep) !important;
+}
+
+// Monaco's own scrollbars clash with the panel chrome; soften them.
+.monaco-editor .scrollbar .slider {
+  background: var(--breakstep-border-strong) !important;
+  border-radius: $radius-pill;
+}
+
+// --- Touch and small screens -----------------------------------------------
+
+@media (pointer: coarse) {
+  // antd's dropdown and select rows are 24–32px by default; too small to hit.
+  .ant-dropdown-menu-item,
+  .ant-select-item {
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+  }
+
+  .ant-slider {
+    padding-block: 8px;
+  }
+
+  // `role="tab"` sits on the inner button, so padding the outer element does
+  // not grow the hit area that a finger actually has to find.
+  .ant-tabs-tab {
+    padding-block: 10px !important;
+  }
+
+  .ant-tabs-tab-btn {
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+  }
+}
+
+// A drawer wider than the viewport puts its own close button off screen.
+.ant-drawer-content-wrapper {
+  max-width: 100vw;
+}
+
+@media (max-width: 480px) {
+  .ant-drawer-header {
+    padding: $space-3 $space-4;
+  }
+
+  // Tooltips are useless on touch and can cover the control that spawned them.
+  .ant-tooltip {
+    display: none;
+  }
+}

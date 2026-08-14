@@ -1,0 +1,96 @@
+.horizontal,
+.vertical {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+}
+
+.vertical {
+  flex-direction: column;
+}
+
+.pane {
+  flex-grow: 0;
+  flex-shrink: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.dividerH,
+.dividerV {
+  flex: 0 0 auto;
+  position: relative;
+  background: var(--breakstep-border);
+  display: grid;
+  place-items: center;
+  transition: background 140ms $ease-out;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--breakstep-accent);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+.dividerH {
+  width: 5px;
+  cursor: col-resize;
+}
+
+.dividerV {
+  height: 5px;
+  cursor: row-resize;
+}
+
+.grip {
+  position: absolute;
+  background: var(--breakstep-border-strong);
+  border-radius: $radius-pill;
+  pointer-events: none;
+
+  .dividerH & {
+    width: 2px;
+    height: 26px;
+  }
+
+  .dividerV & {
+    width: 26px;
+    height: 2px;
+  }
+}
+
+// While dragging, keep the divider lit so the target stays obvious.
+[data-dragging] {
+  .dividerH,
+  .dividerV {
+    background: var(--breakstep-accent);
+  }
+}
+
+.stacked {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.stackedPane {
+  flex: 1 1 50%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  & + & {
+    border-top: 1px solid var(--breakstep-border);
+  }
+}

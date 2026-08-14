@@ -1,0 +1,237 @@
+.header {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  padding: $space-2 $space-4;
+  // Clear the notch on a landscape iPhone, where the header runs to the edge.
+  padding-left: max(#{$space-4}, env(safe-area-inset-left));
+  padding-right: max(#{$space-4}, env(safe-area-inset-right));
+  height: 52px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--breakstep-border);
+  background: var(--breakstep-panel);
+  // A faint top highlight reads as a physical edge without a heavy border.
+  box-shadow: inset 0 1px 0 #{rgba(#fff, 0.03)};
+
+  &[data-layout='compact'] {
+    height: 48px;
+    gap: $space-2;
+    padding-inline: $space-2;
+  }
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  flex-shrink: 0;
+}
+
+.logo {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: $radius-md;
+  background: var(--breakstep-bg-deep);
+  border: 1px solid var(--breakstep-border);
+  flex-shrink: 0;
+}
+
+.wordmark {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--breakstep-text);
+}
+
+.tagline {
+  @include mono(10px);
+  color: var(--breakstep-text-faint);
+  letter-spacing: 0.04em;
+  padding-left: 2px;
+}
+
+.templateButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 260px;
+  min-width: 0;
+}
+
+.templateName {
+  @include truncate;
+  max-width: 190px;
+}
+
+.dirtyDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--breakstep-amber);
+  flex-shrink: 0;
+}
+
+.languages {
+  flex-shrink: 0;
+}
+
+.spacer {
+  flex: 1;
+  min-width: 0;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+// --- Instrumentation toggle -------------------------------------------------
+
+.modeOn {
+  border-color: var(--breakstep-accent) !important;
+  color: var(--breakstep-accent-text) !important;
+  background: var(--breakstep-accent-soft) !important;
+}
+
+// --- Theme menu -------------------------------------------------------------
+
+.themeItem {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  min-width: 180px;
+}
+
+.themeSwatch {
+  width: 16px;
+  height: 16px;
+  border-radius: $radius-sm;
+  border: 1px solid var(--breakstep-border-strong);
+  flex-shrink: 0;
+}
+
+.themeName {
+  display: block;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.themeHint {
+  display: block;
+  @include mono(10px);
+  color: var(--breakstep-text-faint);
+}
+
+.themeCheck {
+  margin-left: auto;
+  color: var(--breakstep-accent);
+  font-size: 11px;
+}
+
+.menuRow {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  min-width: 140px;
+}
+
+// --- Editor mode badge ------------------------------------------------------
+
+.badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px $space-4;
+  @include mono(10px);
+  color: var(--breakstep-text-faint);
+  background: var(--breakstep-panel-alt);
+  border-bottom: 1px solid var(--breakstep-border);
+  flex-shrink: 0;
+  @include truncate;
+
+  &[data-mode='instrumented'] {
+    color: var(--breakstep-accent-text);
+    background: var(--breakstep-accent-soft);
+  }
+}
+
+// --- Progressive disclosure -------------------------------------------------
+// Labels fall away before controls do; a control only ever moves into the
+// overflow menu, never disappears.
+
+@include below($bp-xl) {
+  .tagline {
+    display: none;
+  }
+}
+
+@include below($bp-lg) {
+  .modeLabel {
+    display: none;
+  }
+
+  .desktopOnly {
+    display: none;
+  }
+
+  .templateName {
+    max-width: 130px;
+  }
+}
+
+@include below($bp-md) {
+  .analyzeLabel {
+    display: none;
+  }
+
+  .templateButton {
+    max-width: 180px;
+  }
+
+  .templateName {
+    max-width: 96px;
+  }
+}
+
+@include below($bp-sm) {
+  .wordmark,
+  .runLabel {
+    display: none;
+  }
+
+  // Which template is loaded is worth more than the wordmark or the word
+  // "Run", so it keeps the space those give up and truncates instead of
+  // vanishing.
+  .templateButton {
+    flex: 1 1 auto;
+    max-width: none;
+    justify-content: flex-start;
+  }
+
+  .templateName {
+    display: block;
+    max-width: none;
+    @include truncate;
+  }
+}
+
+// --- Touch targets ----------------------------------------------------------
+// 44px is the smallest reliably tappable target; pointer-coarse devices get it
+// on every control in the header.
+
+@media (pointer: coarse) {
+  .header :global(.ant-btn) {
+    min-height: 40px;
+    min-width: 40px;
+  }
+
+  .header :global(.ant-segmented-item-label) {
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+  }
+}
