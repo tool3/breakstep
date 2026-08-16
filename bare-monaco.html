@@ -1,0 +1,45 @@
+<!doctype html>
+<!--
+  A bare Monaco editor: same version, same font, same content as the app, with
+  none of Breakstep around it.
+
+  This exists to answer one question quickly — is scrolling rough because of
+  something Breakstep does, or because of Monaco in this browser on this
+  machine? Open it next to the app (`npm run editor:compare`), scroll both, and
+  the answer takes about ten seconds.
+
+  Dev-server only: `vite build` builds index.html, so this never ships.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bare Monaco — scrolling reference</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #0d0e11;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      }
+      #note {
+        color: #98a2b3;
+        font-size: 12px;
+        padding: 8px 14px;
+        border-bottom: 1px solid #222834;
+      }
+      #host {
+        height: calc(100% - 34px);
+      }
+    </style>
+  </head>
+  <body>
+    <p id="note">
+      Bare Monaco — no React, no Ant Design, no Breakstep. If scrolling is rough
+      here too, it is not Breakstep.
+    </p>
+    <div id="host"></div>
+    <script type="module" src="/bare-monaco.ts"></script>
+  </body>
+</html>

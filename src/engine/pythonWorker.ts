@@ -172,7 +172,7 @@ ctx.onmessage = async (event: MessageEvent<WorkerRequest>) => {
 
       const debug = Boolean(msg.debug);
 
-      const result = callPython(py, '_bcs_run', [
+      const result = callPython(py, '_breakstep_run', [
         msg.code,
         msg.params,
         msg.opLimit,
@@ -211,7 +211,7 @@ ctx.onmessage = async (event: MessageEvent<WorkerRequest>) => {
     }
 
     if (msg.type === 'bench') {
-      const result = callPython(py, '_bcs_bench', [
+      const result = callPython(py, '_breakstep_bench', [
         msg.code,
         msg.params,
         msg.sizes,

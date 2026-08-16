@@ -459,4 +459,360 @@ ${areaDriver.python}`,
   expectedOutput: ['example 1 -> 6', 'example 2 -> 0', 'example 3 -> 3'],
 };
 
-export const DFS_PROBLEMS = [cloneGraph, courseSchedule, maxAreaOfIsland];
+
+// --- 543 · Diameter of Binary Tree -------------------------------------------
+
+const diameterDriver = {
+  typescript: `
+// --- examples ---------------------------------------------------------------
+
+/** Rebuild a tree from LeetCode's level-order array, nulls and all. */
+function buildDiameterTree(values: (number | null)[]): TreeNode | null {
+  if (values.length === 0 || values[0] === null) return null;
+
+  const root = new TreeNode(values[0]);
+  const queue: TreeNode[] = [root];
+  let i = 1;
+
+  while (i < values.length) {
+    const node = queue.shift()!;
+    if (i < values.length && values[i] !== null) {
+      node.left = new TreeNode(values[i] as number);
+      queue.push(node.left);
+    }
+    i++;
+    if (i < values.length && values[i] !== null) {
+      node.right = new TreeNode(values[i] as number);
+      queue.push(node.right);
+    }
+    i++;
+  }
+
+  return root;
+}
+
+console.log('example 1 ->', diameterOfBinaryTree(buildDiameterTree([1, 2, 3, 4, 5])));
+console.log('example 2 ->', diameterOfBinaryTree(buildDiameterTree([1, 2])));
+console.log('example 3 ->', diameterOfBinaryTree(buildDiameterTree([1])));
+`,
+  python: `
+# --- examples ---------------------------------------------------------------
+
+def build_diameter_tree(values):
+    """Rebuild a tree from LeetCode's level-order array, Nones and all."""
+    if not values or values[0] is None:
+        return None
+
+    root = TreeNode(values[0])
+    queue = [root]
+    i = 1
+
+    while i < len(values):
+        node = queue.pop(0)
+        if i < len(values) and values[i] is not None:
+            node.left = TreeNode(values[i])
+            queue.append(node.left)
+        i += 1
+        if i < len(values) and values[i] is not None:
+            node.right = TreeNode(values[i])
+            queue.append(node.right)
+        i += 1
+
+    return root
+
+
+print('example 1 ->', diameter_of_binary_tree(build_diameter_tree([1, 2, 3, 4, 5])))
+print('example 2 ->', diameter_of_binary_tree(build_diameter_tree([1, 2])))
+print('example 3 ->', diameter_of_binary_tree(build_diameter_tree([1])))
+`,
+};
+
+export const diameterOfBinaryTree: LeetProblem = {
+  slug: 'diameter-of-binary-tree',
+  number: 543,
+  title: 'Diameter of Binary Tree',
+  difficulty: 'Easy',
+  topics: ['tree', 'depth-first-search', 'binary-tree'],
+  prompt:
+    'Return the length of the longest path between any two nodes of a binary tree, measured in edges. The path does not have to pass through the root.',
+  constraints: ['1 ≤ number of nodes ≤ 10⁴', '-100 ≤ Node.val ≤ 100'],
+  examples: [
+    { input: 'root = [1,2,3,4,5]', output: '3', note: 'the path 4 → 2 → 1 → 3' },
+    { input: 'root = [1,2]', output: '1' },
+    { input: 'root = [1]', output: '0', note: 'a single node has no edges' },
+  ],
+  techniques: [
+    {
+      pattern: 'dfs',
+      rank: 1,
+      why: 'The classic shape of a hard-looking tree problem: the recursion *returns* the height, but *records* the best diameter as a side effect. Every node asks what the longest path through it would be — left height plus right height — while handing its parent only the height. One pass, no repeated work.',
+      complexity: { time: 'O(n)', space: 'O(n)' },
+    },
+    {
+      pattern: 'recursion',
+      rank: 2,
+      why: 'Read without the graph vocabulary it is a plain recurrence on subtree heights; the diameter is just the largest value the recurrence sees on the way back up.',
+      complexity: { time: 'O(n)', space: 'O(n)' },
+    },
+  ],
+  params: [],
+  typescript: {
+    starter: `class TreeNode {
+  val: number;
+  left: TreeNode | null = null;
+  right: TreeNode | null = null;
+  constructor(val: number) {
+    this.val = val;
+  }
+}
+
+function diameterOfBinaryTree(root: TreeNode | null): number {
+  // Return the height; record the best diameter on the way back up.
+  // TODO
+  return 0;
+}
+${diameterDriver.typescript}`,
+    solution: `class TreeNode {
+  val: number;
+  left: TreeNode | null = null;
+  right: TreeNode | null = null;
+  constructor(val: number) {
+    this.val = val;
+  }
+}
+
+function diameterOfBinaryTree(root: TreeNode | null): number {
+  let best = 0;
+
+  // Returns the height of this subtree, and records the longest path that
+  // bends at this node. Those are two different numbers, which is the whole
+  // difficulty of the problem.
+  const height = (node: TreeNode | null): number => {
+    if (node === null) return 0;
+
+    const left = height(node.left);
+    const right = height(node.right);
+
+    best = Math.max(best, left + right);
+    return 1 + Math.max(left, right);
+  };
+
+  height(root);
+  return best;
+}
+${diameterDriver.typescript}`,
+  },
+  python: {
+    starter: `class TreeNode:
+    def __init__(self, val):
+        self.val = val
+        self.left = None
+        self.right = None
+
+
+def diameter_of_binary_tree(root):
+    """Return the height; record the best diameter on the way back up."""
+    # TODO
+    return 0
+${diameterDriver.python}`,
+    solution: `class TreeNode:
+    def __init__(self, val):
+        self.val = val
+        self.left = None
+        self.right = None
+
+
+def diameter_of_binary_tree(root):
+    best = 0
+
+    # Returns the height of this subtree, and records the longest path that
+    # bends at this node. Those are two different numbers, which is the whole
+    # difficulty of the problem.
+    def height(node):
+        nonlocal best
+        if node is None:
+            return 0
+
+        left = height(node.left)
+        right = height(node.right)
+
+        best = max(best, left + right)
+        return 1 + max(left, right)
+
+    height(root)
+    return best
+${diameterDriver.python}`,
+  },
+  expectedOutput: ['example 1 -> 3', 'example 2 -> 1', 'example 3 -> 0'],
+};
+
+// --- 130 · Surrounded Regions ------------------------------------------------
+
+const surroundedDriver = {
+  typescript: `
+// --- examples ---------------------------------------------------------------
+console.log('example 1 ->', solve([
+  ['X', 'X', 'X', 'X'],
+  ['X', 'O', 'O', 'X'],
+  ['X', 'X', 'O', 'X'],
+  ['X', 'O', 'X', 'X'],
+]));
+console.log('example 2 ->', solve([['X']]));
+console.log('example 3 ->', solve([['O', 'O'], ['O', 'O']]));
+`,
+  python: `
+# --- examples ---------------------------------------------------------------
+print('example 1 ->', solve([
+    ['X', 'X', 'X', 'X'],
+    ['X', 'O', 'O', 'X'],
+    ['X', 'X', 'O', 'X'],
+    ['X', 'O', 'X', 'X'],
+]))
+print('example 2 ->', solve([['X']]))
+print('example 3 ->', solve([['O', 'O'], ['O', 'O']]))
+`,
+};
+
+export const surroundedRegions: LeetProblem = {
+  slug: 'surrounded-regions',
+  number: 130,
+  title: 'Surrounded Regions',
+  difficulty: 'Medium',
+  topics: ['array', 'depth-first-search', 'breadth-first-search', 'union-find', 'matrix'],
+  prompt:
+    "Flip every 'O' that is completely surrounded by 'X' into an 'X'. A region is surrounded only if none of its cells touches the border of the grid.",
+  constraints: ['1 ≤ rows, cols ≤ 200', "board[i][j] is 'X' or 'O'"],
+  examples: [
+    { input: 'board = [["X","X","X","X"],["X","O","O","X"],["X","X","O","X"],["X","O","X","X"]]', output: '[["X","X","X","X"],["X","X","X","X"],["X","X","X","X"],["X","O","X","X"]]', note: 'the bottom-left O touches the border and survives' },
+    { input: 'board = [["X"]]', output: '[["X"]]' },
+    { input: 'board = [["O","O"],["O","O"]]', output: '[["O","O"],["O","O"]]', note: 'all of it touches the border' },
+  ],
+  techniques: [
+    {
+      pattern: 'dfs',
+      rank: 1,
+      why: 'Invert the question. Instead of testing each region for enclosure, flood inwards from the border: whatever the flood reaches is safe, and everything it never reaches is surrounded by definition. One pass, and no region has to be examined twice.',
+      complexity: { time: 'O(n)', space: 'O(n)' },
+    },
+    {
+      pattern: 'bfs',
+      rank: 2,
+      why: 'The same border-first flood with a queue — worth preferring on a 200×200 grid of solid O, where the recursive version can bury the call stack.',
+      complexity: { time: 'O(n)', space: 'O(n)' },
+    },
+  ],
+  params: [],
+  typescript: {
+    starter: `function solve(board: string[][]): string[][] {
+  // Flood inwards from the border: whatever it reaches is safe.
+  // TODO
+  return board;
+}
+${surroundedDriver.typescript}`,
+    solution: `function solve(board: string[][]): string[][] {
+  const rows = board.length;
+  const cols = board[0].length;
+
+  // Mark everything reachable from the border. Anything left as 'O' after
+  // this is, by definition, surrounded.
+  const keep = (startR: number, startC: number) => {
+    if (board[startR][startC] !== 'O') return;
+
+    const stack: [number, number][] = [[startR, startC]];
+    board[startR][startC] = 'S';
+
+    while (stack.length > 0) {
+      const [r, c] = stack.pop()!;
+      for (const [dr, dc] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nr = r + dr;
+        const nc = c + dc;
+        if (nr < 0 || nc < 0 || nr >= rows || nc >= cols) continue;
+        if (board[nr][nc] !== 'O') continue;
+
+        board[nr][nc] = 'S';
+        stack.push([nr, nc]);
+      }
+    }
+  };
+
+  for (let r = 0; r < rows; r++) {
+    keep(r, 0);
+    keep(r, cols - 1);
+  }
+  for (let c = 0; c < cols; c++) {
+    keep(0, c);
+    keep(rows - 1, c);
+  }
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (board[r][c] === 'O') board[r][c] = 'X';
+      else if (board[r][c] === 'S') board[r][c] = 'O';
+    }
+  }
+
+  return board;
+}
+${surroundedDriver.typescript}`,
+  },
+  python: {
+    starter: `def solve(board):
+    """Flood inwards from the border: whatever it reaches is safe."""
+    # TODO
+    return board
+${surroundedDriver.python}`,
+    solution: `def solve(board):
+    rows, cols = len(board), len(board[0])
+
+    # Mark everything reachable from the border. Anything left as 'O' after
+    # this is, by definition, surrounded.
+    def keep(start_r, start_c):
+        if board[start_r][start_c] != 'O':
+            return
+
+        stack = [(start_r, start_c)]
+        board[start_r][start_c] = 'S'
+
+        while stack:
+            r, c = stack.pop()
+            for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nr, nc = r + dr, c + dc
+                if nr < 0 or nc < 0 or nr >= rows or nc >= cols:
+                    continue
+                if board[nr][nc] != 'O':
+                    continue
+
+                board[nr][nc] = 'S'
+                stack.append((nr, nc))
+
+    for r in range(rows):
+        keep(r, 0)
+        keep(r, cols - 1)
+    for c in range(cols):
+        keep(0, c)
+        keep(rows - 1, c)
+
+    for r in range(rows):
+        for c in range(cols):
+            if board[r][c] == 'O':
+                board[r][c] = 'X'
+            elif board[r][c] == 'S':
+                board[r][c] = 'O'
+
+    return board
+${surroundedDriver.python}`,
+  },
+  expectedOutput: [
+    'example 1 -> [["X", "X", "X", "X"], ["X", "X", "X", "X"], ["X", "X", "X", "X"], ["X", "O", "X", "X"]]',
+    'example 2 -> [["X"]]',
+    'example 3 -> [["O", "O"], ["O", "O"]]',
+  ],
+};
+
+export const DFS_PROBLEMS = [
+  cloneGraph,
+  courseSchedule,
+  maxAreaOfIsland,
+  diameterOfBinaryTree,
+  surroundedRegions,
+];

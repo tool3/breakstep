@@ -3,6 +3,10 @@
   min-height: 0;
   position: relative;
   background: var(--breakstep-bg);
+  // The breathing room above the first line. It lives here rather than in
+  // Monaco's `padding` option so the editor's own geometry stays exact — see
+  // the note in EditorPanel.tsx.
+  padding-top: 12px;
 }
 
 .editor {
@@ -31,12 +35,11 @@
 // Monaco applies these by class name, so they must not be nested.
 
 .breakpointGlyph {
-  background: var(--breakstep-red);
-  border-radius: 50%;
-  width: 10px !important;
-  height: 10px;
-  margin-left: 6px;
-  margin-top: 5px;
+  // Monaco sizes this element itself — full line height, its own width — and
+  // sets that inline, so a `border-radius: 50%` box came out an ellipse. The
+  // dot is painted instead, which makes it perfectly round and centred
+  // whatever box it lands in, at any font size or line height.
+  background: radial-gradient(circle at center, var(--breakstep-red) 0 4.5px, transparent 4.5px);
   cursor: pointer;
 }
 

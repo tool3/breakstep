@@ -11,11 +11,15 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "problems:refresh": "node scripts/fetch-problem-index.mjs",
+    "problems:details": "node scripts/fetch-problem-details.mjs",
     "typecheck": "tsc -b",
     "smoke": "npm run build && node scripts/smoke.mjs",
     "smoke:python": "npm run build && node scripts/smoke.mjs --python",
     "screenshots": "npm run build && node scripts/shots.mjs",
     "responsive": "npm run build && node scripts/responsive.mjs",
+    "editor:perf": "npm run build && node scripts/editor-perf.mjs",
+    "editor:compare": "node scripts/editor-compare.mjs",
     "responsive:shots": "npm run build && node scripts/responsive.mjs --shots"
   },
   "dependencies": {

@@ -20,5 +20,5 @@
     "types": ["vite/client", "vitest/globals"],
     "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["src"]
+  "include": ["src", "bare-monaco.ts"]
 }

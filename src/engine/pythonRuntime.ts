@@ -22,14 +22,14 @@ export const PYTHON_BOOTSTRAP = String.raw`
 # moment a template defines a method — which every structure template does.
 import ast, json, sys, builtins, time
 
-class BcsOperationLimit(Exception):
+class BreakstepOperationLimit(Exception):
     pass
 
 class _Instrumenter(ast.NodeTransformer):
-    """Insert _bcs_op() at every loop iteration and function entry.
+    """Insert _breakstep_op() at every loop iteration and function entry.
 
     When \`auto\` is set it also injects auto-trace hooks, so ordinary textbook
-    code visualizes itself. The hooks are guarded by \`_bcs_capturing and ...\`
+    code visualizes itself. The hooks are guarded by \`_breakstep_capturing and ...\`
     so that \`locals()\` - the snapshot - is never evaluated during a benchmark
     sweep, where capture is off. Python has no temporal dead zone, so unlike the
     JavaScript side no scope analysis is needed: \`locals()\` is exactly the set
@@ -52,7 +52,7 @@ class _Instrumenter(ast.NodeTransformer):
 
     def _op(self):
         return ast.Expr(
-            value=ast.Call(func=ast.Name(id="_bcs_op", ctx=ast.Load()), args=[], keywords=[])
+            value=ast.Call(func=ast.Name(id="_breakstep_op", ctx=ast.Load()), args=[], keywords=[])
         )
 
     def _guarded(self, fn, args):
@@ -60,7 +60,7 @@ class _Instrumenter(ast.NodeTransformer):
         return ast.Expr(
             value=ast.BoolOp(
                 op=ast.And(),
-                values=[ast.Name(id="_bcs_capturing", ctx=ast.Load()), call],
+                values=[ast.Name(id="_breakstep_capturing", ctx=ast.Load()), call],
             )
         )
 
@@ -81,7 +81,7 @@ class _Instrumenter(ast.NodeTransformer):
         if self.auto:
             node.body.insert(
                 0,
-                self._guarded("_bcs_step", [ast.Constant(value=node.lineno), self._scope()]),
+                self._guarded("_breakstep_step", [ast.Constant(value=node.lineno), self._scope()]),
             )
         node.body.insert(0, self._op())
         return node
@@ -92,13 +92,13 @@ class _Instrumenter(ast.NodeTransformer):
             node.body.insert(0, self._op())
             return node
 
-        # try: <body> finally: _bcs_exit()
+        # try: <body> finally: _breakstep_exit()
         guarded_exit = ast.Expr(
             value=ast.BoolOp(
                 op=ast.And(),
                 values=[
-                    ast.Name(id="_bcs_capturing", ctx=ast.Load()),
-                    ast.Call(func=ast.Name(id="_bcs_exit", ctx=ast.Load()), args=[], keywords=[]),
+                    ast.Name(id="_breakstep_capturing", ctx=ast.Load()),
+                    ast.Call(func=ast.Name(id="_breakstep_exit", ctx=ast.Load()), args=[], keywords=[]),
                 ],
             )
         )
@@ -111,7 +111,7 @@ class _Instrumenter(ast.NodeTransformer):
         node.body = [
             self._op(),
             self._guarded(
-                "_bcs_enter",
+                "_breakstep_enter",
                 [
                     ast.Constant(value=self._fn_label(node)),
                     ast.Constant(value=node.lineno),
@@ -175,7 +175,7 @@ class _Instrumenter(ast.NodeTransformer):
             if not (leading_docstring or already_hooked or definition or is_hook):
                 out.append(
                     self._guarded(
-                        "_bcs_step",
+                        "_breakstep_step",
                         [ast.Constant(value=statement.lineno), self._scope(),
                          ast.Constant(value="stmt")],
                     )
@@ -189,7 +189,7 @@ class _Instrumenter(ast.NodeTransformer):
         setattr(
             node,
             attr,
-            ast.Call(func=ast.Name(id="_bcs_ope", ctx=ast.Load()), args=[original], keywords=[]),
+            ast.Call(func=ast.Name(id="_breakstep_ope", ctx=ast.Load()), args=[original], keywords=[]),
         )
         return node
 
@@ -206,7 +206,7 @@ class _Instrumenter(ast.NodeTransformer):
         return self._wrap_elt(node, "value")
 
 
-class _Bcs:
+class _Breakstep:
     def __init__(self):
         self.frames = []
         self.traces = []
@@ -225,7 +225,7 @@ class _Bcs:
     def count(self):
         self.ops += 1
         if self.ops > self.op_limit:
-            raise BcsOperationLimit("Operation limit exceeded - is there an infinite loop?")
+            raise BreakstepOperationLimit("Operation limit exceeded - is there an infinite loop?")
 
     def count_expr(self, value):
         self.count()
@@ -432,33 +432,33 @@ def _make_globals(breakstep, params):
             breakstep.log(*a)
 
     g = {
-        "__name__": "__bcs__",
+        "__name__": "__breakstep__",
         "__builtins__": builtins,
         "breakstep": breakstep,
         "params": params,
-        "_bcs_op": breakstep.count,
-        "_bcs_ope": breakstep.count_expr,
-        "_bcs_step": breakstep.trace_step,
-        "_bcs_enter": breakstep.trace_enter,
-        "_bcs_exit": breakstep.trace_exit,
-        "_bcs_capturing": breakstep.capturing,
+        "_breakstep_op": breakstep.count,
+        "_breakstep_ope": breakstep.count_expr,
+        "_breakstep_step": breakstep.trace_step,
+        "_breakstep_enter": breakstep.trace_enter,
+        "_breakstep_exit": breakstep.trace_exit,
+        "_breakstep_capturing": breakstep.capturing,
     }
     g["print"] = lambda *a, **kw: breakstep.log(*a)
     return g
 
 
-_BCS = _Bcs()
+_BREAKSTEP = _Breakstep()
 
 
-def _bcs_run(source, params, op_limit, frame_limit, auto_trace=False, debug=False):
+def _breakstep_run(source, params, op_limit, frame_limit, auto_trace=False, debug=False):
     """Execute user code once. Returns a JSON string the worker relays."""
-    breakstep = _Bcs()
+    breakstep = _Breakstep()
     breakstep.params = params or {}
     breakstep.op_limit = op_limit
     breakstep.frame_limit = frame_limit
     breakstep.step_limit = 20000 if debug else frame_limit
-    global _BCS
-    _BCS = breakstep
+    global _BREAKSTEP
+    _BREAKSTEP = breakstep
 
     g = _make_globals(breakstep, breakstep.params)
     started = time.perf_counter()
@@ -513,8 +513,8 @@ def _bcs_run(source, params, op_limit, frame_limit, auto_trace=False, debug=Fals
     )
 
 
-def _bcs_bench(source, params, sizes, op_limit):
-    breakstep = _Bcs()
+def _breakstep_bench(source, params, sizes, op_limit):
+    breakstep = _Breakstep()
     breakstep.params = params or {}
     breakstep.op_limit = op_limit
     breakstep.capturing = False

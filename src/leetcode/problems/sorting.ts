@@ -358,4 +358,212 @@ ${kthDriver.python}`,
   expectedOutput: ['example 1 -> 5', 'example 2 -> 4', 'example 3 -> 1'],
 };
 
-export const SORTING_PROBLEMS = [sortColors, mergeIntervals, kthLargest];
+
+// --- 49 · Group Anagrams -----------------------------------------------------
+
+const anagramDriver = {
+  typescript: `
+// --- examples ---------------------------------------------------------------
+console.log('example 1 ->', groupAnagrams(['eat', 'tea', 'tan', 'ate', 'nat', 'bat']));
+console.log('example 2 ->', groupAnagrams(['']));
+console.log('example 3 ->', groupAnagrams(['a']));
+`,
+  python: `
+# --- examples ---------------------------------------------------------------
+print('example 1 ->', group_anagrams(['eat', 'tea', 'tan', 'ate', 'nat', 'bat']))
+print('example 2 ->', group_anagrams(['']))
+print('example 3 ->', group_anagrams(['a']))
+`,
+};
+
+export const groupAnagrams: LeetProblem = {
+  slug: 'group-anagrams',
+  number: 49,
+  title: 'Group Anagrams',
+  difficulty: 'Medium',
+  topics: ['array', 'hash-table', 'string', 'sorting'],
+  prompt:
+    'Group the strings so that every group holds exactly the words that are anagrams of one another. The groups, and the words inside them, may come back in any order.',
+  constraints: ['1 ≤ strs.length ≤ 10⁴', '0 ≤ strs[i].length ≤ 100', 'Lowercase English letters only'],
+  examples: [
+    { input: 'strs = ["eat","tea","tan","ate","nat","bat"]', output: '[["eat","tea","ate"],["tan","nat"],["bat"]]' },
+    { input: 'strs = [""]', output: '[[""]]' },
+    { input: 'strs = ["a"]', output: '[["a"]]' },
+  ],
+  techniques: [
+    {
+      pattern: 'sorting',
+      rank: 1,
+      why: 'Sorting a word’s letters gives every anagram the same signature, which is exactly what a group needs as its key. Sorting each word costs k log k, and it is far easier to get right than any clever hash of letter counts.',
+      complexity: { time: 'O(n log n)', space: 'O(n)' },
+    },
+  ],
+  params: [],
+  typescript: {
+    starter: `function groupAnagrams(strs: string[]): string[][] {
+  // Two words are anagrams exactly when their sorted letters agree.
+  // TODO
+  return [];
+}
+${anagramDriver.typescript}`,
+    solution: `function groupAnagrams(strs: string[]): string[][] {
+  const groups = new Map<string, string[]>();
+
+  for (const word of strs) {
+    // The signature: every anagram of a word sorts to the same string.
+    const key = [...word].sort().join('');
+    const bucket = groups.get(key);
+    if (bucket) bucket.push(word);
+    else groups.set(key, [word]);
+  }
+
+  return [...groups.values()];
+}
+${anagramDriver.typescript}`,
+  },
+  python: {
+    starter: `def group_anagrams(strs):
+    """Two words are anagrams exactly when their sorted letters agree."""
+    # TODO
+    return []
+${anagramDriver.python}`,
+    solution: `def group_anagrams(strs):
+    groups = {}
+
+    for word in strs:
+        # The signature: every anagram of a word sorts to the same string.
+        key = ''.join(sorted(word))
+        groups.setdefault(key, []).append(word)
+
+    return list(groups.values())
+${anagramDriver.python}`,
+  },
+  expectedOutput: [
+    'example 1 -> [["eat", "tea", "ate"], ["tan", "nat"], ["bat"]]',
+    'example 2 -> [[""]]',
+    'example 3 -> [["a"]]',
+  ],
+};
+
+// --- 347 · Top K Frequent Elements -------------------------------------------
+
+const topKDriver = {
+  typescript: `
+// --- examples ---------------------------------------------------------------
+console.log('example 1 ->', topKFrequent(nums, k));
+console.log('example 2 ->', topKFrequent([1], 1));
+console.log('example 3 ->', topKFrequent([4, 4, 4, 5, 5, 6], 2));
+`,
+  python: `
+# --- examples ---------------------------------------------------------------
+print('example 1 ->', top_k_frequent(nums, k))
+print('example 2 ->', top_k_frequent([1], 1))
+print('example 3 ->', top_k_frequent([4, 4, 4, 5, 5, 6], 2))
+`,
+};
+
+export const topKFrequent: LeetProblem = {
+  slug: 'top-k-frequent-elements',
+  number: 347,
+  title: 'Top K Frequent Elements',
+  difficulty: 'Medium',
+  topics: ['array', 'hash-table', 'divide-and-conquer', 'sorting', 'heap-priority-queue', 'counting'],
+  prompt:
+    'Return the k values that appear most often in the array. The answer is unique for the given inputs, and may be returned in any order.',
+  constraints: ['1 ≤ nums.length ≤ 10⁵', 'k is between 1 and the number of distinct values'],
+  examples: [
+    { input: 'nums = [1,1,1,2,2,3], k = 2', output: '[1,2]' },
+    { input: 'nums = [1], k = 1', output: '[1]' },
+    { input: 'nums = [4,4,4,5,5,6], k = 2', output: '[4,5]' },
+  ],
+  techniques: [
+    {
+      pattern: 'sorting',
+      rank: 1,
+      why: 'Count, then order by count. Bucketing beats a comparison sort here: a value cannot occur more than n times, so an array of n buckets indexed by frequency puts everything in order in linear time — no sort, no heap.',
+      complexity: { time: 'O(n)', space: 'O(n)' },
+    },
+  ],
+  params: [
+    { name: 'nums', label: 'Numbers', type: 'numberArray', default: [1, 1, 1, 2, 2, 3] },
+    { name: 'k', label: 'k', type: 'number', default: 2, min: 1, max: 10 },
+  ],
+  typescript: {
+    starter: `const nums = [1, 1, 1, 2, 2, 3];
+const k = 2;
+
+function topKFrequent(nums: number[], k: number): number[] {
+  // Count, then order by count — a frequency can never exceed n.
+  // TODO
+  return [];
+}
+${topKDriver.typescript}`,
+    solution: `const nums = [1, 1, 1, 2, 2, 3];
+const k = 2;
+
+function topKFrequent(nums: number[], k: number): number[] {
+  const counts = new Map<number, number>();
+  for (const value of nums) counts.set(value, (counts.get(value) ?? 0) + 1);
+
+  // Bucket by frequency: no value can occur more than nums.length times, so
+  // the buckets are already in order and nothing needs sorting.
+  const buckets: number[][] = Array.from({ length: nums.length + 1 }, () => []);
+  for (const [value, count] of counts) buckets[count].push(value);
+
+  const out: number[] = [];
+  for (let count = buckets.length - 1; count >= 1 && out.length < k; count--) {
+    for (const value of buckets[count]) {
+      out.push(value);
+      if (out.length === k) break;
+    }
+  }
+
+  return out;
+}
+${topKDriver.typescript}`,
+  },
+  python: {
+    starter: `nums = [1, 1, 1, 2, 2, 3]
+k = 2
+
+
+def top_k_frequent(nums, k):
+    """Count, then order by count - a frequency can never exceed n."""
+    # TODO
+    return []
+${topKDriver.python}`,
+    solution: `nums = [1, 1, 1, 2, 2, 3]
+k = 2
+
+
+def top_k_frequent(nums, k):
+    counts = {}
+    for value in nums:
+        counts[value] = counts.get(value, 0) + 1
+
+    # Bucket by frequency: no value can occur more than len(nums) times, so
+    # the buckets are already in order and nothing needs sorting.
+    buckets = [[] for _ in range(len(nums) + 1)]
+    for value, count in counts.items():
+        buckets[count].append(value)
+
+    out = []
+    for count in range(len(buckets) - 1, 0, -1):
+        for value in buckets[count]:
+            out.append(value)
+            if len(out) == k:
+                return out
+
+    return out
+${topKDriver.python}`,
+  },
+  expectedOutput: ['example 1 -> [1, 2]', 'example 2 -> [1]', 'example 3 -> [4, 5]'],
+};
+
+export const SORTING_PROBLEMS = [
+  sortColors,
+  mergeIntervals,
+  kthLargest,
+  groupAnagrams,
+  topKFrequent,
+];

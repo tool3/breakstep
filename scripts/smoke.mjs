@@ -200,6 +200,74 @@ try {
     await page.getByText('following the debugger').isVisible(),
   );
 
+  // A gutter click must set the breakpoint on the line you clicked. Monaco does
+  // not account for its own top padding here, which silently put every
+  // breakpoint one line high until the padding moved into CSS.
+  //
+  // The line is taken from the debugger rather than hardcoded, so this works
+  // whatever template the run above left loaded.
+  await page.getByRole('button', { name: 'Step into' }).click();
+  await page.waitForTimeout(200);
+  await page.getByRole('button', { name: 'Step into' }).click();
+  await page.waitForTimeout(250);
+
+  const here = await page.locator('[class*="positionText"]').first().innerText();
+  const targetLine = Number(here.trim().match(/line (\d+)$/)?.[1] ?? 0);
+  // Bring it into view before clicking its gutter.
+  await page.locator('[class*="position"]').first().click();
+  await page.waitForTimeout(400);
+
+  const gutter = page.locator('.line-numbers', { hasText: new RegExp(`^${targetLine}$`) }).first();
+  const gutterBox = await gutter.boundingBox();
+  await page.mouse.click(gutterBox.x + gutterBox.width / 2, gutterBox.y + gutterBox.height / 2);
+  await page.waitForTimeout(300);
+
+  const listed = await page.evaluate(() =>
+    [...document.querySelectorAll('[class*="functionName"] code')]
+      .map((n) => n.textContent)
+      .filter((t) => t.startsWith('line')),
+  );
+  check(
+    'a gutter click sets the breakpoint on the line clicked',
+    listed.includes(`line ${targetLine}`),
+    `wanted line ${targetLine}, got ${listed.join() || 'none'}`,
+  );
+
+  await page.getByRole('button', { name: 'Restart' }).first().click();
+  await page.waitForTimeout(250);
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await page.waitForTimeout(400);
+  const stopped = await page.locator('[class*="positionText"]').first().innerText();
+  check(
+    'continue stops at that breakpoint',
+    stopped.trim().endsWith(`line ${targetLine}`),
+    `wanted line ${targetLine}, stopped at ${stopped.trim()}`,
+  );
+
+  // Hovering a variable should answer what it holds right now, not its type.
+  const varName = (await page.locator('[class*="scopeName"]').allInnerTexts())[0];
+  const nameSpan = varName
+    ? page.locator('.view-line span', { hasText: new RegExp(`^${varName}$`) }).first()
+    : null;
+
+  if (nameSpan && (await nameSpan.count())) {
+    await nameSpan.hover();
+    await page.waitForTimeout(1500);
+    // `.monaco-hover` is the outer widget and is empty; the text is inside.
+    const hoverText = (await page.locator('.hover-contents').allInnerTexts()).join(' ');
+    check(
+      'hovering a variable shows its value at this step',
+      hoverText.includes('value at this step'),
+      `${varName}: ${hoverText.slice(0, 120)}`,
+    );
+  } else {
+    check(
+      'hovering a variable shows its value at this step',
+      false,
+      `no span for ${varName ?? 'any variable'}`,
+    );
+  }
+
   await page.getByRole('button', { name: 'Stop debugging' }).click();
   await page.waitForTimeout(400);
   check(
@@ -212,7 +280,7 @@ try {
   await page.getByRole('button', { name: 'LeetCode problems' }).click();
   await page.waitForTimeout(500);
   await page.getByLabel('LeetCode problem URL').fill('https://leetcode.com/problems/koko-eating-bananas/');
-  await page.getByRole('button', { name: /Find/ }).click();
+  await page.getByRole('button', { name: 'Find', exact: true }).click();
   await page.waitForTimeout(400);
 
   check(
@@ -242,6 +310,41 @@ try {
     'the revealed solution answers the examples',
     solutionOutput.includes('example 1 -> 4') && solutionOutput.includes('example 2 -> 30'),
     solutionOutput.slice(0, 200),
+  );
+
+  console.log('▸ Running a problem Breakstep does not carry');
+  await page.getByRole('button', { name: 'LeetCode problems' }).click();
+  await page.waitForTimeout(500);
+  await page.getByLabel('LeetCode problem URL').fill('https://leetcode.com/problems/two-sum/');
+  await page.getByRole('button', { name: 'Find', exact: true }).click();
+  await page.waitForTimeout(1200);
+
+  check(
+    'a problem with no statement here is still made runnable',
+    await page.getByText('Ready to run — statement on LeetCode').isVisible(),
+  );
+  check(
+    'it offers no solution it does not have',
+    (await page.getByRole('button', { name: /Reveal the solution/ }).count()) === 0,
+  );
+
+  await page.getByRole('button', { name: /Load the problem/ }).click();
+  await page.waitForTimeout(1500);
+  const generated = (await page.locator('.view-lines').first().innerText()).replace(/\u00a0/g, ' ');
+  check(
+    'the generated stub has the right signature',
+    /function twoSum\(nums: number\[\], target: number\)/.test(generated),
+    generated.slice(0, 140),
+  );
+
+  await page.getByRole('button', { name: 'Run', exact: true }).click();
+  await page.waitForTimeout(2500);
+  await page.getByRole('tab', { name: /Output/ }).click();
+  const generatedOutput = await page.locator('[class*="OutputPanel"]').first().innerText();
+  check(
+    'the generated driver runs every published example',
+    (generatedOutput.match(/example \d ->/g) ?? []).length >= 2,
+    generatedOutput.slice(0, 160),
   );
 
   // Back to a built-in template so the sections below test what they say.

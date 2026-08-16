@@ -26,7 +26,42 @@ const LEGEND: { state: string; label: string; color: string; bg: string }[] = [
   { state: 'compare', label: 'comparing', color: 'var(--breakstep-amber)', bg: 'var(--breakstep-amber-soft)' },
   { state: 'visited', label: 'visited', color: 'var(--breakstep-violet)', bg: 'var(--breakstep-violet-soft)' },
   { state: 'match', label: 'match / done', color: 'var(--breakstep-mint)', bg: 'var(--breakstep-mint-soft)' },
+  { state: 'sorted', label: 'sorted', color: 'var(--breakstep-mint)', bg: 'var(--breakstep-mint-soft)' },
+  { state: 'error', label: 'error', color: 'var(--breakstep-red)', bg: 'var(--breakstep-red-soft)' },
 ];
+
+/** How many frames to scan before assuming the legend has settled. */
+const LEGEND_SCAN_LIMIT = 80;
+
+/**
+ * Which states this run actually uses.
+ *
+ * Auto-traced code only ever marks the current position, so listing four
+ * colours under it described something the run could not produce. Templates
+ * that drive the visualizer by hand do use the others, and then they are worth
+ * a key. The walk is generic rather than per view kind, so a new view gets this
+ * for free.
+ */
+function statesUsed(frames: Frame[]): Set<string> {
+  const found = new Set<string>();
+
+  const walk = (node: unknown, depth: number) => {
+    if (node === null || typeof node !== 'object' || depth > 8) return;
+
+    if (Array.isArray(node)) {
+      for (const item of node) walk(item, depth + 1);
+      return;
+    }
+
+    for (const [key, value] of Object.entries(node)) {
+      if (key === 'state' && typeof value === 'string') found.add(value);
+      else walk(value, depth + 1);
+    }
+  };
+
+  for (const frame of frames.slice(0, LEGEND_SCAN_LIMIT)) walk(frame.view, 0);
+  return found;
+}
 
 interface Props {
   frames: Frame[];
@@ -139,6 +174,11 @@ export function VisualizerPanel({ frames, status, compact, pinnedFrame, followin
     return () => window.removeEventListener('keydown', onKey);
   }, [step, total]);
 
+  const legend = useMemo(() => {
+    const used = statesUsed(frames);
+    return LEGEND.filter((item) => used.has(item.state));
+  }, [frames]);
+
   const metaEntries = useMemo(
     () => Object.entries(frame?.meta ?? {}).slice(0, compact ? 3 : 6),
     [frame?.meta, compact],
@@ -193,17 +233,19 @@ export function VisualizerPanel({ frames, status, compact, pinnedFrame, followin
 
       <div className={styles.stage}>{frame && <Visualizer view={frame.view} />}</div>
 
-      <div className={styles.legend} aria-label="Colour key">
-        {LEGEND.map((item) => (
-          <span key={item.state} className={styles.legendItem}>
-            <span
-              className={styles.swatch}
-              style={{ background: item.bg, borderColor: item.color }}
-            />
-            {item.label}
-          </span>
-        ))}
-      </div>
+      {legend.length > 0 && (
+        <div className={styles.legend} aria-label="Colour key">
+          {legend.map((item) => (
+            <span key={item.state} className={styles.legendItem}>
+              <span
+                className={styles.swatch}
+                style={{ background: item.bg, borderColor: item.color }}
+              />
+              {item.label}
+            </span>
+          ))}
+        </div>
+      )}
 
       <div className={styles.controls}>
         <Tooltip title="Previous step (←)">

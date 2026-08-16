@@ -29,7 +29,7 @@ import { SplitPane } from './components/SplitPane';
 import { useWorkspace } from './hooks/useWorkspace';
 import { useDebugger } from './hooks/useDebugger';
 import { listFunctions } from './analysis/functions';
-import type { LeetProblem, PatternId } from './leetcode/types';
+import type { LeetProblem } from './leetcode/types';
 import { useTheme } from './hooks/useTheme';
 import { useLayout } from './hooks/useLayout';
 import { useLocalStorage } from './hooks/useLocalStorage';
@@ -197,10 +197,10 @@ export default function App() {
   );
 
   /** Jump from a recommendation to the template that teaches the technique. */
-  const handleOpenPattern = useCallback(
-    (pattern: PatternId) => {
+  const handleOpenTemplate = useCallback(
+    (templateId: string) => {
       debug.end();
-      workspace.selectTemplate(pattern);
+      workspace.selectTemplate(templateId);
       setProblemsOpen(false);
       if (compact) setCompactTab('code');
     },
@@ -244,9 +244,11 @@ export default function App() {
           compact={compact}
           activeLine={debug.active ? (debug.step?.line ?? null) : null}
           breakpoints={debug.breakpoints}
+          scope={debug.active ? (debug.step?.scope ?? null) : null}
           onToggleBreakpoint={debug.toggleBreakpoint}
           onChange={workspace.setCode}
           onRun={handleRun}
+          resetKey={`${workspace.templateId}:${workspace.language}:${workspace.mode}`}
           registerGoToLine={registerGoToLine}
         />
       </Suspense>
@@ -493,7 +495,7 @@ export default function App() {
             onClose={() => setProblemsOpen(false)}
             onLoad={handleLoadProblem}
             onReveal={handleRevealSolution}
-            onOpenPattern={handleOpenPattern}
+            onOpenTemplate={handleOpenTemplate}
           />
 
           <TemplatePicker

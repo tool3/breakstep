@@ -50,12 +50,12 @@ describe('recommend', () => {
     expect(result.techniques[1].pattern).toBe('dfs');
   });
 
-  it('guesses from the name for a problem it does not have', () => {
+  it('guesses from the name when there is no index to consult', () => {
     const result = recommend('https://leetcode.com/problems/longest-palindromic-substring/');
     expect(result.source).toBe('guess');
     expect(result.problem).toBeUndefined();
     expect(result.techniques.map((t) => t.pattern)).toContain('sliding-window');
-    expect(result.note).toMatch(/not in the offline catalogue/i);
+    expect(result.note).toMatch(/inferred from the name alone/i);
   });
 
   it('says so plainly when the input is not a problem link', () => {

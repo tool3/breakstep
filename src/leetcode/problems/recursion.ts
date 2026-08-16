@@ -390,4 +390,370 @@ ${stairsDriver.python}`,
   expectedOutput: ['example 1 -> 2', 'example 2 -> 3', 'example 3 -> 89'],
 };
 
-export const RECURSION_PROBLEMS = [invertBinaryTree, maximumDepth, climbingStairs];
+
+// --- 21 · Merge Two Sorted Lists ---------------------------------------------
+
+const mergeListsDriver = {
+  typescript: `
+// --- examples ---------------------------------------------------------------
+
+/** Build a linked list from an array, and read one back out. */
+function toList(values: number[]): ListNode | null {
+  let head: ListNode | null = null;
+  for (let i = values.length - 1; i >= 0; i--) {
+    const node = new ListNode(values[i]);
+    node.next = head;
+    head = node;
+  }
+  return head;
+}
+
+function toArray(head: ListNode | null): number[] {
+  const out: number[] = [];
+  for (let node = head; node !== null; node = node.next) out.push(node.val);
+  return out;
+}
+
+console.log('example 1 ->', toArray(mergeTwoLists(toList(list1), toList(list2))));
+console.log('example 2 ->', toArray(mergeTwoLists(toList([]), toList([]))));
+console.log('example 3 ->', toArray(mergeTwoLists(toList([]), toList([0]))));
+`,
+  python: `
+# --- examples ---------------------------------------------------------------
+
+def to_list(values):
+    """Build a linked list from a list of values."""
+    head = None
+    for value in reversed(values):
+        node = ListNode(value)
+        node.next = head
+        head = node
+    return head
+
+
+def to_array(head):
+    out = []
+    node = head
+    while node is not None:
+        out.append(node.val)
+        node = node.next
+    return out
+
+
+print('example 1 ->', to_array(merge_two_lists(to_list(list1), to_list(list2))))
+print('example 2 ->', to_array(merge_two_lists(to_list([]), to_list([]))))
+print('example 3 ->', to_array(merge_two_lists(to_list([]), to_list([0]))))
+`,
+};
+
+export const mergeTwoSortedLists: LeetProblem = {
+  slug: 'merge-two-sorted-lists',
+  number: 21,
+  title: 'Merge Two Sorted Lists',
+  difficulty: 'Easy',
+  topics: ['linked-list', 'recursion'],
+  prompt:
+    'Given the heads of two sorted linked lists, splice them into one sorted list and return its head. The result should reuse the existing nodes rather than allocate new ones.',
+  constraints: [
+    '0 ≤ length of each list ≤ 50',
+    '-100 ≤ Node.val ≤ 100',
+    'Both lists are sorted ascending',
+  ],
+  examples: [
+    { input: 'list1 = [1,2,4], list2 = [1,3,4]', output: '[1,1,2,3,4,4]' },
+    { input: 'list1 = [], list2 = []', output: '[]' },
+    { input: 'list1 = [], list2 = [0]', output: '[0]' },
+  ],
+  techniques: [
+    {
+      pattern: 'recursion',
+      rank: 1,
+      why: 'The smaller head is the answer’s head, and the rest of the answer is the merge of what is left — which is the same problem, one node smaller. An empty list is the base case, and it falls out in two lines.',
+      complexity: { time: 'O(n)', space: 'O(n)' },
+    },
+    {
+      pattern: 'two-pointers',
+      rank: 2,
+      why: 'The iterative version walks a pointer down each list, appending the smaller node to a dummy head. Same result in constant extra space, which matters if the lists could be long enough to exhaust the stack.',
+      complexity: { time: 'O(n)', space: 'O(1)' },
+    },
+  ],
+  params: [
+    { name: 'list1', label: 'First sorted list', type: 'numberArray', default: [1, 2, 4] },
+    { name: 'list2', label: 'Second sorted list', type: 'numberArray', default: [1, 3, 4] },
+  ],
+  typescript: {
+    starter: `class ListNode {
+  val: number;
+  next: ListNode | null = null;
+  constructor(val: number) {
+    this.val = val;
+  }
+}
+
+const list1 = [1, 2, 4];
+const list2 = [1, 3, 4];
+
+function mergeTwoLists(a: ListNode | null, b: ListNode | null): ListNode | null {
+  // The smaller head, followed by the merge of whatever is left.
+  // TODO
+  return a;
+}
+${mergeListsDriver.typescript}`,
+    solution: `class ListNode {
+  val: number;
+  next: ListNode | null = null;
+  constructor(val: number) {
+    this.val = val;
+  }
+}
+
+const list1 = [1, 2, 4];
+const list2 = [1, 3, 4];
+
+function mergeTwoLists(a: ListNode | null, b: ListNode | null): ListNode | null {
+  // Running out of one list is the base case: whatever is left of the other
+  // is already sorted, so it is already the answer.
+  if (a === null) return b;
+  if (b === null) return a;
+
+  if (a.val <= b.val) {
+    a.next = mergeTwoLists(a.next, b);
+    return a;
+  }
+
+  b.next = mergeTwoLists(a, b.next);
+  return b;
+}
+${mergeListsDriver.typescript}`,
+  },
+  python: {
+    starter: `class ListNode:
+    def __init__(self, val):
+        self.val = val
+        self.next = None
+
+
+list1 = [1, 2, 4]
+list2 = [1, 3, 4]
+
+
+def merge_two_lists(a, b):
+    """The smaller head, followed by the merge of whatever is left."""
+    # TODO
+    return a
+${mergeListsDriver.python}`,
+    solution: `class ListNode:
+    def __init__(self, val):
+        self.val = val
+        self.next = None
+
+
+list1 = [1, 2, 4]
+list2 = [1, 3, 4]
+
+
+def merge_two_lists(a, b):
+    # Running out of one list is the base case: whatever is left of the other
+    # is already sorted, so it is already the answer.
+    if a is None:
+        return b
+    if b is None:
+        return a
+
+    if a.val <= b.val:
+        a.next = merge_two_lists(a.next, b)
+        return a
+
+    b.next = merge_two_lists(a, b.next)
+    return b
+${mergeListsDriver.python}`,
+  },
+  expectedOutput: [
+    'example 1 -> [1, 1, 2, 3, 4, 4]',
+    'example 2 -> []',
+    'example 3 -> [0]',
+  ],
+};
+
+// --- 206 · Reverse Linked List -----------------------------------------------
+
+const reverseDriver = {
+  typescript: `
+// --- examples ---------------------------------------------------------------
+
+/** Build a linked list from an array, and read one back out. */
+function toList(values: number[]): ListNode | null {
+  let head: ListNode | null = null;
+  for (let i = values.length - 1; i >= 0; i--) {
+    const node = new ListNode(values[i]);
+    node.next = head;
+    head = node;
+  }
+  return head;
+}
+
+function toArray(head: ListNode | null): number[] {
+  const out: number[] = [];
+  for (let node = head; node !== null; node = node.next) out.push(node.val);
+  return out;
+}
+
+console.log('example 1 ->', toArray(reverseList(toList(values))));
+console.log('example 2 ->', toArray(reverseList(toList([1, 2]))));
+console.log('example 3 ->', toArray(reverseList(toList([]))));
+`,
+  python: `
+# --- examples ---------------------------------------------------------------
+
+def to_list(values):
+    """Build a linked list from a list of values."""
+    head = None
+    for value in reversed(values):
+        node = ListNode(value)
+        node.next = head
+        head = node
+    return head
+
+
+def to_array(head):
+    out = []
+    node = head
+    while node is not None:
+        out.append(node.val)
+        node = node.next
+    return out
+
+
+print('example 1 ->', to_array(reverse_list(to_list(values))))
+print('example 2 ->', to_array(reverse_list(to_list([1, 2]))))
+print('example 3 ->', to_array(reverse_list(to_list([]))))
+`,
+};
+
+export const reverseLinkedList: LeetProblem = {
+  slug: 'reverse-linked-list',
+  number: 206,
+  title: 'Reverse Linked List',
+  difficulty: 'Easy',
+  topics: ['linked-list', 'recursion'],
+  prompt:
+    'Reverse a singly linked list and return the new head. The classic follow-up asks for both the iterative and the recursive answer.',
+  constraints: ['0 ≤ number of nodes ≤ 5000', '-5000 ≤ Node.val ≤ 5000'],
+  examples: [
+    { input: 'head = [1,2,3,4,5]', output: '[5,4,3,2,1]' },
+    { input: 'head = [1,2]', output: '[2,1]' },
+    { input: 'head = []', output: '[]' },
+  ],
+  techniques: [
+    {
+      pattern: 'recursion',
+      rank: 1,
+      why: 'Reverse everything after the head, then make the old second node point back at the head. The one line that catches people is that the head’s own `next` must be cleared, or the last two nodes end up pointing at each other.',
+      complexity: { time: 'O(n)', space: 'O(n)' },
+    },
+    {
+      pattern: 'two-pointers',
+      rank: 2,
+      why: 'A previous pointer and a current pointer walking down the list, turning each link around as they pass. Constant space, and the version to write in an interview.',
+      complexity: { time: 'O(n)', space: 'O(1)' },
+    },
+  ],
+  params: [{ name: 'values', label: 'List values', type: 'numberArray', default: [1, 2, 3, 4, 5] }],
+  typescript: {
+    starter: `class ListNode {
+  val: number;
+  next: ListNode | null = null;
+  constructor(val: number) {
+    this.val = val;
+  }
+}
+
+const values = [1, 2, 3, 4, 5];
+
+function reverseList(head: ListNode | null): ListNode | null {
+  // Reverse the rest, then point the old second node back at the head.
+  // TODO
+  return head;
+}
+${reverseDriver.typescript}`,
+    solution: `class ListNode {
+  val: number;
+  next: ListNode | null = null;
+  constructor(val: number) {
+    this.val = val;
+  }
+}
+
+const values = [1, 2, 3, 4, 5];
+
+function reverseList(head: ListNode | null): ListNode | null {
+  // An empty list, or a single node, is already reversed.
+  if (head === null || head.next === null) return head;
+
+  // Reverse everything after the head: rest is the new head, and head.next
+  // is still the node that used to follow us — now the tail of that reversal.
+  const rest = reverseList(head.next);
+
+  head.next.next = head;
+  // Without this the last two nodes point at each other and the list cycles.
+  head.next = null;
+
+  return rest;
+}
+${reverseDriver.typescript}`,
+  },
+  python: {
+    starter: `class ListNode:
+    def __init__(self, val):
+        self.val = val
+        self.next = None
+
+
+values = [1, 2, 3, 4, 5]
+
+
+def reverse_list(head):
+    """Reverse the rest, then point the old second node back at the head."""
+    # TODO
+    return head
+${reverseDriver.python}`,
+    solution: `class ListNode:
+    def __init__(self, val):
+        self.val = val
+        self.next = None
+
+
+values = [1, 2, 3, 4, 5]
+
+
+def reverse_list(head):
+    # An empty list, or a single node, is already reversed.
+    if head is None or head.next is None:
+        return head
+
+    # Reverse everything after the head. rest is the new head, and head.next
+    # is still the node that used to follow us - now the tail of that reversal.
+    rest = reverse_list(head.next)
+
+    head.next.next = head
+    # Without this the last two nodes point at each other and the list cycles.
+    head.next = None
+
+    return rest
+${reverseDriver.python}`,
+  },
+  expectedOutput: [
+    'example 1 -> [5, 4, 3, 2, 1]',
+    'example 2 -> [2, 1]',
+    'example 3 -> []',
+  ],
+};
+
+export const RECURSION_PROBLEMS = [
+  invertBinaryTree,
+  maximumDepth,
+  climbingStairs,
+  mergeTwoSortedLists,
+  reverseLinkedList,
+];

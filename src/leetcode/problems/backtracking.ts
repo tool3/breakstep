@@ -365,4 +365,306 @@ ${combinationDriver.python}`,
   ],
 };
 
-export const BACKTRACKING_PROBLEMS = [subsetsProblem, permutationsProblem, combinationSum];
+
+// --- 79 · Word Search --------------------------------------------------------
+
+const wordSearchDriver = {
+  typescript: `
+// --- examples ---------------------------------------------------------------
+const board = [
+  ['A', 'B', 'C', 'E'],
+  ['S', 'F', 'C', 'S'],
+  ['A', 'D', 'E', 'E'],
+];
+console.log('example 1 ->', exist(board, word) ? 'true' : 'false');
+console.log('example 2 ->', exist(board, 'SEE') ? 'true' : 'false');
+console.log('example 3 ->', exist(board, 'ABCB') ? 'true' : 'false');
+`,
+  python: `
+# --- examples ---------------------------------------------------------------
+board = [
+    ['A', 'B', 'C', 'E'],
+    ['S', 'F', 'C', 'S'],
+    ['A', 'D', 'E', 'E'],
+]
+print('example 1 ->', 'true' if exist(board, word) else 'false')
+print('example 2 ->', 'true' if exist(board, 'SEE') else 'false')
+print('example 3 ->', 'true' if exist(board, 'ABCB') else 'false')
+`,
+};
+
+export const wordSearch: LeetProblem = {
+  slug: 'word-search',
+  number: 79,
+  title: 'Word Search',
+  difficulty: 'Medium',
+  topics: ['array', 'string', 'backtracking', 'depth-first-search', 'matrix'],
+  prompt:
+    'Decide whether a word can be spelled out in the grid by moving between cells that share an edge. A cell may not be used twice in the same word.',
+  constraints: ['1 ≤ rows, cols ≤ 6', '1 ≤ word.length ≤ 15', 'Letters and digits only'],
+  examples: [
+    { input: 'board = [["A","B","C","E"],["S","F","C","S"],["A","D","E","E"]], word = "ABCCED"', output: 'true' },
+    { input: 'same board, word = "SEE"', output: 'true' },
+    { input: 'same board, word = "ABCB"', output: 'false', note: 'the B would have to be reused' },
+  ],
+  techniques: [
+    {
+      pattern: 'backtracking',
+      rank: 1,
+      why: '"May not be reused" is what makes this backtracking rather than a plain flood: a cell is marked on the way in and *unmarked on the way out*, so it is blocked for the current path but free for every other one. Forget the un-marking and the search quietly fails on words that double back.',
+      complexity: { time: 'O(n)', space: 'O(n)' },
+    },
+    {
+      pattern: 'dfs',
+      rank: 2,
+      why: 'The traversal underneath is an ordinary depth-first search from every starting cell; backtracking is the bookkeeping laid on top of it.',
+      complexity: { time: 'O(n)', space: 'O(n)' },
+    },
+  ],
+  params: [{ name: 'word', label: 'Word to find', type: 'string', default: 'ABCCED' }],
+  typescript: {
+    starter: `const word = 'ABCCED';
+
+function exist(board: string[][], word: string): boolean {
+  // Mark a cell on the way in, unmark it on the way out.
+  // TODO
+  return false;
+}
+${wordSearchDriver.typescript}`,
+    solution: `const word = 'ABCCED';
+
+function exist(board: string[][], word: string): boolean {
+  const rows = board.length;
+  const cols = board[0].length;
+
+  const search = (r: number, c: number, at: number): boolean => {
+    if (at === word.length) return true;
+    if (r < 0 || c < 0 || r >= rows || c >= cols) return false;
+    if (board[r][c] !== word[at]) return false;
+
+    // Block this cell for the rest of *this* path only.
+    const letter = board[r][c];
+    board[r][c] = '#';
+
+    const found =
+      search(r + 1, c, at + 1) ||
+      search(r - 1, c, at + 1) ||
+      search(r, c + 1, at + 1) ||
+      search(r, c - 1, at + 1);
+
+    // Un-choose: other paths are still allowed to use it.
+    board[r][c] = letter;
+    return found;
+  };
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (search(r, c, 0)) return true;
+    }
+  }
+
+  return false;
+}
+${wordSearchDriver.typescript}`,
+  },
+  python: {
+    starter: `word = 'ABCCED'
+
+
+def exist(board, word):
+    """Mark a cell on the way in, unmark it on the way out."""
+    # TODO
+    return False
+${wordSearchDriver.python}`,
+    solution: `word = 'ABCCED'
+
+
+def exist(board, word):
+    rows, cols = len(board), len(board[0])
+
+    def search(r, c, at):
+        if at == len(word):
+            return True
+        if r < 0 or c < 0 or r >= rows or c >= cols:
+            return False
+        if board[r][c] != word[at]:
+            return False
+
+        # Block this cell for the rest of *this* path only.
+        letter = board[r][c]
+        board[r][c] = '#'
+
+        found = (
+            search(r + 1, c, at + 1)
+            or search(r - 1, c, at + 1)
+            or search(r, c + 1, at + 1)
+            or search(r, c - 1, at + 1)
+        )
+
+        # Un-choose: other paths are still allowed to use it.
+        board[r][c] = letter
+        return found
+
+    for r in range(rows):
+        for c in range(cols):
+            if search(r, c, 0):
+                return True
+
+    return False
+${wordSearchDriver.python}`,
+  },
+  expectedOutput: ['example 1 -> true', 'example 2 -> true', 'example 3 -> false'],
+};
+
+// --- 17 · Letter Combinations of a Phone Number ------------------------------
+
+const lettersDriver = {
+  typescript: `
+// --- examples ---------------------------------------------------------------
+console.log('example 1 ->', letterCombinations(digits));
+console.log('example 2 ->', letterCombinations(''));
+console.log('example 3 ->', letterCombinations('2'));
+`,
+  python: `
+# --- examples ---------------------------------------------------------------
+print('example 1 ->', letter_combinations(digits))
+print('example 2 ->', letter_combinations(''))
+print('example 3 ->', letter_combinations('2'))
+`,
+};
+
+export const letterCombinations: LeetProblem = {
+  slug: 'letter-combinations-of-a-phone-number',
+  number: 17,
+  title: 'Letter Combinations of a Phone Number',
+  difficulty: 'Medium',
+  topics: ['hash-table', 'string', 'backtracking'],
+  prompt:
+    'Given a string of digits from 2 to 9, return every letter combination the number could spell on a telephone keypad. The combinations may come back in any order.',
+  constraints: ['0 ≤ digits.length ≤ 4', 'digits[i] is between 2 and 9'],
+  examples: [
+    { input: 'digits = "23"', output: '["ad","ae","af","bd","be","bf","cd","ce","cf"]' },
+    { input: 'digits = ""', output: '[]', note: 'no digits, no combinations' },
+    { input: 'digits = "2"', output: '["a","b","c"]' },
+  ],
+  techniques: [
+    {
+      pattern: 'backtracking',
+      rank: 1,
+      why: 'One decision per digit, three or four ways to make it. The search tree is exactly as deep as the number is long, and every leaf is an answer — the simplest possible shape for choose / explore / un-choose.',
+      complexity: { time: 'O(2^n)', space: 'O(n)' },
+    },
+    {
+      pattern: 'recursion',
+      rank: 2,
+      why: 'Nothing is ever pruned here, so it can equally be read as plain recursive enumeration: the combinations for a number are its first digit’s letters glued onto the combinations for the rest.',
+      complexity: { time: 'O(2^n)', space: 'O(n)' },
+    },
+  ],
+  params: [{ name: 'digits', label: 'Digits', type: 'string', default: '23' }],
+  typescript: {
+    starter: `const digits = '23';
+
+function letterCombinations(digits: string): string[] {
+  // One decision per digit; every leaf of the tree is an answer.
+  // TODO
+  return [];
+}
+${lettersDriver.typescript}`,
+    solution: `const digits = '23';
+
+const KEYPAD: Record<string, string> = {
+  '2': 'abc',
+  '3': 'def',
+  '4': 'ghi',
+  '5': 'jkl',
+  '6': 'mno',
+  '7': 'pqrs',
+  '8': 'tuv',
+  '9': 'wxyz',
+};
+
+function letterCombinations(digits: string): string[] {
+  // The empty string is not "one empty combination" — it is no combinations.
+  if (digits.length === 0) return [];
+
+  const out: string[] = [];
+  const current: string[] = [];
+
+  const explore = (at: number) => {
+    if (at === digits.length) {
+      out.push(current.join(''));
+      return;
+    }
+
+    for (const letter of KEYPAD[digits[at]] ?? '') {
+      current.push(letter);   // choose
+      explore(at + 1);        // explore the rest of the number
+      current.pop();          // un-choose
+    }
+  };
+
+  explore(0);
+  return out;
+}
+${lettersDriver.typescript}`,
+  },
+  python: {
+    starter: `digits = '23'
+
+
+def letter_combinations(digits):
+    """One decision per digit; every leaf of the tree is an answer."""
+    # TODO
+    return []
+${lettersDriver.python}`,
+    solution: `digits = '23'
+
+KEYPAD = {
+    '2': 'abc',
+    '3': 'def',
+    '4': 'ghi',
+    '5': 'jkl',
+    '6': 'mno',
+    '7': 'pqrs',
+    '8': 'tuv',
+    '9': 'wxyz',
+}
+
+
+def letter_combinations(digits):
+    # The empty string is not "one empty combination" - it is no combinations.
+    if not digits:
+        return []
+
+    out = []
+    current = []
+
+    def explore(at):
+        if at == len(digits):
+            out.append(''.join(current))
+            return
+
+        for letter in KEYPAD.get(digits[at], ''):
+            current.append(letter)  # choose
+            explore(at + 1)         # explore the rest of the number
+            current.pop()           # un-choose
+
+    explore(0)
+    return out
+${lettersDriver.python}`,
+  },
+  expectedOutput: [
+    'example 1 -> ["ad", "ae", "af", "bd", "be", "bf", "cd", "ce", "cf"]',
+    'example 2 -> []',
+    'example 3 -> ["a", "b", "c"]',
+  ],
+};
+
+export const BACKTRACKING_PROBLEMS = [
+  subsetsProblem,
+  permutationsProblem,
+  combinationSum,
+  wordSearch,
+  letterCombinations,
+];

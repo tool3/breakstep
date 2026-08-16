@@ -380,4 +380,228 @@ ${threeSumDriver.python}`,
   ],
 };
 
-export const TWO_POINTER_PROBLEMS = [twoSumII, containerWithMostWater, threeSum];
+
+// --- 125 · Valid Palindrome --------------------------------------------------
+
+const palindromeDriver = {
+  typescript: `
+// --- examples ---------------------------------------------------------------
+console.log('example 1 ->', isPalindrome(s) ? 'true' : 'false');
+console.log('example 2 ->', isPalindrome('race a car') ? 'true' : 'false');
+console.log('example 3 ->', isPalindrome(' ') ? 'true' : 'false');
+`,
+  python: `
+# --- examples ---------------------------------------------------------------
+print('example 1 ->', 'true' if is_palindrome(s) else 'false')
+print('example 2 ->', 'true' if is_palindrome('race a car') else 'false')
+print('example 3 ->', 'true' if is_palindrome(' ') else 'false')
+`,
+};
+
+export const validPalindrome: LeetProblem = {
+  slug: 'valid-palindrome',
+  number: 125,
+  title: 'Valid Palindrome',
+  difficulty: 'Easy',
+  topics: ['two-pointers', 'string'],
+  prompt:
+    'Ignoring case and every character that is not a letter or a digit, decide whether the string reads the same forwards and backwards. An empty string counts as a palindrome.',
+  constraints: ['1 ≤ s.length ≤ 2·10⁵', 's consists of printable ASCII'],
+  examples: [
+    { input: 's = "A man, a plan, a canal: Panama"', output: 'true', note: '"amanaplanacanalpanama"' },
+    { input: 's = "race a car"', output: 'false', note: '"raceacar"' },
+    { input: 's = " "', output: 'true', note: 'nothing left after cleaning' },
+  ],
+  techniques: [
+    {
+      pattern: 'two-pointers',
+      rank: 1,
+      why: 'Compare the ends and walk inwards, stepping each pointer over anything that is not alphanumeric. Cleaning the string first also works but allocates a copy; converging pointers answer it in place.',
+      complexity: { time: 'O(n)', space: 'O(1)' },
+    },
+  ],
+  params: [{ name: 's', label: 'Input string', type: 'string', default: 'A man, a plan, a canal: Panama' }],
+  typescript: {
+    starter: `const s = 'A man, a plan, a canal: Panama';
+
+function isPalindrome(s: string): boolean {
+  // Walk in from both ends, skipping anything that is not a letter or digit.
+  // TODO
+  return false;
+}
+${palindromeDriver.typescript}`,
+    solution: `const s = 'A man, a plan, a canal: Panama';
+
+function isPalindrome(s: string): boolean {
+  const isAlphanumeric = (ch: string) => /[a-z0-9]/i.test(ch);
+
+  let lo = 0;
+  let hi = s.length - 1;
+
+  while (lo < hi) {
+    // Skip past the punctuation rather than building a cleaned copy.
+    while (lo < hi && !isAlphanumeric(s[lo])) lo++;
+    while (lo < hi && !isAlphanumeric(s[hi])) hi--;
+
+    if (s[lo].toLowerCase() !== s[hi].toLowerCase()) return false;
+    lo++;
+    hi--;
+  }
+
+  return true;
+}
+${palindromeDriver.typescript}`,
+  },
+  python: {
+    starter: `s = 'A man, a plan, a canal: Panama'
+
+
+def is_palindrome(s):
+    """Walk in from both ends, skipping anything not a letter or digit."""
+    # TODO
+    return False
+${palindromeDriver.python}`,
+    solution: `s = 'A man, a plan, a canal: Panama'
+
+
+def is_palindrome(s):
+    lo, hi = 0, len(s) - 1
+
+    while lo < hi:
+        # Skip past the punctuation rather than building a cleaned copy.
+        while lo < hi and not s[lo].isalnum():
+            lo += 1
+        while lo < hi and not s[hi].isalnum():
+            hi -= 1
+
+        if s[lo].lower() != s[hi].lower():
+            return False
+        lo += 1
+        hi -= 1
+
+    return True
+${palindromeDriver.python}`,
+  },
+  expectedOutput: ['example 1 -> true', 'example 2 -> false', 'example 3 -> true'],
+};
+
+// --- 42 · Trapping Rain Water ------------------------------------------------
+
+const rainDriver = {
+  typescript: `
+// --- examples ---------------------------------------------------------------
+console.log('example 1 ->', trap(height));
+console.log('example 2 ->', trap([4, 2, 0, 3, 2, 5]));
+console.log('example 3 ->', trap([3, 2, 1]));
+`,
+  python: `
+# --- examples ---------------------------------------------------------------
+print('example 1 ->', trap(height))
+print('example 2 ->', trap([4, 2, 0, 3, 2, 5]))
+print('example 3 ->', trap([3, 2, 1]))
+`,
+};
+
+export const trappingRainWater: LeetProblem = {
+  slug: 'trapping-rain-water',
+  number: 42,
+  title: 'Trapping Rain Water',
+  difficulty: 'Hard',
+  topics: ['array', 'two-pointers', 'dynamic-programming', 'stack'],
+  prompt:
+    'The array is an elevation map where every bar is one unit wide. Work out how much rain water is trapped between the bars after it rains.',
+  constraints: ['1 ≤ height.length ≤ 2·10⁴', '0 ≤ height[i] ≤ 10⁵'],
+  examples: [
+    { input: 'height = [0,1,0,2,1,0,1,3,2,1,2,1]', output: '6' },
+    { input: 'height = [4,2,0,3,2,5]', output: '9' },
+    { input: 'height = [3,2,1]', output: '0', note: 'water runs off a slope' },
+  ],
+  techniques: [
+    {
+      pattern: 'two-pointers',
+      rank: 1,
+      why: 'Water above a bar is limited by the shorter of the tallest bar to its left and the tallest to its right. Walking in from both ends, whichever side is shorter is the side whose answer is already settled — its own running maximum is the binding one — so it can be settled and stepped past.',
+      complexity: { time: 'O(n)', space: 'O(1)' },
+    },
+  ],
+  params: [
+    { name: 'height', label: 'Elevation map', type: 'numberArray', default: [0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1] },
+  ],
+  typescript: {
+    starter: `const height = [0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1];
+
+function trap(height: number[]): number {
+  // Water over a bar = min(tallest left, tallest right) - its own height.
+  // TODO
+  return 0;
+}
+${rainDriver.typescript}`,
+    solution: `const height = [0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1];
+
+function trap(height: number[]): number {
+  let lo = 0;
+  let hi = height.length - 1;
+  let leftMax = 0;
+  let rightMax = 0;
+  let water = 0;
+
+  while (lo < hi) {
+    // The shorter side is the one whose limit is already known: nothing on the
+    // far side can lower it, so its water can be settled now.
+    if (height[lo] < height[hi]) {
+      leftMax = Math.max(leftMax, height[lo]);
+      water += leftMax - height[lo];
+      lo++;
+    } else {
+      rightMax = Math.max(rightMax, height[hi]);
+      water += rightMax - height[hi];
+      hi--;
+    }
+  }
+
+  return water;
+}
+${rainDriver.typescript}`,
+  },
+  python: {
+    starter: `height = [0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1]
+
+
+def trap(height):
+    """Water over a bar = min(tallest left, tallest right) - its own height."""
+    # TODO
+    return 0
+${rainDriver.python}`,
+    solution: `height = [0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1]
+
+
+def trap(height):
+    lo, hi = 0, len(height) - 1
+    left_max = right_max = 0
+    water = 0
+
+    while lo < hi:
+        # The shorter side is the one whose limit is already known: nothing on
+        # the far side can lower it, so its water can be settled now.
+        if height[lo] < height[hi]:
+            left_max = max(left_max, height[lo])
+            water += left_max - height[lo]
+            lo += 1
+        else:
+            right_max = max(right_max, height[hi])
+            water += right_max - height[hi]
+            hi -= 1
+
+    return water
+${rainDriver.python}`,
+  },
+  expectedOutput: ['example 1 -> 6', 'example 2 -> 9', 'example 3 -> 0'],
+};
+
+export const TWO_POINTER_PROBLEMS = [
+  twoSumII,
+  containerWithMostWater,
+  threeSum,
+  validPalindrome,
+  trappingRainWater,
+];

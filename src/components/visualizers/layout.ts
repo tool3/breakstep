@@ -278,3 +278,24 @@ export function trimToRadius(
     y2: y2 - uy * radius,
   };
 }
+
+/**
+ * Let a diagram use the room it is given.
+ *
+ * The `viewBox` already describes the picture, so the element can be sized
+ * freely: never smaller than the layout's natural size (a cramped graph is
+ * worse than a scrollbar), and up to a bit larger when the panel is wide, which
+ * is where a big tree stops looking smooshed.
+ */
+export function scalable(width: number, height: number) {
+  return {
+    width: '100%',
+    minWidth: width,
+    maxWidth: Math.round(width * MAX_UPSCALE),
+    aspectRatio: `${width} / ${height}`,
+    height: 'auto',
+  } as const;
+}
+
+/** How far past its natural size a diagram may grow. */
+const MAX_UPSCALE = 1.8;

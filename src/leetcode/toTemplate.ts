@@ -35,7 +35,12 @@ export function problemTemplate(problem: LeetProblem): Template {
     category: LEETCODE_CATEGORY,
     blurb: problem.prompt,
     tags: [problem.difficulty.toLowerCase(), ...problem.topics],
-    expected: problem.techniques[0]?.complexity,
+    // Only claim a textbook answer when there is one. A generated problem's
+    // technique comes from topic tags, which say nothing about cost.
+    expected:
+      problem.techniques[0]?.complexity?.time === 'unknown'
+        ? undefined
+        : problem.techniques[0]?.complexity,
     params: problem.params,
     code,
     // No breakstep.* variant: the point of a problem is the plain solution, and

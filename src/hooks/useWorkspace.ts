@@ -40,10 +40,20 @@ import type {
   Template,
 } from '@/types';
 
-/** The problem behind a problem template id, if there is one. */
+/** Storage key for a problem assembled from LeetCode's published metadata. */
+const generatedKey = (slug: string) => `generated:${slug}`;
+
+/**
+ * The problem behind a problem template id, if there is one.
+ *
+ * Problems written out here are found by slug. A generated one only exists
+ * because someone opened it, so it is kept in storage — otherwise reloading the
+ * page would drop you back to the default template.
+ */
 function problemFor(id: string): LeetProblem | undefined {
   const slug = slugFromTemplateId(id);
-  return slug ? getProblem(slug) : undefined;
+  if (!slug) return undefined;
+  return getProblem(slug) ?? readStored<LeetProblem | undefined>(generatedKey(slug), undefined);
 }
 
 /** Edits are kept per template, language *and* mode, so nothing is ever lost. */
@@ -284,6 +294,10 @@ export function useWorkspace(): Workspace {
    */
   const loadProblem = useCallback(
     (problem: LeetProblem, variant: 'starter' | 'solution' = 'starter') => {
+      // A generated problem has to survive a reload; a written one is already
+      // in the catalogue and needs nothing stored.
+      if (problem.origin === 'generated') writeStored(generatedKey(problem.slug), problem);
+
       const next = registerTemplate(problemTemplate(problem));
       const key = codeKey(next.id, language, mode);
 

@@ -48,12 +48,25 @@ it are always the same moment. Every function gets its own switch: leave it off
 and the debugger walks straight through, turn it on and `continue` stops there.
 Clicking the gutter sets an ordinary line breakpoint.
 
-**Solve** — paste any LeetCode URL. Breakstep matches it against an offline
-catalogue of 24 problems and gives you the recommended technique (ranked, with
-the reason it fits *this* problem), the exact example datasets, the constraints,
-and two buttons: load the starter code, or reveal a worked solution straight into
-the editor. Problems the catalogue does not have still get a technique suggested
-from the problem name, clearly marked as a guess.
+**Solve** — paste any LeetCode URL. Breakstep recognises all 4,023 published
+problems offline and answers in one of three tiers, saying plainly which one you
+got:
+
+- **written out here** (40 problems) — the task restated in our own words, the
+  example datasets, the constraints, ranked technique recommendations with the
+  reason each fits *this* problem, and a worked solution you can reveal into the
+  editor;
+- **ready to run** (2,990 problems) — LeetCode publishes each problem's
+  interface and its example cases separately from the statement, so Breakstep
+  generates the whole scaffold from them: a correctly typed stub, `ListNode` and
+  `TreeNode` helpers where they are needed, and a driver that runs every
+  published example with the answer it should give beside it. Press Run and it
+  runs;
+- **recognised only** — premium problems, design problems and a handful of
+  exotic signatures, which still get a technique recommendation from their real
+  topic tags and a link to the statement.
+
+Nothing is fetched at runtime; see [what is and is not taken](#what-breakstep-takes-from-leetcode-and-what-it-does-not).
 
 **Analyze** — two independent answers to "what is the complexity?":
 
@@ -97,9 +110,13 @@ for, carrying the structure it operates on.
 **Worked examples (15)** — the original catalogue, preserved and still runnable,
 including the DP table and flood-fill templates that fit neither group above.
 
-**LeetCode (24)** — three problems per pattern, each with its prompt restated,
-its published example datasets, ranked technique recommendations, a starter stub
-and a solution. Loaded problems join the picker like any other template.
+**LeetCode (40 written out, 2,990 runnable, 4,023 recognised)** — five problems
+per pattern carry a restated prompt, their published example datasets, ranked
+technique recommendations, a starter stub and a solution. Most of the rest open
+as a generated scaffold: the right signature, the published examples, and a
+driver that runs them. The remainder — premium, design problems, exotic
+signatures — are recognised and recommended for. Loaded problems join the picker
+like any other template.
 
 **Scratch (1)** — a blank canvas with the API cheat sheet.
 
@@ -114,10 +131,14 @@ npm run dev            # http://localhost:5173
 
 ```bash
 npm run build          # typecheck + production bundle into dist/
-npm test               # 1047 unit tests
+npm test               # 1118 unit tests
 npm run smoke          # end-to-end run in a real Chrome
 npm run smoke:python   # …including the Pyodide path (slow: downloads ~10 MB)
 npm run responsive     # 16 device profiles, asserting nothing breaks
+npm run editor:perf    # frame-by-frame editor scroll cost, in a real Chrome
+npm run editor:compare # the app and a bare Monaco, side by side, to scroll by hand
+npm run problems:refresh  # re-vendor the problem index (4,023 problems)
+npm run problems:details  # re-vendor the runnable interfaces and examples
 npm run screenshots    # capture every visualizer to screenshots/
 ```
 
@@ -210,8 +231,15 @@ src/
   components/        panels and the ten visualizers
   leetcode/          the offline problem catalogue
     types.ts           what a problem is: prompt, dataset, techniques, sources
-    catalogue.ts       24 problems, three per pattern
-    recommend.ts       URL → slug, then catalogue lookup or keyword guess
+    catalogue.ts       40 problems, five per pattern, written out in full
+    problemIndex.json  4,023 problems of vendored metadata, loaded on demand
+    problemIndex.ts    decode, look up, and fuzzy-search that index
+    details/           per-problem interface and example cases, sharded
+    details.ts         load one shard at a time, on demand
+    runnable.ts        interface + cases → a typed stub and a working driver
+    synthesize.ts      wrap that as a problem the rest of the app can open
+    topics.ts          LeetCode's topic tags → Breakstep's patterns and structures
+    recommend.ts       URL → slug → catalogue, index, or keyword guess
     toTemplate.ts      wrap a problem as an ordinary template
   templates/
     structures/        the twelve classic structures
@@ -259,14 +287,55 @@ cannot stop inside another class's method of the same name. Constructors are
 instrumented too, including derived ones — the entry hook never touches `this`,
 and `super()` is legal inside the injected `try`.
 
-**LeetCode support is entirely offline.** Breakstep never calls leetcode.com:
-there is no API to call without an account, scraping would break the site's terms,
-and a static site has nowhere to put a proxy. Instead the catalogue is written
-here — prompts restated in our own words, the published example datasets, and
-solutions that the test suite executes and verifies on every build. A pasted URL
-is parsed for its slug and looked up. A slug that is not in the catalogue still
-gets a technique suggested from keywords in its name, and the UI says plainly
-that it is a guess.
+**The editor is treated as a per-frame budget.** Monaco does not hand its
+scrolling to the compositor — it re-renders the visible lines every frame — so
+every editor option is a cost paid sixty or a hundred and twenty times a second.
+`npm run editor:perf` drives real wheel and scrollbar input in Chrome, records a
+DevTools trace, and reports main-thread work per frame; `--throttle 6` simulates
+a slower machine. Measured that way, indentation guides alone were about 45% of
+the editor's scroll-time JavaScript — one absolutely-positioned element per
+indent level per visible line, rebuilt every frame — so they are off, along with
+the per-line scanning for homoglyphs, CSS colours and URLs, code lenses, the
+lightbulb, occurrence highlighting and the scrollbar's gradient overlays. Smooth
+scrolling is off too: it eases every wheel tick over ~125 ms, which reads as lag
+no matter how high the frame rate is. Bracket colouring stays — it costs a
+fraction as much and shows nesting just as well.
+
+The editor's options object is also memoised on the values that actually change
+it. Monaco applies `updateOptions` whenever that object changes identity, and
+that forces a full re-layout, so an unrelated re-render — a debug step, a log
+line — must not be able to reach the editor.
+
+Two of the settings are there for *feel* rather than for the profiler, and both
+match what VS Code ships. `scrollBeyondLastLine` is on: with it off the scroll
+stops dead on the last line, and a quick flick slams into a wall — which reads
+as the editor stalling even though every frame arrived on time.
+`alwaysConsumeMouseWheel` is on: letting unused wheel events escape to the page
+sounds polite, but the files here are short, so you reach the end constantly and
+every one of those events then goes looking for another scroller.
+
+`npm run editor:compare` opens the app next to a bare Monaco with the same
+version, font and file. Numbers only prove the main thread was free; that one is
+for hands and eyes, and it settles whether a rough scroll is ours or Monaco's.
+
+**Monaco's editor padding is done in CSS, not in its options.** `padding.top` is
+not accounted for when Monaco resolves a click in the gutter, so a 12px gap on a
+21px line silently set every breakpoint one line above the one clicked. The gap
+now lives on the wrapper, where it cannot lie about geometry, and the smoke test
+clicks a gutter and checks the debugger stops on that exact line.
+
+**LeetCode support is entirely offline, and it has to be.** Their GraphQL
+endpoint answers unauthenticated requests but sends no CORS headers at all — the
+preflight returns 405 with no `Access-Control-Allow-*` — so a page on any other
+origin simply cannot call it. That is not a policy choice on our side; a static
+site with no backend has no way to fetch any of this at runtime. Everything is
+therefore vendored by hand, by the two scripts under `scripts/`, and committed.
+
+**The colour key lists what the run used, not what the format allows.**
+Auto-traced code only ever marks the current position — the other states come
+from templates that drive the visualizer by hand — so a fixed four-colour key
+described something most runs could not produce. The panel scans the frames and
+keys only the colours it finds.
 
 **Every verdict ships with its evidence.** The static pass is a heuristic and says
 so, with a confidence score and the reasoning that produced it. The empirical
@@ -307,6 +376,41 @@ a real cycle rather than an infinite copy.
 
 ---
 
+## What Breakstep takes from LeetCode, and what it does not
+
+Everything here is public and unauthenticated, and it is all vendored at build
+time by `npm run problems:refresh` and `npm run problems:details` — never fetched
+from a user's browser, which their missing CORS headers make impossible anyway.
+
+**Taken**, because it is data rather than writing:
+
+| | |
+| --- | --- |
+| Catalogue metadata | number, slug, title, difficulty, premium flag, topic tags — for all 4,023 problems |
+| Interface | the function name, its parameter names and types, and the return type |
+| Example cases | the inputs LeetCode publishes, and the answers its statement gives for them |
+
+That is exactly enough to identify a problem, recommend a technique from its real
+tags, generate a correctly typed stub, and run every published example.
+
+**Not taken:**
+
+- **The statement.** The prose is LeetCode's copyrighted writing. Breakstep links
+  to it; it does not copy it. The forty problems in `catalogue.ts` are restated
+  in our own words instead, which is why there are forty and not four thousand.
+- **Constraints.** They live inside the statement, so generated problems do not
+  carry them. Written-out ones do, restated.
+- **Solutions.** There are none to take: the editorial is behind LeetCode
+  Premium, and community solutions are other people's work. Only the forty
+  written-out problems have a solution to reveal, because we wrote them.
+- **Premium problems** (~780 of the 4,023). Nothing about them is published, so
+  they are flagged and left alone.
+
+**Also not generated**, for technical rather than legal reasons: design problems
+— `LRUCache` and friends — drive a class through a list of operations rather than
+calling one function, and a few problems take parameter types with no obvious
+literal form. Those are recognised and recommended for, but not scaffolded.
+
 ## Testing
 
 | Layer                  | What it covers                                                     |
@@ -316,9 +420,10 @@ a real cycle rather than an infinite copy.
 | `components/*.test.tsx`| every visualizer, both layout engines, all panels                  |
 | `hooks/*.test.tsx`     | workspace state machine, persistence, theming                      |
 | `templates/*.test.ts`  | **both faces of every template run, draw, bind their parameters, and measure the complexity they document** |
-| `leetcode/*.test.ts`   | **every catalogue solution runs and reproduces its stated output**  |
+| `leetcode/*.test.ts`   | **every catalogue solution runs and reproduces its stated output**; the generator scaffolds 98% of the vendored problems, and a filled-in stub reproduces LeetCode's published answers |
 | `scripts/smoke.mjs`    | real Chrome: Monaco boots, workers load, Pyodide executes, the debugger steps, a problem reveals |
 | `scripts/responsive.mjs` | 16 device profiles: layout mode, overflow, tap targets, reachability |
+| `scripts/editor-perf.mjs` | editor scrolling: main-thread work per frame, against a 120 fps budget |
 
 Every solution in the LeetCode catalogue is executed by the test suite and its
 output compared, line for line, against the answers the problem statement

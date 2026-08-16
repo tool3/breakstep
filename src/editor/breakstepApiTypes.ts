@@ -7,25 +7,25 @@
  */
 export const BREAKSTEP_API_DTS = `
 /** Highlight states available to \`show\`. */
-type BcsState =
+type BreakstepState =
   | 'default' | 'active' | 'compare' | 'visited'
   | 'match' | 'sorted' | 'muted' | 'error';
 
 /** Force a specific visualizer instead of relying on shape detection. */
-type BcsKind =
+type BreakstepKind =
   | 'array' | 'stack' | 'queue' | 'deque' | 'matrix' | 'linkedList'
   | 'tree' | 'trie' | 'graph' | 'heap' | 'hashmap' | 'callstack' | 'raw';
 
-interface BcsShowOptions {
+interface BreakstepShowOptions {
   /** Caption shown on the timeline and above the canvas. */
   label?: string;
   /** Override shape detection. */
-  as?: BcsKind;
+  as?: BreakstepKind;
   /**
    * Elements to colour. Pass indices for \`active\`, or a map for finer control.
    * Matrices accept \`"row,col"\` keys; graphs and tries accept node ids/prefixes.
    */
-  highlight?: (number | string)[] | Record<string | number, BcsState>;
+  highlight?: (number | string)[] | Record<string | number, BreakstepState>;
   /** Named index markers drawn above the structure, e.g. \`{ lo: 0, hi: 9 }\`. */
   pointers?: Record<string, number>;
   /** Key/value badges shown beside the frame. */
@@ -36,7 +36,7 @@ interface BcsShowOptions {
   directed?: boolean;
 }
 
-interface BcsBenchSpec<T = unknown> {
+interface BreakstepBenchSpec<T = unknown> {
   /** Build an input of size \`n\`. Its cost is excluded from the measurement. */
   input: (n: number) => T;
   /** The code under measurement. */
@@ -45,7 +45,7 @@ interface BcsBenchSpec<T = unknown> {
   sizes?: number[];
 }
 
-interface Bcs {
+interface Breakstep {
   /**
    * Capture a frame. The shape of \`value\` decides the visualizer.
    *
@@ -54,9 +54,9 @@ interface Bcs {
    * options costs more than O(1), so the Analyze tab measures your algorithm
    * rather than your instrumentation.
    */
-  show(value: unknown, options?: BcsShowOptions | (() => BcsShowOptions)): void;
+  show(value: unknown, options?: BreakstepShowOptions | (() => BreakstepShowOptions)): void;
   /** Alias for \`show\`. */
-  viz(value: unknown, options?: BcsShowOptions | (() => BcsShowOptions)): void;
+  viz(value: unknown, options?: BreakstepShowOptions | (() => BreakstepShowOptions)): void;
 
   /** Write a line to the Output panel. \`console.log\` works identically. */
   log(...args: unknown[]): void;
@@ -72,12 +72,12 @@ interface Bcs {
   readonly params: Record<string, unknown>;
 
   /** Register the harness the Analyze tab sweeps across input sizes. */
-  bench<T>(spec: BcsBenchSpec<T>): void;
+  bench<T>(spec: BreakstepBenchSpec<T>): void;
 
   /** Deterministic pseudo-random integers — same seed, same array, every run. */
   randomInts(count: number, max?: number, seed?: number): number[];
 }
 
-declare const breakstep: Bcs;
+declare const breakstep: Breakstep;
 declare const params: Record<string, unknown>;
 `;

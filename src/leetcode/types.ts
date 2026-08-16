@@ -64,6 +64,16 @@ export interface LeetProblem {
   /** LeetCode's own topic tags, used by the recommender for unknown slugs. */
   topics: string[];
 
+  /**
+   * Where this problem came from.
+   *
+   * Absent means written by hand here: restated prompt, chosen datasets, a
+   * solution to reveal. `generated` means assembled from LeetCode's published
+   * interface and example cases — runnable, but with no statement and no
+   * solution, and the UI must not offer either.
+   */
+  origin?: 'generated';
+
   /** The task, restated. Never a copy of the site's wording. */
   prompt: string;
   constraints: string[];
@@ -77,6 +87,13 @@ export interface LeetProblem {
   typescript: ProblemSource;
   python: ProblemSource;
 
-  /** Exactly what the solution prints, in order — the contract the tests check. */
+  /**
+   * Exactly what the TypeScript solution prints, in order.
+   *
+   * The test suite runs the solution and compares against this line for line,
+   * so a problem whose answer quietly stops being correct fails the build. It
+   * tracks the TypeScript output specifically because the two languages format
+   * values differently — Python would quote strings the other way round.
+   */
   expectedOutput: string[];
 }

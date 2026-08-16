@@ -1,6 +1,6 @@
 import { memo, useMemo } from 'react';
 import type { TreeView } from '@/types/viz';
-import { layoutTree } from './layout';
+import { layoutTree, scalable } from './layout';
 import { nodeStateClass } from './Cell';
 import { formatFull, formatValue } from './format';
 import styles from './viz.module.scss';
@@ -24,8 +24,7 @@ export const TreeViz = memo(function TreeViz({ view }: { view: TreeView }) {
       <div className={styles.scrollArea}>
         <svg
           className={styles.svg}
-          width={Math.max(layout.width, 220)}
-          height={Math.max(layout.height, 120)}
+          style={scalable(Math.max(layout.width, 220), Math.max(layout.height, 120))}
           viewBox={`0 0 ${Math.max(layout.width, 220)} ${Math.max(layout.height, 120)}`}
           role="img"
           aria-label={`Tree with ${layout.nodes.length} nodes and depth ${layout.depth + 1}`}

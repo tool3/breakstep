@@ -1,6 +1,6 @@
 import { memo, useMemo } from 'react';
 import type { GraphView } from '@/types/viz';
-import { GRAPH_LAYOUT, layoutGraph, trimToRadius } from './layout';
+import { GRAPH_LAYOUT, layoutGraph, scalable, trimToRadius } from './layout';
 import { nodeStateClass } from './Cell';
 import styles from './viz.module.scss';
 
@@ -41,8 +41,7 @@ export const GraphViz = memo(function GraphViz({ view }: { view: GraphView }) {
       <div className={styles.scrollArea}>
         <svg
           className={styles.svg}
-          width={layout.width}
-          height={layout.height}
+          style={scalable(layout.width, layout.height)}
           viewBox={`0 0 ${layout.width} ${layout.height}`}
           role="img"
           aria-label={`${directed ? 'Directed' : 'Undirected'} graph with ${nodes.length} nodes and ${edges.length} edges`}

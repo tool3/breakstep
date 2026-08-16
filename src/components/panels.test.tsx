@@ -76,10 +76,30 @@ describe('VisualizerPanel', () => {
     expect(screen.getByText('1 / 3')).toBeInTheDocument();
   });
 
-  it('renders a colour legend', () => {
+  it('keys only the colours the run actually uses', () => {
+    // These frames only ever mark the current position, which is all
+    // auto-traced code can produce. Listing four colours under them described
+    // something that could not happen.
     render(<VisualizerPanel frames={frames} status="done" onRun={vi.fn()} />);
     expect(screen.getByText('current')).toBeInTheDocument();
+    expect(screen.queryByText('match / done')).not.toBeInTheDocument();
+    expect(screen.queryByText('comparing')).not.toBeInTheDocument();
+  });
+
+  it('keys the rest as soon as a frame uses them', () => {
+    const marked: Frame[] = [
+      {
+        id: 0,
+        label: 'searching',
+        view: normalize([1, 2, 3], { highlight: { 0: 'compare', 1: 'match', 2: 'visited' } }),
+      },
+    ];
+    render(<VisualizerPanel frames={marked} status="done" onRun={vi.fn()} />);
+    expect(screen.getByText('comparing')).toBeInTheDocument();
     expect(screen.getByText('match / done')).toBeInTheDocument();
+    expect(screen.getByText('visited')).toBeInTheDocument();
+    // And not the one nothing used.
+    expect(screen.queryByText('current')).not.toBeInTheDocument();
   });
 
   it('says it is running while the worker is busy', () => {

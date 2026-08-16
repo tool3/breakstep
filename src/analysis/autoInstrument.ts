@@ -5,9 +5,9 @@
  * code — a `ListNode` class, a `while` loop, no Breakstep API anywhere — and still
  * produce a step-by-step visualization. The rewrite injects three hooks:
  *
- *   __bcs_step(line, () => ({ …locals }))   at the top of every loop body
- *   __bcs_enter(name, line, () => ({ … }))  on function entry
- *   __bcs_exit()                            on function exit, via try/finally
+ *   __breakstep_step(line, () => ({ …locals }))   at the top of every loop body
+ *   __breakstep_enter(name, line, () => ({ … }))  on function entry
+ *   __breakstep_exit()                            on function exit, via try/finally
  *
  * The snapshot is a *thunk*, so during a benchmark sweep (where capture is off)
  * it is never invoked and the measurement stays clean.
@@ -23,9 +23,9 @@ import MagicString from 'magic-string';
 import { parseJs } from './instrument';
 import type { FunctionInfo } from '@/types/debug';
 
-export const STEP_FN = '__bcs_step';
-export const ENTER_FN = '__bcs_enter';
-export const EXIT_FN = '__bcs_exit';
+export const STEP_FN = '__breakstep_step';
+export const ENTER_FN = '__breakstep_enter';
+export const EXIT_FN = '__breakstep_exit';
 
 interface AnyNode {
   type: string;
@@ -117,7 +117,7 @@ function patternNames(node: AnyNode | null | undefined, out: string[] = []): str
 const RESERVED = new Set(['breakstep', 'params', 'console', 'arguments', 'undefined', 'NaN', 'Infinity']);
 
 function isSnapshotable(name: string): boolean {
-  return !RESERVED.has(name) && !name.startsWith('__bcs');
+  return !RESERVED.has(name) && !name.startsWith('__breakstep');
 }
 
 export interface AutoInstrumentOptions {

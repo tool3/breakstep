@@ -333,3 +333,47 @@
     flex: 1;
   }
 }
+
+// --- Structures and unmapped tags -------------------------------------------
+
+.structures {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: $space-2;
+}
+
+.structuresLabel {
+  @include mono(10px);
+  color: var(--breakstep-text-faint);
+}
+
+.unmapped {
+  margin: 0;
+  @include mono(10px);
+  line-height: 1.7;
+  color: var(--breakstep-text-faint);
+}
+
+.leetLink {
+  @include mono(11px);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--breakstep-accent-text);
+  text-decoration: none;
+  align-self: flex-start;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+/** Shown in place of the reveal button for a problem assembled from metadata. */
+.noSolution {
+  @include mono(10px);
+  color: var(--breakstep-text-faint);
+  line-height: 1.6;
+  flex: 1;
+  min-width: 140px;
+}

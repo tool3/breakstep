@@ -333,8 +333,272 @@ ${replacementDriver.python}`,
   expectedOutput: ['example 1 -> 4', 'example 2 -> 4', 'example 3 -> 4'],
 };
 
+
+// --- 209 · Minimum Size Subarray Sum ----------------------------------------
+
+const minSubarrayDriver = {
+  typescript: `
+// --- examples ---------------------------------------------------------------
+console.log('example 1 ->', minSubArrayLen(target, nums));
+console.log('example 2 ->', minSubArrayLen(4, [1, 4, 4]));
+console.log('example 3 ->', minSubArrayLen(11, [1, 1, 1, 1, 1, 1, 1, 1]));
+`,
+  python: `
+# --- examples ---------------------------------------------------------------
+print('example 1 ->', min_sub_array_len(target, nums))
+print('example 2 ->', min_sub_array_len(4, [1, 4, 4]))
+print('example 3 ->', min_sub_array_len(11, [1, 1, 1, 1, 1, 1, 1, 1]))
+`,
+};
+
+export const minimumSizeSubarraySum: LeetProblem = {
+  slug: 'minimum-size-subarray-sum',
+  number: 209,
+  title: 'Minimum Size Subarray Sum',
+  difficulty: 'Medium',
+  topics: ['array', 'binary-search', 'sliding-window', 'prefix-sum'],
+  prompt:
+    'Given an array of positive integers and a target, return the length of the shortest contiguous subarray whose sum is at least the target. Return 0 if no such subarray exists.',
+  constraints: ['1 ≤ target ≤ 10⁹', '1 ≤ nums.length ≤ 10⁵', '1 ≤ nums[i] ≤ 10⁴'],
+  examples: [
+    { input: 'target = 7, nums = [2,3,1,2,4,3]', output: '2', note: '[4,3]' },
+    { input: 'target = 4, nums = [1,4,4]', output: '1' },
+    { input: 'target = 11, nums = [1,1,1,1,1,1,1,1]', output: '0' },
+  ],
+  techniques: [
+    {
+      pattern: 'sliding-window',
+      rank: 1,
+      why: 'All the values are positive, so extending the window can only raise the sum and shrinking it can only lower it. That monotonicity is what lets a single window find the shortest answer: grow until it qualifies, then shrink while it still does.',
+      complexity: { time: 'O(n)', space: 'O(1)' },
+    },
+    {
+      pattern: 'binary-search',
+      rank: 2,
+      why: 'On the prefix-sum array, the shortest window ending at each index can be found by binary search. It is O(n log n) rather than O(n), but it survives the follow-up where the array is fixed and the target changes.',
+      complexity: { time: 'O(n log n)', space: 'O(n)' },
+    },
+  ],
+  params: [
+    { name: 'target', label: 'Target sum', type: 'number', default: 7, min: 1, max: 1000 },
+    { name: 'nums', label: 'Positive numbers', type: 'numberArray', default: [2, 3, 1, 2, 4, 3] },
+  ],
+  typescript: {
+    starter: `const target = 7;
+const nums = [2, 3, 1, 2, 4, 3];
+
+function minSubArrayLen(target: number, nums: number[]): number {
+  // Grow the window until it qualifies, then shrink it while it still does.
+  // TODO
+  return 0;
+}
+${minSubarrayDriver.typescript}`,
+    solution: `const target = 7;
+const nums = [2, 3, 1, 2, 4, 3];
+
+function minSubArrayLen(target: number, nums: number[]): number {
+  let start = 0;
+  let sum = 0;
+  let best = Infinity;
+
+  for (let end = 0; end < nums.length; end++) {
+    sum += nums[end];
+
+    // Every value is positive, so once the window qualifies, shrinking is the
+    // only way it can get shorter — and it stops qualifying the moment it must.
+    while (sum >= target) {
+      best = Math.min(best, end - start + 1);
+      sum -= nums[start];
+      start++;
+    }
+  }
+
+  return best === Infinity ? 0 : best;
+}
+${minSubarrayDriver.typescript}`,
+  },
+  python: {
+    starter: `target = 7
+nums = [2, 3, 1, 2, 4, 3]
+
+
+def min_sub_array_len(target, nums):
+    """Grow the window until it qualifies, then shrink while it still does."""
+    # TODO
+    return 0
+${minSubarrayDriver.python}`,
+    solution: `target = 7
+nums = [2, 3, 1, 2, 4, 3]
+
+
+def min_sub_array_len(target, nums):
+    start = 0
+    total = 0
+    best = float('inf')
+
+    for end, value in enumerate(nums):
+        total += value
+
+        # Every value is positive, so once the window qualifies, shrinking is
+        # the only way it gets shorter - and it stops qualifying when it must.
+        while total >= target:
+            best = min(best, end - start + 1)
+            total -= nums[start]
+            start += 1
+
+    return 0 if best == float('inf') else best
+${minSubarrayDriver.python}`,
+  },
+  expectedOutput: ['example 1 -> 2', 'example 2 -> 1', 'example 3 -> 0'],
+};
+
+// --- 567 · Permutation in String ---------------------------------------------
+
+const permInStringDriver = {
+  typescript: `
+// --- examples ---------------------------------------------------------------
+console.log('example 1 ->', checkInclusion(s1, s2) ? 'true' : 'false');
+console.log('example 2 ->', checkInclusion('ab', 'eidboaoo') ? 'true' : 'false');
+console.log('example 3 ->', checkInclusion('adc', 'dcda') ? 'true' : 'false');
+`,
+  python: `
+# --- examples ---------------------------------------------------------------
+print('example 1 ->', 'true' if check_inclusion(s1, s2) else 'false')
+print('example 2 ->', 'true' if check_inclusion('ab', 'eidboaoo') else 'false')
+print('example 3 ->', 'true' if check_inclusion('adc', 'dcda') else 'false')
+`,
+};
+
+export const permutationInString: LeetProblem = {
+  slug: 'permutation-in-string',
+  number: 567,
+  title: 'Permutation in String',
+  difficulty: 'Medium',
+  topics: ['hash-table', 'two-pointers', 'string', 'sliding-window'],
+  prompt:
+    'Decide whether the second string contains any permutation of the first as a substring — that is, whether some window of s2 uses exactly the same letters, with the same counts, as s1.',
+  constraints: ['1 ≤ s1.length, s2.length ≤ 10⁴', 'Both consist of lowercase English letters'],
+  examples: [
+    { input: 's1 = "ab", s2 = "eidbaooo"', output: 'true', note: 's2 contains "ba"' },
+    { input: 's1 = "ab", s2 = "eidboaoo"', output: 'false' },
+    { input: 's1 = "adc", s2 = "dcda"', output: 'true', note: '"dca"' },
+  ],
+  techniques: [
+    {
+      pattern: 'sliding-window',
+      rank: 1,
+      why: 'A permutation has a fixed length, so the window never changes size — it just slides, adding one letter and dropping another. Keeping a count of how many letters currently match turns each slide into O(1) work instead of a fresh comparison.',
+      complexity: { time: 'O(n)', space: 'O(1)' },
+    },
+  ],
+  params: [
+    { name: 's1', label: 'Pattern', type: 'string', default: 'ab' },
+    { name: 's2', label: 'Text', type: 'string', default: 'eidbaooo' },
+  ],
+  typescript: {
+    starter: `const s1 = 'ab';
+const s2 = 'eidbaooo';
+
+function checkInclusion(s1: string, s2: string): boolean {
+  // A fixed-width window: add one letter, drop one, compare the counts.
+  // TODO
+  return false;
+}
+${permInStringDriver.typescript}`,
+    solution: `const s1 = 'ab';
+const s2 = 'eidbaooo';
+
+function checkInclusion(s1: string, s2: string): boolean {
+  if (s1.length > s2.length) return false;
+
+  const A = 'a'.charCodeAt(0);
+  const need = new Array<number>(26).fill(0);
+  const have = new Array<number>(26).fill(0);
+
+  for (let i = 0; i < s1.length; i++) {
+    need[s1.charCodeAt(i) - A]++;
+    have[s2.charCodeAt(i) - A]++;
+  }
+
+  // How many of the 26 letters currently have exactly the right count.
+  let matches = 0;
+  for (let i = 0; i < 26; i++) if (need[i] === have[i]) matches++;
+
+  for (let end = s1.length; end < s2.length; end++) {
+    if (matches === 26) return true;
+
+    const gained = s2.charCodeAt(end) - A;
+    have[gained]++;
+    if (have[gained] === need[gained]) matches++;
+    else if (have[gained] === need[gained] + 1) matches--;
+
+    const lost = s2.charCodeAt(end - s1.length) - A;
+    have[lost]--;
+    if (have[lost] === need[lost]) matches++;
+    else if (have[lost] === need[lost] - 1) matches--;
+  }
+
+  return matches === 26;
+}
+${permInStringDriver.typescript}`,
+  },
+  python: {
+    starter: `s1 = 'ab'
+s2 = 'eidbaooo'
+
+
+def check_inclusion(s1, s2):
+    """A fixed-width window: add one letter, drop one, compare the counts."""
+    # TODO
+    return False
+${permInStringDriver.python}`,
+    solution: `s1 = 'ab'
+s2 = 'eidbaooo'
+
+
+def check_inclusion(s1, s2):
+    if len(s1) > len(s2):
+        return False
+
+    a = ord('a')
+    need = [0] * 26
+    have = [0] * 26
+
+    for i in range(len(s1)):
+        need[ord(s1[i]) - a] += 1
+        have[ord(s2[i]) - a] += 1
+
+    # How many of the 26 letters currently have exactly the right count.
+    matches = sum(1 for i in range(26) if need[i] == have[i])
+
+    for end in range(len(s1), len(s2)):
+        if matches == 26:
+            return True
+
+        gained = ord(s2[end]) - a
+        have[gained] += 1
+        if have[gained] == need[gained]:
+            matches += 1
+        elif have[gained] == need[gained] + 1:
+            matches -= 1
+
+        lost = ord(s2[end - len(s1)]) - a
+        have[lost] -= 1
+        if have[lost] == need[lost]:
+            matches += 1
+        elif have[lost] == need[lost] - 1:
+            matches -= 1
+
+    return matches == 26
+${permInStringDriver.python}`,
+  },
+  expectedOutput: ['example 1 -> true', 'example 2 -> false', 'example 3 -> true'],
+};
+
 export const SLIDING_WINDOW_PROBLEMS = [
   longestUniqueSubstring,
   bestTimeToBuyAndSellStock,
   longestRepeatingReplacement,
+  minimumSizeSubarraySum,
+  permutationInString,
 ];

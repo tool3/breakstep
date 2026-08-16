@@ -1,6 +1,6 @@
 import { memo, useMemo } from 'react';
 import type { TrieView } from '@/types/viz';
-import { layoutTree, trieToTreeNode } from './layout';
+import { layoutTree, scalable, trieToTreeNode } from './layout';
 import { nodeStateClass } from './Cell';
 import styles from './viz.module.scss';
 
@@ -40,8 +40,7 @@ export const TrieViz = memo(function TrieViz({ view }: { view: TrieView }) {
       <div className={styles.scrollArea}>
         <svg
           className={styles.svg}
-          width={Math.max(layout.width, 220)}
-          height={Math.max(layout.height, 120)}
+          style={scalable(Math.max(layout.width, 220), Math.max(layout.height, 120))}
           viewBox={`0 0 ${Math.max(layout.width, 220)} ${Math.max(layout.height, 120)}`}
           role="img"
           aria-label={`Trie with ${layout.nodes.length - 1} characters and ${terminals.size} complete words`}
@@ -81,7 +80,7 @@ export const TrieViz = memo(function TrieViz({ view }: { view: TrieView }) {
             className={styles.legendSwatch}
             style={{ borderRadius: '50%', borderColor: 'var(--breakstep-mint)', borderWidth: 2 }}
           />
-          double ring = a complete word ends here
+           = a complete word ends here
         </span>
         <span className={styles.legendItem}>
           {terminals.size} word{terminals.size === 1 ? '' : 's'} · {layout.nodes.length - 1} nodes

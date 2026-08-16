@@ -14,7 +14,7 @@ import { parse } from 'acorn';
 import MagicString from 'magic-string';
 import type { Node } from 'acorn';
 
-export const OP_FN = '__bcs_op';
+export const OP_FN = '__breakstep_op';
 
 /** Name of the guard the runner installs in worker scope. */
 export const OP_LIMIT_MESSAGE = 'Operation limit exceeded — is there an infinite loop?';
@@ -126,17 +126,17 @@ function injectIntoBody(s: MagicString, body: AnyNode | undefined, call: string)
  */
 export function counterPreamble(limit: number): string {
   return [
-    `let __bcs_ops = 0;`,
-    `const __bcs_limit = ${limit};`,
+    `let __breakstep_ops = 0;`,
+    `const __breakstep_limit = ${limit};`,
     `function ${OP_FN}() {`,
-    `  if (++__bcs_ops > __bcs_limit) {`,
+    `  if (++__breakstep_ops > __breakstep_limit) {`,
     `    const e = new Error(${JSON.stringify(OP_LIMIT_MESSAGE)});`,
-    `    e.name = 'BcsOperationLimit';`,
+    `    e.name = 'BreakstepOperationLimit';`,
     `    throw e;`,
     `  }`,
     `}`,
     `globalThis.${OP_FN} = ${OP_FN};`,
-    `globalThis.__bcs_readOps = () => __bcs_ops;`,
-    `globalThis.__bcs_resetOps = () => { __bcs_ops = 0; };`,
+    `globalThis.__breakstep_readOps = () => __breakstep_ops;`,
+    `globalThis.__breakstep_resetOps = () => { __breakstep_ops = 0; };`,
   ].join('\n');
 }

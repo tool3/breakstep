@@ -1,4 +1,6 @@
 import { getProblem } from './catalogue';
+import { readTopics, tagLabel } from './topics';
+import type { IndexedProblem, ProblemIndex } from './problemIndex';
 import type { LeetProblem, PatternId, Technique } from './types';
 
 /**
@@ -70,10 +72,11 @@ const HEURISTIC_WHY: Record<PatternId, string> = {
 };
 
 /**
- * Guess techniques for a problem the catalogue does not have.
+ * Guess techniques from the slug alone.
  *
- * Deliberately keyword-based rather than clever: it is transparent, it needs no
- * network call, and the UI is explicit that it is a guess.
+ * Only used when the index has not loaded or does not know the problem.
+ * Deliberately keyword-based: transparent, instant, and the UI says it is a
+ * guess rather than dressing it up as knowledge.
  */
 export function guessTechniques(slug: string): Technique[] {
   const scores = new Map<PatternId, number>();
@@ -96,19 +99,53 @@ export function guessTechniques(slug: string): Technique[] {
   }));
 }
 
+/** Techniques derived from LeetCode's own tags — the good path. */
+export function techniquesFromTopics(topics: string[]): Technique[] {
+  const { ranked } = readTopics(topics);
+
+  return ranked.map((entry, index) => ({
+    pattern: entry.pattern,
+    rank: index + 1,
+    why:
+      entry.from.length === 1
+        ? `LeetCode tags this problem ${tagLabel(entry.from[0])}.`
+        : `LeetCode tags this problem ${entry.from.map(tagLabel).join(', ')}.`,
+    complexity: { time: 'unknown' as const, space: 'unknown' as const },
+  }));
+}
+
 export interface Recommendation {
   /** Exactly what the user pasted, kept so the UI can show it back. */
   input: string;
   slug: string | null;
-  /** Set when the slug is in the catalogue — the full problem, dataset and all. */
+  /** Set when the slug is in the written catalogue — dataset, solution and all. */
   problem?: LeetProblem;
+  /** Set when the slug is in the full index — title, difficulty, real tags. */
+  indexed?: IndexedProblem;
   techniques: Technique[];
-  source: 'catalogue' | 'guess' | 'unrecognised';
+  /** Structure templates the problem's tags point at. */
+  structures: string[];
+  /** Tags Breakstep has no template for, named rather than quietly dropped. */
+  unmapped: string[];
+  source: 'catalogue' | 'indexed' | 'guess' | 'unrecognised';
   /** One line explaining what the user is looking at. */
   note: string;
+  /** Close slugs to offer when nothing matched exactly. */
+  suggestions: IndexedProblem[];
 }
 
-export function recommend(input: string): Recommendation {
+const EMPTY = { structures: [] as string[], unmapped: [] as string[], suggestions: [] as IndexedProblem[] };
+
+/**
+ * What Breakstep knows about a pasted problem.
+ *
+ * Three tiers, and the UI is explicit about which one you got:
+ *  - **catalogue** — written here: prompt, datasets, starter and solution.
+ *  - **indexed** — one of the four thousand problems in the public index: real
+ *    title, difficulty and topic tags, so the technique advice is grounded.
+ *  - **guess** — not in either, so the slug is all there is to go on.
+ */
+export function recommend(input: string, index?: ProblemIndex | null): Recommendation {
   const slug = parseSlug(input);
 
   if (!slug) {
@@ -118,18 +155,44 @@ export function recommend(input: string): Recommendation {
       techniques: [],
       source: 'unrecognised',
       note: 'That does not look like a LeetCode problem link. Paste something like https://leetcode.com/problems/two-sum/.',
+      ...EMPTY,
     };
   }
 
+  const indexed = index?.get(slug);
   const problem = getProblem(slug);
+
   if (problem) {
+    const topics = readTopics(indexed?.topics ?? problem.topics);
     return {
       input,
       slug,
       problem,
+      indexed,
       techniques: [...problem.techniques].sort((a, b) => a.rank - b.rank),
+      structures: topics.structures,
+      unmapped: topics.unmapped,
       source: 'catalogue',
-      note: 'In the catalogue — full problem, the example datasets, and a solution you can reveal.',
+      note: 'Written out in full here — the problem, its example datasets, and a solution you can reveal.',
+      suggestions: [],
+    };
+  }
+
+  if (indexed) {
+    const topics = readTopics(indexed.topics);
+    const fromTags = techniquesFromTopics(indexed.topics);
+    return {
+      input,
+      slug,
+      indexed,
+      techniques: fromTags.length > 0 ? fromTags : guessTechniques(slug),
+      structures: topics.structures,
+      unmapped: topics.unmapped,
+      source: 'indexed',
+      note: indexed.paidOnly
+        ? 'A LeetCode Premium problem: the statement is behind their paywall, but the technique advice below comes from its published tags.'
+        : 'Breakstep knows this problem but does not carry its statement — read it on LeetCode, then bring the technique back here.',
+      suggestions: [],
     };
   }
 
@@ -138,9 +201,12 @@ export function recommend(input: string): Recommendation {
     input,
     slug,
     techniques: guessed,
+    structures: [],
+    unmapped: [],
     source: 'guess',
     note: guessed.length
-      ? 'Not in the offline catalogue, so this is inferred from the problem name — open the pattern to study the technique.'
-      : 'Not in the offline catalogue, and the name gives nothing away. Browse the patterns below and pick the one that fits the shape of the input.',
+      ? 'Not a slug Breakstep recognises, so this is inferred from the name alone — treat it as a hint, not an answer.'
+      : 'Not a slug Breakstep recognises, and the name gives nothing away. Browse the patterns below and pick the one that fits the shape of the input.',
+    suggestions: index?.search(slug) ?? [],
   };
 }

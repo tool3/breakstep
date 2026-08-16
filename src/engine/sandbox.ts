@@ -185,7 +185,7 @@ function createHarness(params: ParamValues, options: SandboxOptions, startedAt: 
   const countOp = () => {
     if (++ops > options.opLimit) {
       const e = new Error(OP_LIMIT_MESSAGE);
-      e.name = 'BcsOperationLimit';
+      e.name = 'BreakstepOperationLimit';
       throw e;
     }
   };
@@ -352,11 +352,11 @@ export async function runInSandbox(
     compiled = new AsyncFunction(
       'breakstep',
       'params',
-      '__bcs_op',
+      '__breakstep_op',
       'console',
-      '__bcs_step',
-      '__bcs_enter',
-      '__bcs_exit',
+      '__breakstep_step',
+      '__breakstep_enter',
+      '__breakstep_exit',
       `"use strict";\n${instrumented}`,
     );
   } catch (err) {
@@ -463,11 +463,11 @@ export async function benchInSandbox(
     compiled = new AsyncFunction(
       'breakstep',
       'params',
-      '__bcs_op',
+      '__breakstep_op',
       'console',
-      '__bcs_step',
-      '__bcs_enter',
-      '__bcs_exit',
+      '__breakstep_step',
+      '__breakstep_enter',
+      '__breakstep_exit',
       `"use strict";\n${instrumented}`,
     );
     await compiled(h.breakstep, params, h.countOp, silentConsole, h.step, h.enter, h.exit);
