@@ -171,9 +171,11 @@ print("search(" + str(searchFor) + "):", search(root, searchFor))
   bench: {
     typescript: `breakstep.bench({
   input: (n) => {
-    const src = shape === 'sorted'
-      ? Array.from({ length: n }, (_, i) => i)
-      : breakstep.randomInts(n, n * 4, 11);
+    // Keyed by the option: sorted input degenerates the tree into a list.
+    const src = {
+      sorted: () => Array.from({ length: n }, (_, i) => i),
+      random: () => breakstep.randomInts(n, n * 4, 11),
+    }[shape]();
     let tree: TreeNode | null = null;
     for (const v of src) tree = insert(tree, v);
     return tree;

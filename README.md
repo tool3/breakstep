@@ -378,6 +378,18 @@ changed — and pointers and index labels come and go. Each one is now a column
 with the same structure as a node: empty pointer row, empty pointer arrow, a
 body exactly a cell high, empty index line.
 
+**Templates are type-checked in the suite.** Monaco reports errors in the
+editor, where nobody was looking, so a handful of templates shipped with red
+squiggles in them — the reader cannot tell our mistake from theirs.
+`typecheck.test.ts` compiles every template, in both modes, with and without the
+appended harness, plus both sources of every problem, using the same compiler
+options and the same ambient `breakstep` types the editor gets. What it caught
+was worth having: a top-level `const top` shadowing `window.top` (and `length`
+shadowing `window.length`), and select parameters whose comparisons TypeScript
+called unreachable, because it narrows a `const` by control flow no matter how
+the type is annotated. The fix for those was to dispatch through a table keyed
+by the option instead of comparing — correct, and the better shape.
+
 **Every verdict ships with its evidence.** The static pass is a heuristic and says
 so, with a confidence score and the reasoning that produced it. The empirical
 sweep is there to check its homework.
@@ -465,6 +477,7 @@ literal form. Those are recognised and recommended for, but not scaffolded.
 | `scripts/smoke.mjs`    | real Chrome: Monaco boots, workers load, Pyodide executes, the debugger steps, a problem reveals |
 | `scripts/responsive.mjs` | 16 device profiles: layout mode, overflow, tap targets, reachability |
 | `scripts/editor-perf.mjs` | editor scrolling: main-thread work per frame, against a 120 fps budget |
+| `templates/typecheck.test.ts` | **every template and problem compiles clean**, with the editor's own options |
 
 Every solution in the LeetCode catalogue is executed by the test suite and its
 output compared, line for line, against the answers the problem statement
@@ -522,7 +535,27 @@ it automatically.
 
 ## Themes
 
-Three, switchable from the header: **Midnight** (default, near-black neutral),
-**Slate** (the original cooler blue-tinted dark) and **Light**. Every colour comes
+Three, switchable from the header: **Graphite** (default), **Midnight** and
+**Light**.
+
+Graphite is the one built for reading: a charcoal page with lighter panels on
+top, borders you can actually see, and near-white text softened just enough to
+take the glare off — deliberately close to the palette LeetCode uses, because
+that palette stays legible for hours. Its editor uses the Dark+ token colours
+rather than this app's accents, so code reads the way it does in every other
+editor. Midnight, the old default, is still there: near-black photographs better
+than it reads, and some people want that.
+
+Graphite also splits an object from what is read off it — `trie` in one colour,
+`size` in another, and a call like `insert(…)` in a third. Monaco's TypeScript
+grammar emits `identifier` for both halves, and the type-aware answer, semantic
+tokens, is not available: the worker keeps `getEncodedSemanticClassifications`
+to itself. The distinction is therefore lexical — a name straight after a dot is
+a member, a member straight before a `(` is a call — which is enough for the
+distinction worth having, and knows nothing of a function stored in a property.
+Midnight and Light map those tokens back onto their ordinary identifier colour,
+so only Graphite reads differently for now.
+
+Every colour comes
 from a token in `src/styles/global.scss`, and Monaco has a matching theme for
 each.

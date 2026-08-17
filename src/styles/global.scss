@@ -1,17 +1,64 @@
 /**
  * Theme tokens and global resets.
  *
- * Three themes, selected by `data-theme` on <html>: `midnight` (default,
- * near-black neutral), `slate` (cooler and blue-tinted) and `light`. Every
- * colour any component uses comes from a token defined here, which is what
- * keeps them from drifting apart as the app grows.
+ * Three themes, selected by `data-theme` on <html>: `graphite` (default, a
+ * softer charcoal), `midnight` (near-black neutral) and `light`. Every colour
+ * any component uses comes from a token defined here, which is what keeps them
+ * from drifting apart as the app grows.
  */
 
 /**
- * Midnight — the default. Near-black neutral greys with no blue cast, so the
- * accent colours in the visualizers are the only chroma on screen.
+ * Graphite — the default, and the one built for reading.
+ *
+ * A charcoal page with lighter panels sitting on top of it, borders you can
+ * actually see, and near-white text softened just enough to take the glare off.
+ * Deliberately close to the palette LeetCode uses, because that palette is
+ * legible for hours; near-black photographs better than it reads.
  */
 :root,
+:root[data-theme='graphite'] {
+  --breakstep-bg: #1a1a1a;
+  --breakstep-bg-deep: #141414;
+  --breakstep-panel: #282828;
+  --breakstep-panel-alt: #303030;
+  --breakstep-elevated: #373737;
+  --breakstep-border: #3e3e3e;
+  --breakstep-border-strong: #4f4f4f;
+
+  // Softened rather than pure white: #ffffff on charcoal glares, and the
+  // difference between the three weights is what carries the hierarchy.
+  --breakstep-text: #eff1f6;
+  --breakstep-text-dim: #{rgba(#eff1f6, 0.66)};
+  --breakstep-text-faint: #{rgba(#eff1f6, 0.42)};
+
+  // Brighter and cleaner than the link blue this palette uses for text: at
+  // this size the accent is mostly thin strokes — a slider track, a 1px cell
+  // border — and a mid-tone blue on charcoal reads as washed out rather than
+  // deliberate.
+  --breakstep-accent: #58a6ff;
+  --breakstep-accent-soft: #{rgba(#58a6ff, 0.18)};
+  --breakstep-accent-text: #79c0ff;
+
+  // The difficulty colours, which is where this palette is most recognisable.
+  --breakstep-mint: #2cbb5d;
+  --breakstep-mint-soft: #{rgba(#2cbb5d, 0.16)};
+  --breakstep-amber: #ffb800;
+  --breakstep-amber-soft: #{rgba(#ffb800, 0.16)};
+  --breakstep-violet: #b48ef2;
+  --breakstep-violet-soft: #{rgba(#b48ef2, 0.16)};
+  --breakstep-red: #ef4743;
+  --breakstep-red-soft: #{rgba(#ef4743, 0.16)};
+
+  --breakstep-shadow: 0 12px 34px #{rgba(#000, 0.45)};
+  --breakstep-grid-line: #{rgba(#eff1f6, 0.08)};
+
+  color-scheme: dark;
+}
+
+/**
+ * Midnight — near-black neutral greys with no blue cast, so the accent colours
+ * in the visualizers are the only chroma on screen.
+ */
 :root[data-theme='midnight'] {
   --breakstep-bg: #08090b;
   --breakstep-bg-deep: #030304;
@@ -40,39 +87,6 @@
 
   --breakstep-shadow: 0 12px 34px #{rgba(#000, 0.6)};
   --breakstep-grid-line: #{rgba(#8e96a6, 0.07)};
-
-  color-scheme: dark;
-}
-
-/** Slate — the original cooler, blue-tinted dark. */
-:root[data-theme='slate'] {
-  --breakstep-bg: #0b0e14;
-  --breakstep-bg-deep: #070a0f;
-  --breakstep-panel: #11151d;
-  --breakstep-panel-alt: #151a24;
-  --breakstep-elevated: #1a2029;
-  --breakstep-border: #222834;
-  --breakstep-border-strong: #2f3745;
-
-  --breakstep-text: #d8dee9;
-  --breakstep-text-dim: #98a2b3;
-  --breakstep-text-faint: #626d80;
-
-  --breakstep-accent: #5b8cff;
-  --breakstep-accent-soft: #{rgba(#5b8cff, 0.14)};
-  --breakstep-accent-text: #8fb2ff;
-
-  --breakstep-mint: #39d3a0;
-  --breakstep-mint-soft: #{rgba(#39d3a0, 0.14)};
-  --breakstep-amber: #f0a13a;
-  --breakstep-amber-soft: #{rgba(#f0a13a, 0.15)};
-  --breakstep-violet: #a97bff;
-  --breakstep-violet-soft: #{rgba(#a97bff, 0.15)};
-  --breakstep-red: #f2555a;
-  --breakstep-red-soft: #{rgba(#f2555a, 0.15)};
-
-  --breakstep-shadow: 0 10px 30px #{rgba(#000, 0.45)};
-  --breakstep-grid-line: #{rgba(#5b8cff, 0.06)};
 
   color-scheme: dark;
 }

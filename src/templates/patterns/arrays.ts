@@ -291,8 +291,8 @@ function maxSum(nums: number[], k: number): number {
   return best;
 }
 
-const { length, start } = longestUnique(text);
-console.log('longest unique ->', text.slice(start, start + length), '(length', length + ')');
+const { length: width, start } = longestUnique(text);
+console.log('longest unique ->', text.slice(start, start + width), '(length', width + ')');
 console.log('starts at index ->', start);
 console.log('max sum of any 3 in [1,9,2,8,3] ->', maxSum([1, 9, 2, 8, 3], 3));
 `,
@@ -414,8 +414,8 @@ function longestUnique(s: string[]): { length: number; start: number } {
   return { length: best, start: bestStart };
 }
 
-const { length, start } = longestUnique(chars);
-breakstep.log('longest ->', text.slice(start, start + length), '→', length);
+const { length: width, start } = longestUnique(chars);
+breakstep.log('longest ->', text.slice(start, start + width), '→', width);
 
 breakstep.bench({
   input: (n) => breakstep.randomInts(n, 26).map((v) => String.fromCharCode(97 + v)),
@@ -848,7 +848,8 @@ function mergeSort(a: number[]): number[] {
 }
 
 const source = data.slice(0, size);
-const sorted = algorithm === 'bubble' ? bubbleSort(source) : mergeSort(source);
+// Keyed by the option, so switching it cannot go stale or mistype.
+const sorted = { merge: mergeSort, bubble: bubbleSort }[algorithm](source);
 
 console.log('input  ->', source.join(', '));
 console.log(algorithm + ' ->', sorted.join(', '));
@@ -932,8 +933,9 @@ print("best case for bubble (already sorted) ->",
   bench: {
     typescript: `breakstep.bench({
   input: (n) => breakstep.randomInts(n, 1000, 3),
-  run: (arr: number[]) => (algorithm === 'bubble' ? bubbleSort(arr) : mergeSort(arr)),
-  sizes: algorithm === 'bubble' ? [16, 32, 64, 128, 256, 512] : [16, 64, 256, 1024, 4096, 16384],
+  run: (arr: number[]) => ({ merge: mergeSort, bubble: bubbleSort })[algorithm](arr),
+  // Bubble sort is quadratic, so it needs a shorter sweep to finish.
+  sizes: { merge: [16, 64, 256, 1024, 4096, 16384], bubble: [16, 32, 64, 128, 256, 512] }[algorithm],
 });
 `,
     python: `breakstep.bench(
@@ -947,7 +949,7 @@ print("best case for bubble (already sorted) ->",
     typescript: `// Sorting — the same solutions, drawn explicitly.
 
 const size = breakstep.param<number>('size', 14);
-const algorithm = breakstep.param<string>('algorithm', 'merge');
+const algorithm = breakstep.param<'merge' | 'bubble'>('algorithm', 'merge');
 const data = breakstep.randomInts(size, 99, 7);
 
 function sortedTail(len: number, done: number): Record<number, 'sorted'> {
@@ -1010,8 +1012,9 @@ breakstep.log(algorithm, '->', sorted.join(', '));
 
 breakstep.bench({
   input: (n) => breakstep.randomInts(n, 1000, 3),
-  run: (arr: number[]) => (algorithm === 'bubble' ? bubbleSort(arr) : mergeSort(arr)),
-  sizes: algorithm === 'bubble' ? [16, 32, 64, 128, 256, 512] : [16, 64, 256, 1024, 4096, 16384],
+  run: (arr: number[]) => ({ merge: mergeSort, bubble: bubbleSort })[algorithm](arr),
+  // Bubble sort is quadratic, so it needs a shorter sweep to finish.
+  sizes: { merge: [16, 64, 256, 1024, 4096, 16384], bubble: [16, 32, 64, 128, 256, 512] }[algorithm],
 });
 `,
     python: `# Sorting - the same solutions, drawn explicitly.

@@ -88,18 +88,18 @@ describe('useLocalStorage', () => {
 describe('useTheme', () => {
   it('defaults to midnight and writes the document attribute', () => {
     const { result } = renderHook(() => useTheme());
-    expect(result.current.theme).toBe('midnight');
+    expect(result.current.theme).toBe('graphite');
     expect(result.current.isDark).toBe(true);
-    expect(document.documentElement.dataset.theme).toBe('midnight');
+    expect(document.documentElement.dataset.theme).toBe('graphite');
   });
 
   it('selects any of the shipped themes', () => {
     const { result } = renderHook(() => useTheme());
-    act(() => result.current.setTheme('slate'));
-    expect(result.current.theme).toBe('slate');
+    act(() => result.current.setTheme('midnight'));
+    expect(result.current.theme).toBe('midnight');
     expect(result.current.isDark).toBe(true);
-    expect(document.documentElement.dataset.theme).toBe('slate');
-    expect(readStored('theme', 'midnight')).toBe('slate');
+    expect(document.documentElement.dataset.theme).toBe('midnight');
+    expect(readStored('theme', 'graphite')).toBe('midnight');
   });
 
   it('toggles between the dark default and light', () => {
@@ -108,13 +108,15 @@ describe('useTheme', () => {
     expect(result.current.theme).toBe('light');
     expect(result.current.isDark).toBe(false);
     act(() => result.current.toggle());
-    expect(result.current.theme).toBe('midnight');
+    expect(result.current.theme).toBe('graphite');
   });
 
-  it('migrates the old "dark" value onto slate', () => {
-    writeStored('theme', 'dark');
+  it.each(['dark', 'slate'])('falls back to the default for a retired theme (%s)', (stored) => {
+    // 'dark' came from an early build; 'slate' was replaced by Graphite. Either
+    // one left in storage must not leave the app with no tokens.
+    writeStored('theme', stored);
     const { result } = renderHook(() => useTheme());
-    expect(result.current.theme).toBe('slate');
+    expect(result.current.theme).toBe('graphite');
   });
 
   it('keeps a theme colour for every entry', () => {

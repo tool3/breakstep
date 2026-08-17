@@ -494,10 +494,10 @@ for (const value of values) heap.push(value);
 console.log('backing array ->', heap.items.join(', '));
 console.log('peek()        ->', heap.peek());
 
-const top: number[] = [];
-for (let i = 0; i < Math.min(k, values.length); i++) top.push(heap.pop()!);
+const largest: number[] = [];
+for (let i = 0; i < Math.min(k, values.length); i++) largest.push(heap.pop()!);
 
-console.log(k + ' largest ->', top.join(', '));
+console.log(k + ' largest ->', largest.join(', '));
 console.log('still in the heap ->', heap.size(), 'elements, never sorted');
 `,
     python: `# Binary max-heap.
@@ -684,9 +684,9 @@ class MaxHeap {
 const heap = new MaxHeap();
 for (const value of values) heap.push(value);
 
-const top: number[] = [];
-for (let i = 0; i < Math.min(k, values.length); i++) top.push(heap.pop()!);
-breakstep.log(k + ' largest ->', top.join(', '));
+const largest: number[] = [];
+for (let i = 0; i < Math.min(k, values.length); i++) largest.push(heap.pop()!);
+breakstep.log(k + ' largest ->', largest.join(', '));
 
 breakstep.bench({
   input: (n) => breakstep.randomInts(n, 100000, 6),

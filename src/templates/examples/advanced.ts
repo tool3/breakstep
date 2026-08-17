@@ -82,7 +82,8 @@ function permutations(nums: number[]): number[][] {
   return out;
 }
 
-const results = mode === 'permutations' ? permutations(items) : subsets(items);
+// Keyed by the option, so switching it cannot go stale or mistype.
+const results = { subsets, permutations }[mode](items);
 
 console.log(results.length, mode, 'of', items.join(', '));
 console.log(results.slice(0, 12).map((r) => '[' + r.join(',') + ']').join('  '));
@@ -154,9 +155,10 @@ print("  ".join(str(r) for r in results[:12]))
   bench: {
     typescript: `breakstep.bench({
   input: (size) => Array.from({ length: size }, (_, i) => i),
-  run: (arr) => (mode === 'permutations' ? permutations(arr as number[]) : subsets(arr as number[])),
+  run: (arr) => ({ subsets, permutations })[mode](arr as number[]),
   // Exponential growth: n is the SET SIZE here, not an array length.
-  sizes: mode === 'permutations' ? [2, 3, 4, 5, 6, 7, 8] : [2, 4, 6, 8, 10, 12, 14, 16],
+  // n! outruns 2^n fast, so permutations get the shorter sweep.
+  sizes: { subsets: [2, 4, 6, 8, 10, 12, 14, 16], permutations: [2, 3, 4, 5, 6, 7, 8] }[mode],
 });
 `,
     python: `breakstep.bench(
@@ -176,7 +178,7 @@ print("  ".join(str(r) for r in results[:12]))
 // why the space cost is linear while the time cost explodes.
 
 const n = breakstep.param<number>('n', 4);
-const mode = breakstep.param<string>('mode', 'subsets');
+const mode = breakstep.param<'subsets' | 'permutations'>('mode', 'subsets');
 const items = Array.from({ length: n }, (_, i) => i + 1);
 
 function subsets(nums: number[]): number[][] {
@@ -247,7 +249,8 @@ function permutations(nums: number[]): number[][] {
   return out;
 }
 
-const results = mode === 'permutations' ? permutations(items) : subsets(items);
+// Keyed by the option, so switching it cannot go stale or mistype.
+const results = { subsets, permutations }[mode](items);
 
 breakstep.show([], { as: 'callstack', label: 'Stack unwound — done' });
 breakstep.log(\`\${results.length} \${mode} of [\${items.join(', ')}]\`);
@@ -257,9 +260,10 @@ breakstep.log(mode === 'permutations' ? \`n! = \${results.length}\` : \`2^n = \$
 
 breakstep.bench({
   input: (size) => Array.from({ length: size }, (_, i) => i),
-  run: (arr) => (mode === 'permutations' ? permutations(arr as number[]) : subsets(arr as number[])),
+  run: (arr) => ({ subsets, permutations })[mode](arr as number[]),
   // Exponential growth: n is the SET SIZE here, not an array length.
-  sizes: mode === 'permutations' ? [2, 3, 4, 5, 6, 7, 8] : [2, 4, 6, 8, 10, 12, 14, 16],
+  // n! outruns 2^n fast, so permutations get the shorter sweep.
+  sizes: { subsets: [2, 4, 6, 8, 10, 12, 14, 16], permutations: [2, 3, 4, 5, 6, 7, 8] }[mode],
 });
 `,
     python: `# Backtracking - choose, explore, un-choose.
@@ -407,8 +411,8 @@ function lcs(s1: string, s2: string): { length: number; sequence: string } {
   return { length: dp[n][m], sequence: chars.reverse().join('') };
 }
 
-const { length, sequence } = lcs(a, b);
-console.log('LCS:', sequence, '(length ' + length + ')');
+const { length: lcsLength, sequence } = lcs(a, b);
+console.log('LCS:', sequence, '(length ' + lcsLength + ')');
 console.log('table cells filled:', (a.length + 1) * (b.length + 1));
 `,
     python: `# Longest Common Subsequence via a DP table.
@@ -543,8 +547,8 @@ function lcs(s1: string, s2: string): { length: number; sequence: string } {
   return { length: dp[n][m], sequence: chars.reverse().join('') };
 }
 
-const { length, sequence } = lcs(a, b);
-breakstep.log(\`LCS("\${a}", "\${b}") = "\${sequence}" (length \${length})\`);
+const { length: lcsLength, sequence } = lcs(a, b);
+breakstep.log(\`LCS("\${a}", "\${b}") = "\${sequence}" (length \${lcsLength})\`);
 breakstep.log('table cells filled:', (a.length + 1) * (b.length + 1));
 
 breakstep.bench({

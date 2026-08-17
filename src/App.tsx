@@ -32,7 +32,7 @@ import { useWorkspace } from './hooks/useWorkspace';
 import { useDebugger } from './hooks/useDebugger';
 import { listFunctions } from './analysis/functions';
 import type { LeetProblem } from './leetcode/types';
-import { useTheme } from './hooks/useTheme';
+import { themeDefinition, useTheme, type ThemeName } from './hooks/useTheme';
 import { useLayout } from './hooks/useLayout';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import styles from './App.module.scss';
@@ -48,24 +48,33 @@ const EditorPanel = lazy(() =>
   import('./components/EditorPanel').then((m) => ({ default: m.EditorPanel })),
 );
 
-/** antd tokens mapped onto the Breakstep palette so the two never drift apart. */
-function useAntdTheme(isDark: boolean, coarsePointer: boolean) {
-  return useMemo(
-    () => ({
-      algorithm: isDark ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
+/**
+ * antd tokens mapped onto the Breakstep palette so the two never drift apart.
+ *
+ * Taken from the active theme rather than from a light/dark boolean: antd
+ * renders into portals — dropdowns, tooltips, drawers — and with one hardcoded
+ * dark palette those surfaces belonged to whichever theme the numbers were
+ * copied from, not the one on screen.
+ */
+function useAntdTheme(theme: ThemeName, coarsePointer: boolean) {
+  return useMemo(() => {
+    const { dark, antd } = themeDefinition(theme);
+
+    return {
+      algorithm: dark ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
       token: {
-        colorPrimary: isDark ? '#5b8cff' : '#2f6bea',
-        colorSuccess: isDark ? '#39d3a0' : '#0f9d6f',
-        colorWarning: isDark ? '#f0a13a' : '#c47c14',
-        colorError: isDark ? '#f2555a' : '#d13b41',
-        colorBgBase: isDark ? '#0b0e14' : '#f6f7f9',
-        colorBgContainer: isDark ? '#11151d' : '#ffffff',
-        colorBgElevated: isDark ? '#1a2029' : '#ffffff',
-        colorBorder: isDark ? '#222834' : '#e0e4ea',
-        colorBorderSecondary: isDark ? '#1b202a' : '#eceef2',
-        colorText: isDark ? '#d8dee9' : '#1c2430',
-        colorTextSecondary: isDark ? '#98a2b3' : '#5a6675',
-        colorTextTertiary: isDark ? '#626d80' : '#8b95a5',
+        colorPrimary: antd.primary,
+        colorSuccess: antd.success,
+        colorWarning: antd.warning,
+        colorError: antd.error,
+        colorBgBase: antd.bg,
+        colorBgContainer: antd.container,
+        colorBgElevated: antd.elevated,
+        colorBorder: antd.border,
+        colorBorderSecondary: antd.borderSecondary,
+        colorText: antd.text,
+        colorTextSecondary: antd.textSecondary,
+        colorTextTertiary: antd.textTertiary,
         borderRadius: 6,
         fontSize: 13,
         // Touch devices get taller controls everywhere antd renders one.
@@ -75,18 +84,27 @@ function useAntdTheme(isDark: boolean, coarsePointer: boolean) {
           "-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, 'Helvetica Neue', sans-serif",
       },
       components: {
-        Segmented: { itemSelectedBg: isDark ? '#1f2938' : '#e8effd' },
+        Segmented: { itemSelectedBg: antd.segmentedSelected },
         Tabs: { horizontalItemPadding: '9px 14px', cardPadding: '6px 12px' },
         Button: { paddingInline: 12 },
         Slider: {
           railSize: coarsePointer ? 5 : 3,
           handleSize: coarsePointer ? 14 : 10,
           handleSizeHover: coarsePointer ? 16 : 12,
+          // antd derives the track from a *tint* of the primary, which on a
+          // dark panel comes out grey-blue and looks like a disabled control.
+          // The accent is the accent.
+          trackBg: antd.primary,
+          trackHoverBg: antd.primary,
+          handleColor: antd.primary,
+          handleActiveColor: antd.primary,
+          dotActiveBorderColor: antd.primary,
+          railBg: antd.border,
+          railHoverBg: antd.elevated,
         },
       },
-    }),
-    [isDark, coarsePointer],
-  );
+    };
+  }, [theme, coarsePointer]);
 }
 
 /**
@@ -109,9 +127,9 @@ function compactTabs(debugging: boolean): { key: CompactKey; label: string; icon
 export default function App() {
   const workspace = useWorkspace();
   const debug = useDebugger();
-  const { theme, setTheme, isDark } = useTheme();
+  const { theme, setTheme } = useTheme();
   const layout = useLayout();
-  const antdConfig = useAntdTheme(isDark, layout.coarsePointer);
+  const antdConfig = useAntdTheme(theme, layout.coarsePointer);
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [problemsOpen, setProblemsOpen] = useState(false);

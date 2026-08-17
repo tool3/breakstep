@@ -391,10 +391,14 @@ try {
 
   console.log('▸ Switching themes');
   check(
-    'midnight is the default theme',
-    (await page.evaluate(() => document.documentElement.dataset.theme)) === 'midnight',
+    'graphite is the default theme',
+    (await page.evaluate(() => document.documentElement.dataset.theme)) === 'graphite',
   );
-  for (const [name, expected] of [['Light', 'light'], ['Slate', 'slate'], ['Midnight', 'midnight']]) {
+  for (const [name, expected] of [
+    ['Light', 'light'],
+    ['Midnight', 'midnight'],
+    ['Graphite', 'graphite'],
+  ]) {
     await page.getByRole('button', { name: 'Theme' }).click();
     await page.waitForTimeout(250);
     await page.getByText(name, { exact: true }).click();

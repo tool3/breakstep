@@ -523,11 +523,12 @@ function permutations(nums: number[]): number[][] {
   return out;
 }
 
-const results = mode === 'permutations' ? permutations(items) : subsets(items);
+// Keyed by the option, so switching it cannot go stale or mistype.
+const results = { subsets, permutations }[mode](items);
 
 console.log('set        ->', items.join(', '));
 console.log('mode       ->', mode);
-console.log('count      ->', results.length, mode === 'permutations' ? '(= n!)' : '(= 2^n)');
+console.log('count      ->', results.length, { subsets: '(= 2^n)', permutations: '(= n!)' }[mode]);
 console.log('first few  ->', results.slice(0, 8).map((r) => '[' + r.join(',') + ']').join('  '));
 console.log('empty set included? ->', results.some((r) => r.length === 0));
 `,
@@ -617,9 +618,10 @@ print("empty set included? ->", any(len(r) == 0 for r in results))
   bench: {
     typescript: `breakstep.bench({
   input: (size) => Array.from({ length: size }, (_, i) => i),
-  run: (arr) => (mode === 'permutations' ? permutations(arr as number[]) : subsets(arr as number[])),
+  run: (arr) => ({ subsets, permutations })[mode](arr as number[]),
   // Exponential growth: n is the SET SIZE here, not an array length.
-  sizes: mode === 'permutations' ? [2, 3, 4, 5, 6, 7, 8] : [2, 4, 6, 8, 10, 12, 14, 16],
+  // n! outruns 2^n fast, so permutations get the shorter sweep.
+  sizes: { subsets: [2, 4, 6, 8, 10, 12, 14, 16], permutations: [2, 3, 4, 5, 6, 7, 8] }[mode],
 });
 `,
     python: `breakstep.bench(
@@ -634,7 +636,7 @@ print("empty set included? ->", any(len(r) == 0 for r in results))
     typescript: `// Backtracking — the same enumeration, drawn explicitly as a call stack.
 
 const n = breakstep.param<number>('n', 4);
-const mode = breakstep.param<string>('mode', 'subsets');
+const mode = breakstep.param<'subsets' | 'permutations'>('mode', 'subsets');
 const items = Array.from({ length: n }, (_, i) => i + 1);
 
 function subsets(nums: number[]): number[][] {
@@ -702,7 +704,8 @@ function permutations(nums: number[]): number[][] {
   return out;
 }
 
-const results = mode === 'permutations' ? permutations(items) : subsets(items);
+// Keyed by the option, so switching it cannot go stale or mistype.
+const results = { subsets, permutations }[mode](items);
 
 breakstep.show([], { as: 'callstack', label: 'Stack unwound — done' });
 breakstep.log(results.length, mode, 'of [' + items.join(', ') + ']');
@@ -710,8 +713,9 @@ breakstep.log(results.slice(0, 20).map((r) => '[' + r.join(',') + ']').join('  '
 
 breakstep.bench({
   input: (size) => Array.from({ length: size }, (_, i) => i),
-  run: (arr) => (mode === 'permutations' ? permutations(arr as number[]) : subsets(arr as number[])),
-  sizes: mode === 'permutations' ? [2, 3, 4, 5, 6, 7, 8] : [2, 4, 6, 8, 10, 12, 14, 16],
+  run: (arr) => ({ subsets, permutations })[mode](arr as number[]),
+  // n! outruns 2^n fast, so permutations get the shorter sweep.
+  sizes: { subsets: [2, 4, 6, 8, 10, 12, 14, 16], permutations: [2, 3, 4, 5, 6, 7, 8] }[mode],
 });
 `,
     python: `# Backtracking - the same enumeration, drawn explicitly as a call stack.

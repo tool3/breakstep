@@ -154,13 +154,19 @@ export function ComplexityPanel({
           {verdict && (
             <Alert
               className={styles.verdictAlert}
-              type={verdict === 'agree' ? 'success' : 'warning'}
+              /*
+               * Only a run that came out *worse* than the source suggests is a
+               * warning. A run that beat the static worst case is good news —
+               * it was drawn in yellow, which read as though something had gone
+               * wrong when nothing had.
+               */
+              type={verdict === 'static-lower' ? 'warning' : 'success'}
               showIcon
               message={
                 verdict === 'agree'
                   ? `Both methods agree: ${prettyClass(empirical!.best)}.`
                   : verdict === 'static-higher'
-                    ? `The source allows ${prettyClass(stat.time)}, but this run measured ${prettyClass(empirical!.best)}.`
+                    ? `This run measured ${prettyClass(empirical!.best)} — better than the ${prettyClass(stat.time)} the source allows.`
                     : `This run measured ${prettyClass(empirical!.best)} — worse than the ${prettyClass(stat.time)} the source suggested.`
               }
               description={

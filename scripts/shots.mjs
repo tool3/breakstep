@@ -94,7 +94,11 @@ await page.locator('button[aria-label^="Template:"]').click();
 await shot('21-templates');
 await page.keyboard.press('Escape');
 
-for (const [name, file] of [['Slate', '22-slate'], ['Light', '23-light'], ['Midnight', '24-midnight']]) {
+for (const [name, file] of [
+  ['Midnight', '22-midnight'],
+  ['Light', '23-light'],
+  ['Graphite', '24-graphite'],
+]) {
   console.log(`▸ ${name} theme`);
   await page.getByRole('button', { name: 'Theme' }).click();
   await page.waitForTimeout(300);

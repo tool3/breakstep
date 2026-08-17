@@ -370,7 +370,35 @@ describe('ComplexityPanel', () => {
         onAnalyze={vi.fn()}
       />,
     );
-    expect(screen.getByText(/The source allows O\(n²\), but this run measured O\(n\)/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/measured O\(n\) — better than the O\(n²\) the source allows/),
+    ).toBeInTheDocument();
+    // Beating the static worst case is good news, so it must not be a warning.
+    expect(document.querySelector('.ant-alert-success')).not.toBeNull();
+    expect(document.querySelector('.ant-alert-warning')).toBeNull();
+  });
+
+  it('warns only when the run came out worse than the source', () => {
+    const worse: ComplexityReport = {
+      ...report,
+      static: { ...report.static, time: 'O(log n)' },
+    };
+    render(
+      <ComplexityPanel
+        report={worse}
+        analyzing={false}
+        stale={false}
+        detail=""
+        template={template}
+        language="typescript"
+        onAnalyze={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText(/measured O\(n\) — worse than the O\(log n\) the source suggested/),
+    ).toBeInTheDocument();
+    expect(document.querySelector('.ant-alert-warning')).not.toBeNull();
   });
 
   it('lists the static evidence', () => {

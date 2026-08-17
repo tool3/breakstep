@@ -242,8 +242,8 @@ function longestUnique(s: string[]): { length: number; start: number } {
 }
 
 const chars = text.split('');
-const { length, start } = longestUnique(chars);
-console.log('longest:', text.slice(start, start + length), '->', length);
+const { length: width, start } = longestUnique(chars);
+console.log('longest:', text.slice(start, start + width), '->', width);
 `,
     python: `# Sliding Window - longest substring without repeating characters.
 #
@@ -347,13 +347,13 @@ function longestUnique(s: string[]): { length: number; start: number } {
   return { length: best, start: bestStart };
 }
 
-const { length, start } = longestUnique(chars);
-breakstep.log('longest:', text.slice(start, start + length), '→', length);
+const { length: width, start } = longestUnique(chars);
+breakstep.log('longest:', text.slice(start, start + width), '→', width);
 
 breakstep.show(chars, {
   label: 'Best window',
   highlight: Object.fromEntries(
-    Array.from({ length }, (_, i) => [start + i, 'match' as const]),
+    Array.from({ length: width }, (_, i) => [start + i, 'match' as const]),
   ),
 });
 
@@ -699,7 +699,8 @@ function mergeSort(a: number[]): number[] {
 }
 
 const source = data.slice(0, size);
-const sorted = algorithm === 'bubble' ? bubbleSort(source) : mergeSort(source);
+// Keyed by the option, so switching it cannot go stale or mistype.
+const sorted = { merge: mergeSort, bubble: bubbleSort }[algorithm](source);
 console.log(algorithm, '->', sorted.join(', '));
 `,
     python: `# Two sorts, same input. Switch \`algorithm\` and re-run Analyze to see the
@@ -760,8 +761,9 @@ print(algorithm, "->", ", ".join(str(v) for v in result))
   bench: {
     typescript: `breakstep.bench({
   input: (n) => breakstep.randomInts(n, 1000, 3),
-  run: (arr: number[]) => (algorithm === 'bubble' ? bubbleSort(arr) : mergeSort(arr)),
-  sizes: algorithm === 'bubble' ? [16, 32, 64, 128, 256, 512] : [16, 64, 256, 1024, 4096, 16384],
+  run: (arr: number[]) => ({ merge: mergeSort, bubble: bubbleSort })[algorithm](arr),
+  // Bubble sort is quadratic, so it needs a shorter sweep to finish.
+  sizes: { merge: [16, 64, 256, 1024, 4096, 16384], bubble: [16, 32, 64, 128, 256, 512] }[algorithm],
 });
 `,
     python: `breakstep.bench(
@@ -776,7 +778,7 @@ print(algorithm, "->", ", ".join(str(v) for v in result))
 // Analyze to see the fitter move between O(n log n) and O(n²).
 
 const size = breakstep.param<number>('size', 14);
-const algorithm = breakstep.param<string>('algorithm', 'merge');
+const algorithm = breakstep.param<'merge' | 'bubble'>('algorithm', 'merge');
 const data = breakstep.randomInts(size, 99, 7);
 
 // --- Bubble sort: adjacent swaps until nothing moves -----------------------
@@ -852,9 +854,10 @@ if (algorithm === 'bubble') {
 
 breakstep.bench({
   input: (n) => breakstep.randomInts(n, 1000, 3),
-  run: (arr: number[]) => (algorithm === 'bubble' ? bubbleSort(arr) : mergeSort(arr)),
+  run: (arr: number[]) => ({ merge: mergeSort, bubble: bubbleSort })[algorithm](arr),
   // Bubble sort is quadratic — cap the sweep so the run stays interactive.
-  sizes: algorithm === 'bubble' ? [16, 32, 64, 128, 256, 512] : [16, 64, 256, 1024, 4096, 16384],
+  // Bubble sort is quadratic, so it needs a shorter sweep to finish.
+  sizes: { merge: [16, 64, 256, 1024, 4096, 16384], bubble: [16, 32, 64, 128, 256, 512] }[algorithm],
 });
 `,
     python: `# Two sorts, same input. Switch the "Benchmark which?" parameter and re-run

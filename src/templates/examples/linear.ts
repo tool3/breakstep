@@ -258,7 +258,17 @@ export const linkedListCycle: Template = {
   tags: ['linked-list', 'two-pointers', 'cycle'],
   expected: { time: 'O(n)', space: 'O(1)' },
   params: [
-    { name: 'length', label: 'List length', type: 'number', default: 9, min: 3, max: 40 },
+    {
+      name: 'length',
+      // `length` is a DOM global, so the constant cannot use that name at the
+      // top level without shadowing `window.length`.
+      binds: 'nodeCount',
+      label: 'List length',
+      type: 'number',
+      default: 9,
+      min: 3,
+      max: 40,
+    },
     {
       name: 'cycleAt',
       label: 'Cycle entry index',
@@ -276,7 +286,7 @@ export const linkedListCycle: Template = {
 // shrinks by exactly one node per step, so they must eventually collide.
 // A visited-set solution also works but costs O(n) memory; this costs none.
 
-const length = 9;
+const nodeCount = 9;
 const cycleAt = 4;
 
 class ListNode {
@@ -317,7 +327,7 @@ function findCycleEntry(head: ListNode | null): ListNode | null {
   return null;
 }
 
-const head = buildWithCycle(length, cycleAt);
+const head = buildWithCycle(nodeCount, cycleAt);
 const entry = findCycleEntry(head);
 console.log(entry ? 'cycle enters at node ' + entry.val : 'acyclic');
 `,
@@ -327,7 +337,7 @@ console.log(entry ? 'cycle enters at node ' + entry.val : 'acyclic');
 # shrinks by exactly one node per step, so they must eventually collide.
 # A visited-set solution also works but costs O(n) memory; this costs none.
 
-length = 9
+nodeCount = 9
 cycleAt = 4
 
 
@@ -364,7 +374,7 @@ def find_cycle_entry(head):
     return None
 
 
-head = build_with_cycle(length, cycleAt)
+head = build_with_cycle(nodeCount, cycleAt)
 entry = find_cycle_entry(head)
 print("cycle enters at node " + str(entry.val) if entry else "acyclic")
 `,
@@ -393,7 +403,7 @@ interface ListNode {
   next: ListNode | null;
 }
 
-const length = breakstep.param<number>('length', 9);
+const nodeCount = breakstep.param<number>('length', 9);
 const cycleAt = breakstep.param<number>('cycleAt', 4);
 
 function buildWithCycle(n: number, entry: number): ListNode | null {
@@ -441,7 +451,7 @@ function hasCycle(head: ListNode | null): ListNode | null {
   return null;
 }
 
-const head = buildWithCycle(length, cycleAt);
+const head = buildWithCycle(nodeCount, cycleAt);
 breakstep.show(head, { label: cycleAt >= 0 ? \`List with a cycle at \${cycleAt}\` : 'Straight list' });
 
 const entry = hasCycle(head);
@@ -513,7 +523,7 @@ def has_cycle(head):
     return None
 
 
-head = build_with_cycle(length, cycle_at)
+head = build_with_cycle(nodeCount, cycle_at)
 breakstep.show(head, label=f"List with a cycle at {cycle_at}" if cycle_at >= 0 else "Straight list")
 
 entry = has_cycle(head)

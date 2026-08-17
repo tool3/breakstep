@@ -45,10 +45,11 @@ import { loader } from '@monaco-editor/react';
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
 import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker';
 import { BREAKSTEP_API_DTS } from './breakstepApiTypes';
+import { MEMBER_CALL_TOKEN, MEMBER_TOKEN, registerMemberTokens } from './memberTokens';
 
 export const MONACO_THEMES = {
   midnight: 'breakstep-midnight',
-  slate: 'breakstep-slate',
+  graphite: 'breakstep-graphite',
   light: 'breakstep-light',
 } as const;
 
@@ -87,6 +88,9 @@ export function setupMonaco(): typeof monaco {
       { token: 'identifier', foreground: 'e3e5ea' },
       { token: 'delimiter', foreground: '868d99' },
       { token: 'function', foreground: '93b3ff' },
+      // Members are lexically distinguishable everywhere, but only Graphite
+      // gives them their own colour for now; here they stay identifiers.
+      { token: 'member', foreground: 'e3e5ea' },
     ],
     colors: {
       'editor.background': '#08090b',
@@ -111,40 +115,56 @@ export function setupMonaco(): typeof monaco {
     },
   });
 
-  monaco.editor.defineTheme(MONACO_THEMES.slate, {
+  /*
+   * Graphite's editor.
+   *
+   * The token colours are the Dark+ family — green comments, salmon strings,
+   * teal types — rather than this app's accent palette. That is deliberate: it
+   * is what almost every editor and every judge site looks like, so code reads
+   * the way people are used to reading it, and the chrome is the only thing
+   * that says Breakstep.
+   */
+  monaco.editor.defineTheme(MONACO_THEMES.graphite, {
     base: 'vs-dark',
     inherit: true,
     rules: [
-      { token: 'comment', foreground: '626d80', fontStyle: 'italic' },
-      { token: 'keyword', foreground: 'a97bff' },
-      { token: 'string', foreground: '39d3a0' },
-      { token: 'number', foreground: 'f0a13a' },
-      { token: 'type', foreground: '5b8cff' },
-      { token: 'type.identifier', foreground: '5b8cff' },
-      { token: 'identifier', foreground: 'd8dee9' },
-      { token: 'delimiter', foreground: '8b95a7' },
-      { token: 'function', foreground: '8fb2ff' },
+      { token: 'comment', foreground: '6a9955', fontStyle: 'italic' },
+      { token: 'keyword', foreground: 'c586c0' },
+      { token: 'keyword.flow', foreground: 'c586c0' },
+      { token: 'string', foreground: 'ce9178' },
+      { token: 'number', foreground: 'b5cea8' },
+      { token: 'regexp', foreground: 'd16969' },
+      { token: 'type', foreground: '4ec9b0' },
+      { token: 'type.identifier', foreground: '4ec9b0' },
+      { token: 'identifier', foreground: '9cdcfe' },
+      { token: 'delimiter', foreground: 'd4d4d4' },
+      { token: 'function', foreground: 'dcdcaa' },
+      { token: 'variable.predefined', foreground: '4fc1ff' },
+      // `trie.size` — the object stays blue, the name read off it does not.
+      { token: MEMBER_TOKEN, foreground: 'd8dde6' },
+      // `trie.insert(…)` — a call reads as a call, the way it does everywhere.
+      { token: MEMBER_CALL_TOKEN, foreground: 'dcdcaa' },
     ],
     colors: {
-      'editor.background': '#0b0e14',
-      'editor.foreground': '#d8dee9',
-      'editorLineNumber.foreground': '#3a4353',
-      'editorLineNumber.activeForeground': '#8fb2ff',
-      'editor.lineHighlightBackground': '#11151d',
-      'editor.selectionBackground': '#233252',
-      'editor.inactiveSelectionBackground': '#1a2233',
-      'editorCursor.foreground': '#5b8cff',
-      'editorIndentGuide.background1': '#1b202a',
-      'editorIndentGuide.activeBackground1': '#2f3745',
-      'editorWidget.background': '#151a24',
-      'editorWidget.border': '#222834',
-      'editorSuggestWidget.background': '#151a24',
-      'editorSuggestWidget.selectedBackground': '#1f2938',
-      'editorGutter.background': '#0b0e14',
-      'editorError.foreground': '#f2555a',
-      'editorWarning.foreground': '#f0a13a',
-      'scrollbarSlider.background': '#2f374588',
-      'scrollbarSlider.hoverBackground': '#3d4757aa',
+      'editor.background': '#1a1a1a',
+      'editor.foreground': '#eff1f6',
+      'editorLineNumber.foreground': '#6e6e6e',
+      'editorLineNumber.activeForeground': '#c6c6c6',
+      'editor.lineHighlightBackground': '#232323',
+      'editor.selectionBackground': '#264f78',
+      'editor.inactiveSelectionBackground': '#3a3d41',
+      'editorCursor.foreground': '#aeafad',
+      'editorIndentGuide.background1': '#2f2f2f',
+      'editorIndentGuide.activeBackground1': '#4d4d4d',
+      'editorWidget.background': '#282828',
+      'editorWidget.border': '#3e3e3e',
+      'editorSuggestWidget.background': '#282828',
+      'editorSuggestWidget.selectedBackground': '#37373d',
+      'editorGutter.background': '#1a1a1a',
+      'editorError.foreground': '#ef4743',
+      'editorWarning.foreground': '#ffb800',
+      'scrollbarSlider.background': '#4f4f4f66',
+      'scrollbarSlider.hoverBackground': '#5f5f5f99',
     },
   });
 
@@ -200,6 +220,8 @@ export function setupMonaco(): typeof monaco {
     noSyntaxValidation: false,
     diagnosticCodesToIgnore: [1375, 1378, 2669, 7027],
   });
+
+  registerMemberTokens(monaco);
 
   loader.config({ monaco });
   return monaco;
