@@ -88,8 +88,18 @@ export interface Workspace {
 
   isDirty: boolean;
   template: Template;
+  /**
+   * Whether this template actually has a `breakstep.*` variant to reveal.
+   *
+   * A LeetCode problem does not: it is plain code with an auto-traced run, and
+   * the two sources are identical. Offering the toggle anyway gave you a button
+   * that changed the badge and nothing else.
+   */
+  hasInstrumented: boolean;
   /** The LeetCode problem currently in the editor, if the template is one. */
   problemSlug: string | null;
+  /** That problem in full, for the panel that shows it beside the code. */
+  problem: LeetProblem | null;
 
   selectTemplate: (id: string) => void;
   setLanguage: (language: Language) => void;
@@ -119,16 +129,25 @@ export function useWorkspace(): Workspace {
   const [language, setLanguageState] = useLocalStorage<Language>('language', 'typescript');
   const [mode, setModeState] = useLocalStorage<EditorMode>('editorMode', 'clean');
 
+  /** The problem behind the current template, if it is one. */
+  const problem = useMemo(() => problemFor(templateId) ?? null, [templateId]);
+
   const template = useMemo(() => {
     // A problem the last session left open only exists once it is registered
     // again, so restore it before anything asks for it.
-    const problem = problemFor(templateId);
     if (problem) return registerTemplate(problemTemplate(problem));
     return getTemplate(templateId);
-  }, [templateId]);
+  }, [templateId, problem]);
   const pristine = useMemo(
     () => templateSource(template, language, mode),
     [template, language, mode],
+  );
+
+  const hasInstrumented = useMemo(
+    () =>
+      templateSource(template, language, 'instrumented') !==
+      templateSource(template, language, 'clean'),
+    [template, language],
   );
 
   const [code, setCodeState] = useState<string>(() =>
@@ -420,7 +439,9 @@ export function useWorkspace(): Workspace {
     analysisStale,
     isDirty: code !== pristine,
     template,
+    hasInstrumented,
     problemSlug: slugFromTemplateId(templateId),
+    problem,
     selectTemplate,
     setLanguage,
     setMode,

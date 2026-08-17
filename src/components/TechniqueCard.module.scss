@@ -1,0 +1,72 @@
+.technique {
+  border: 1px solid var(--breakstep-border);
+  border-radius: $radius-md;
+  padding: $space-3;
+  background: var(--breakstep-panel-alt);
+  list-style: none;
+
+  // The first recommendation is the one to read; the rest are alternatives.
+  &[data-rank='1'] {
+    border-color: #{rgba(#5b8cff, 0.45)};
+    background: var(--breakstep-accent-soft);
+  }
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: $space-2;
+}
+
+.rank {
+  @include mono(9px);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--breakstep-text-faint);
+}
+
+.name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--breakstep-text);
+}
+
+.cost {
+  @include mono(10px);
+  color: var(--breakstep-accent-text);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.why {
+  margin: $space-2 0 0;
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--breakstep-text-dim);
+}
+
+.link {
+  padding: 0;
+  height: auto;
+  font-size: 11px;
+}
+
+.structures {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: $space-2;
+}
+
+.structuresLabel {
+  @include mono(10px);
+  color: var(--breakstep-text-faint);
+}
+
+.unmapped {
+  margin: 0;
+  @include mono(10px);
+  line-height: 1.7;
+  color: var(--breakstep-text-faint);
+}

@@ -14,11 +14,13 @@ import {
   CodeOutlined,
   BugOutlined,
   ExperimentOutlined,
+  TrophyOutlined,
   PartitionOutlined,
   SlidersOutlined,
 } from '@ant-design/icons';
 import { Header, ModeBadge } from './components/Header';
 import { ParamsPanel } from './components/ParamsPanel';
+import { ProblemPanel } from './components/ProblemPanel';
 import { DebugPanel } from './components/DebugPanel';
 import { OutputPanel } from './components/OutputPanel';
 import { VisualizerPanel } from './components/VisualizerPanel';
@@ -113,6 +115,11 @@ export default function App() {
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [problemsOpen, setProblemsOpen] = useState(false);
+  /** Which of the two bottom-left tabs is showing. */
+  const [bottomTab, setBottomTab] = useState<'problem' | 'params'>('params');
+
+  const openProblems = useCallback(() => setProblemsOpen(true), []);
+  const closeProblems = useCallback(() => setProblemsOpen(false), []);
   const [panel, setPanel] = useState<PanelKey>('visualize');
   const [compactTab, setCompactTab] = useState<CompactKey>('code');
   const [splitRatio, setSplitRatio] = useLocalStorage('layout:split', 50);
@@ -207,6 +214,15 @@ export default function App() {
     [workspace, debug, compact],
   );
 
+  /*
+   * A problem that has just been opened is what you want to read, so show it.
+   * Leaving a problem behind for an ordinary template sends you back to the
+   * parameters, since the Problem tab is disabled with nothing in it.
+   */
+  useEffect(() => {
+    setBottomTab(workspace.problemSlug ? 'problem' : 'params');
+  }, [workspace.problemSlug]);
+
   // An error is worth interrupting for — surface the log without being asked.
   useEffect(() => {
     if (status === 'error' && result?.error) reveal('output');
@@ -232,7 +248,11 @@ export default function App() {
 
   const editor = (
     <div className={styles.editorPane}>
-      <ModeBadge mode={workspace.mode} compact={compact} />
+      <ModeBadge
+        mode={workspace.mode}
+        compact={compact}
+        hasInstrumented={workspace.hasInstrumented}
+      />
       <Suspense
         fallback={<Skeleton active paragraph={{ rows: 10 }} className={styles.editorLoading} />}
       >
@@ -266,10 +286,71 @@ export default function App() {
     />
   );
 
+  /**
+   * A function from the current file, for the benchmark example the Analyze tab
+   * shows when nothing registered one. Falls back to `solve` when the file has
+   * no named function to point at.
+   */
+  const benchFn = useMemo(
+    () => listFunctions(workspace.code, workspace.language)[0]?.name,
+    [workspace.code, workspace.language],
+  );
+
+  const countBadge = (text: string | number) => <span className={styles.badge}>{text}</span>;
+
+  const problemPanel = (
+    <ProblemPanel
+      problem={workspace.problem}
+      language={workspace.language}
+      onReveal={handleRevealSolution}
+      onResetToStarter={workspace.resetCode}
+      onOpenTemplate={handleOpenTemplate}
+      onFindProblem={openProblems}
+    />
+  );
+
+  /**
+   * Below the editor: the problem, and the parameters.
+   *
+   * A debug session takes the whole pane — the transport, the variables and the
+   * call stack need the room, and neither tab is any use while paused.
+   */
   const params = debug.active ? (
     <DebugPanel debug={debug} onGoToLine={goToLine} onStop={debug.end} />
   ) : (
-    inputs
+    <div className={styles.column}>
+      <Tabs
+        className={styles.tabs}
+        activeKey={bottomTab}
+        onChange={(key) => setBottomTab(key as 'problem' | 'params')}
+        items={[
+          {
+            key: 'problem',
+            // Nothing to show until a problem is open, and saying so is better
+            // than an empty tab that looks broken.
+            disabled: workspace.problem === null,
+            label: (
+              <span className={styles.tabLabel}>
+                <TrophyOutlined />
+                Problem
+                {workspace.problem && countBadge(workspace.problem.number)}
+              </span>
+            ),
+            children: problemPanel,
+          },
+          {
+            key: 'params',
+            label: (
+              <span className={styles.tabLabel}>
+                <SlidersOutlined />
+                Parameters
+              </span>
+            ),
+            children: inputs,
+          },
+        ]}
+      />
+    </div>
   );
 
   const visualizer = (
@@ -300,11 +381,11 @@ export default function App() {
       stale={workspace.analysisStale}
       detail={workspace.detail}
       template={template}
+      language={workspace.language}
+      benchFn={benchFn}
       onAnalyze={handleAnalyze}
     />
   );
-
-  const countBadge = (text: string | number) => <span className={styles.badge}>{text}</span>;
 
   const panelStack = (
     <div className={styles.column}>
@@ -386,10 +467,11 @@ export default function App() {
             status={workspace.status}
             analyzing={workspace.analyzing}
             isDirty={workspace.isDirty}
+            hasInstrumented={workspace.hasInstrumented}
             theme={theme}
             layout={layout.mode}
             onOpenTemplates={() => setPickerOpen(true)}
-            onOpenProblems={() => setProblemsOpen(true)}
+            onOpenProblems={openProblems}
             onLanguage={workspace.setLanguage}
             onMode={workspace.setMode}
             onRun={handleRun}
@@ -489,12 +571,10 @@ export default function App() {
 
           <ProblemDrawer
             open={problemsOpen}
-            language={workspace.language}
             currentSlug={workspace.problemSlug}
             compact={compact}
-            onClose={() => setProblemsOpen(false)}
+            onClose={closeProblems}
             onLoad={handleLoadProblem}
-            onReveal={handleRevealSolution}
             onOpenTemplate={handleOpenTemplate}
           />
 

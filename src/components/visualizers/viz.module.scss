@@ -162,8 +162,19 @@ $lift: 3px;
 .arrow {
   color: var(--breakstep-text-faint);
   @include mono(14px);
-  align-self: center;
   user-select: none;
+}
+
+/**
+ * The body of a rail item. Exactly a cell's height, with its content centred,
+ * so a connector or an end caption lines up with the cells beside it whatever
+ * else the column contains.
+ */
+.railBody {
+  height: 44px;
+  display: grid;
+  place-items: center;
+  white-space: nowrap;
 }
 
 .svg {

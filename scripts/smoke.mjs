@@ -283,15 +283,21 @@ try {
   await page.getByRole('button', { name: 'Find', exact: true }).click();
   await page.waitForTimeout(400);
 
+  // Finding a problem opens it, and the problem panel below the editor is where
+  // it lives from then on.
   check(
-    'the problem is recognised',
+    'the problem opened into the problem panel',
     await page.getByRole('heading', { name: 'Koko Eating Bananas' }).isVisible(),
   );
   check(
-    'a technique is recommended',
+    'a technique is recommended there',
     await page.getByRole('button', { name: /Open the binary search template/ }).isVisible(),
   );
   check('the exact dataset is shown', await page.getByText('piles = [3,6,7,11], h = 8').isVisible());
+  check(
+    'and the parameters are one tab away',
+    await page.getByRole('tab', { name: /Parameters/ }).isVisible(),
+  );
 
   await page.getByRole('button', { name: /Reveal the solution/ }).click();
   await page.waitForTimeout(1200);
@@ -317,19 +323,20 @@ try {
   await page.waitForTimeout(500);
   await page.getByLabel('LeetCode problem URL').fill('https://leetcode.com/problems/two-sum/');
   await page.getByRole('button', { name: 'Find', exact: true }).click();
-  await page.waitForTimeout(1200);
+  await page.waitForTimeout(2000);
 
   check(
-    'a problem with no statement here is still made runnable',
-    await page.getByText('Ready to run — statement on LeetCode').isVisible(),
+    'a problem with no statement here is still opened, runnable',
+    await page.getByRole('heading', { name: 'Two Sum' }).isVisible(),
+  );
+  check(
+    'it says where the statement lives',
+    await page.getByText('statement on LeetCode', { exact: true }).isVisible(),
   );
   check(
     'it offers no solution it does not have',
     (await page.getByRole('button', { name: /Reveal the solution/ }).count()) === 0,
   );
-
-  await page.getByRole('button', { name: /Load the problem/ }).click();
-  await page.waitForTimeout(1500);
   const generated = (await page.locator('.view-lines').first().innerText()).replace(/\u00a0/g, ' ');
   check(
     'the generated stub has the right signature',
@@ -347,10 +354,40 @@ try {
     generatedOutput.slice(0, 160),
   );
 
+  console.log('▸ Opening a problem from the list');
+  await page.getByRole('button', { name: 'LeetCode problems' }).click();
+  await page.waitForTimeout(500);
+  await page.getByRole('button', { name: /Valid Palindrome/ }).click();
+  await page.waitForTimeout(1500);
+
+  check(
+    'clicking a problem in the list opens it and closes the drawer',
+    (await page.locator('.ant-drawer-open').count()) === 0,
+  );
+  check(
+    'and the problem tab is showing it',
+    await page.getByRole('heading', { name: 'Valid Palindrome' }).isVisible(),
+  );
+  // A problem is plain code either way, so the toggle must say so rather than
+  // changing the badge and nothing else.
+  check(
+    'instrumentation is not offered for a problem',
+    await page.getByRole('button', { name: 'Show instrumentation' }).isDisabled(),
+  );
+  check(
+    'and that problem is what the editor now holds',
+    await page.getByRole('button', { name: /Template: 125\. Valid Palindrome/ }).isVisible(),
+  );
+
   // Back to a built-in template so the sections below test what they say.
   await page.locator('button[aria-label^="Template:"]').click();
   await page.getByRole('button', { name: /^Graph/ }).first().click();
   await page.waitForTimeout(800);
+
+  check(
+    'the problem tab greys out with no problem loaded',
+    (await page.getByRole('tab', { name: /Problem/ }).getAttribute('aria-disabled')) === 'true',
+  );
 
   console.log('▸ Switching themes');
   check(

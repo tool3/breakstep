@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, type ReactNode } from 'react';
 import type { LinkedListView } from '@/types/viz';
 import { Cell } from './Cell';
 import styles from './viz.module.scss';
@@ -10,6 +10,30 @@ import styles from './viz.module.scss';
  * and here the final connector becomes a labelled loop-back rather than a
  * terminator, so Floyd's algorithm has something real to point at.
  */
+/**
+ * Anything sitting on the same line as the nodes: the connectors, and the
+ * `head` and `null` captions at the ends.
+ *
+ * It mirrors a node's column exactly — an empty pointer row, an empty pointer
+ * arrow, a body the same height as a cell, an empty index line — so its content
+ * lands on the cell's centre by construction. The alternative, nudging each one
+ * down by a hand-measured number of pixels, only held while nothing above or
+ * below the cell changed, which is not true once pointers and indices come and
+ * go.
+ */
+function Rail({ children, hidden }: { children: ReactNode; hidden?: boolean }) {
+  return (
+    <div className={styles.slot} aria-hidden={hidden}>
+      <div className={styles.pointers} />
+      <span className={styles.pointerArrow}>{'\u00a0'}</span>
+      <div className={styles.slot}>
+        <span className={styles.railBody}>{children}</span>
+        <span className={styles.index}>{'\u00a0'}</span>
+      </div>
+    </div>
+  );
+}
+
 export const LinkedListViz = memo(function LinkedListViz({ view }: { view: LinkedListView }) {
   const { nodes, doubly, cyclic, pointers } = view;
 
@@ -34,12 +58,12 @@ export const LinkedListViz = memo(function LinkedListViz({ view }: { view: Linke
     <div className={styles.canvas}>
       <div className={styles.scrollArea}>
         <div className={styles.row} role="list" aria-label={`Linked list of ${nodes.length} nodes`}>
-          <span className={styles.caption} style={{ alignSelf: 'center', paddingBottom: 22 }}>
-            head
-          </span>
-          <span className={styles.arrow} aria-hidden="true">
-            →
-          </span>
+          <Rail>
+            <span className={styles.caption}>head</span>
+          </Rail>
+          <Rail hidden>
+            <span className={styles.arrow}>→</span>
+          </Rail>
 
           {nodes.map((node, i) => (
             <div key={node.id} className={styles.row} role="listitem">
@@ -58,25 +82,23 @@ export const LinkedListViz = memo(function LinkedListViz({ view }: { view: Linke
               </div>
 
               {i < nodes.length - 1 && (
-                <span className={styles.arrow} aria-hidden="true" style={{ paddingBottom: 20 }}>
-                  {doubly ? '⇄' : '→'}
-                </span>
+                <Rail hidden>
+                  <span className={styles.arrow}>{doubly ? '⇄' : '→'}</span>
+                </Rail>
               )}
             </div>
           ))}
 
-          <span className={styles.arrow} aria-hidden="true" style={{ paddingBottom: 20 }}>
-            →
-          </span>
-          {cyclic ? (
-            <span className={styles.cycleBadge} style={{ alignSelf: 'center', marginBottom: 22 }}>
-              ↺ back to node {loopsTo ?? 0}
-            </span>
-          ) : (
-            <span className={styles.caption} style={{ alignSelf: 'center', paddingBottom: 22 }}>
-              null
-            </span>
-          )}
+          <Rail hidden>
+            <span className={styles.arrow}>→</span>
+          </Rail>
+          <Rail>
+            {cyclic ? (
+              <span className={styles.cycleBadge}>↺ back to node {loopsTo ?? 0}</span>
+            ) : (
+              <span className={styles.caption}>null</span>
+            )}
+          </Rail>
         </div>
       </div>
 

@@ -14,6 +14,7 @@ import { normalize } from './normalize';
 import { instrument, OP_LIMIT_MESSAGE } from '@/analysis/instrument';
 import { autoInstrument, hasManualInstrumentation } from '@/analysis/autoInstrument';
 import { createAutoTracer } from './autoTrace';
+import { NO_BENCHMARK_MESSAGE } from './benchNotice';
 import type { BenchmarkSample, LogEntry, LogLevel, ParamValues, RunError } from '@/types';
 import type { Frame, ShowOptions } from '@/types/viz';
 import type { DebugStep } from '@/types/debug';
@@ -443,7 +444,7 @@ export async function benchInSandbox(
     return {
       samples: [],
       error:
-        'No benchmark registered. Add `breakstep.bench({ input: n => …, run: data => … })` to measure growth.',
+        NO_BENCHMARK_MESSAGE,
     };
   }
 

@@ -9,6 +9,7 @@ import { TemplatePicker } from './TemplatePicker';
 import { SplitPane } from './SplitPane';
 import { Header, ModeBadge } from './Header';
 import { normalize } from '@/engine/normalize';
+import { NO_BENCHMARK } from '@/engine/benchNotice';
 import { getTemplate } from '@/templates';
 import type { Frame } from '@/types/viz';
 import type { ComplexityReport, RunResult, Template } from '@/types';
@@ -311,6 +312,7 @@ describe('ComplexityPanel', () => {
         stale
         detail=""
         template={template}
+        language="typescript"
         onAnalyze={onAnalyze}
       />,
     );
@@ -327,6 +329,7 @@ describe('ComplexityPanel', () => {
         stale={false}
         detail=""
         template={template}
+        language="typescript"
         onAnalyze={vi.fn()}
       />,
     );
@@ -344,6 +347,7 @@ describe('ComplexityPanel', () => {
         stale={false}
         detail=""
         template={template}
+        language="typescript"
         onAnalyze={vi.fn()}
       />,
     );
@@ -362,6 +366,7 @@ describe('ComplexityPanel', () => {
         stale={false}
         detail=""
         template={template}
+        language="typescript"
         onAnalyze={vi.fn()}
       />,
     );
@@ -376,6 +381,7 @@ describe('ComplexityPanel', () => {
         stale={false}
         detail=""
         template={template}
+        language="typescript"
         onAnalyze={vi.fn()}
       />,
     );
@@ -391,6 +397,7 @@ describe('ComplexityPanel', () => {
         stale={false}
         detail=""
         template={template}
+        language="typescript"
         onAnalyze={vi.fn()}
       />,
     );
@@ -417,6 +424,7 @@ describe('ComplexityPanel', () => {
         stale
         detail=""
         template={template}
+        language="typescript"
         onAnalyze={onAnalyze}
       />,
     );
@@ -433,7 +441,7 @@ describe('ComplexityPanel', () => {
         ranking: [],
         best: 'unknown',
         confidence: 0,
-        error: 'No benchmark registered.',
+        error: 'The benchmark timed out and was stopped.',
       },
     };
     render(
@@ -443,11 +451,12 @@ describe('ComplexityPanel', () => {
         stale={false}
         detail=""
         template={template}
+        language="typescript"
         onAnalyze={vi.fn()}
       />,
     );
     expect(screen.getByText('The benchmark could not complete')).toBeInTheDocument();
-    expect(screen.getByText('No benchmark registered.')).toBeInTheDocument();
+    expect(screen.getByText('The benchmark timed out and was stopped.')).toBeInTheDocument();
   });
 });
 
@@ -616,6 +625,83 @@ describe('responsive rendering', () => {
   });
 });
 
+describe('ComplexityPanel — nothing to measure', () => {
+  const template = getTemplate('two-pointers');
+  const staticHalf = {
+    time: 'O(n)' as const,
+    space: 'O(1)' as const,
+    confidence: 0.7,
+    notes: ['one loop over the input'],
+    maxLoopDepth: 1,
+    recursion: { detected: false, functions: [] },
+  };
+  const noBench: ComplexityReport = {
+    static: staticHalf,
+    empirical: {
+      best: 'unknown',
+      confidence: 0,
+      samples: [],
+      ranking: [],
+      error: `${NO_BENCHMARK} Analyze grows the input and watches how the work grows with it.`,
+    },
+  };
+
+  it('shows a harness you can read instead of a type signature', () => {
+    render(
+      <ComplexityPanel
+        report={noBench}
+        analyzing={false}
+        stale={false}
+        detail=""
+        template={template}
+        language="typescript"
+        benchFn="twoSumSorted"
+        onAnalyze={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('Nothing to measure yet')).toBeInTheDocument();
+    // The example refers to the reader's own function, and says what each half
+    // of the harness is for.
+    expect(screen.getByText(/run: \(data\) => twoSumSorted\(data\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Build an input of size n/)).toBeInTheDocument();
+  });
+
+  it('writes the example in the language being edited', () => {
+    render(
+      <ComplexityPanel
+        report={noBench}
+        analyzing={false}
+        stale={false}
+        detail=""
+        template={template}
+        language="python"
+        benchFn="twoSumSorted"
+        onAnalyze={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/run=lambda data: two_sum_sorted\(data\)/)).toBeInTheDocument();
+  });
+
+  it('leaves an unrelated benchmark failure alone', () => {
+    render(
+      <ComplexityPanel
+        report={{ static: staticHalf, empirical: { ...noBench.empirical!, error: 'The benchmark timed out.' } }}
+        analyzing={false}
+        stale={false}
+        detail=""
+        template={template}
+        language="typescript"
+        onAnalyze={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('The benchmark could not complete')).toBeInTheDocument();
+    expect(screen.getByText('The benchmark timed out.')).toBeInTheDocument();
+  });
+});
+
 describe('Header — progressive disclosure', () => {
   const headerProps = {
     template: getTemplate('stack'),
@@ -624,6 +710,7 @@ describe('Header — progressive disclosure', () => {
     status: 'idle' as const,
     analyzing: false,
     isDirty: false,
+    hasInstrumented: true,
     theme: 'midnight' as const,
     onOpenTemplates: vi.fn(),
     onOpenProblems: vi.fn(),
@@ -637,6 +724,13 @@ describe('Header — progressive disclosure', () => {
     onResetCode: vi.fn(),
     onTheme: vi.fn(),
   };
+
+  it('will not offer instrumentation a template does not have', () => {
+    render(<Header {...headerProps} layout="desktop" hasInstrumented={false} />);
+    // A LeetCode problem is plain code either way; the toggle used to change
+    // the badge and nothing else.
+    expect(screen.getByRole('button', { name: 'Show instrumentation' })).toBeDisabled();
+  });
 
   it('shows the full control set on a desktop', () => {
     render(<Header {...headerProps} layout="desktop" />);

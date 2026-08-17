@@ -66,7 +66,12 @@ got:
   exotic signatures, which still get a technique recommendation from their real
   topic tags and a link to the statement.
 
-Nothing is fetched at runtime; see [what is and is not taken](#what-breakstep-takes-from-leetcode-and-what-it-does-not).
+Finding a problem opens it — from a pasted link or a click in the list, one
+action either way. It then lives in a **Problem** tab beside the editor, sharing
+the pane with **Parameters**: the statement, the examples, the recommended
+technique, and the buttons that reveal a solution or reset you to the stub. The
+drawer is only for finding. Nothing is fetched at runtime; see
+[what is and is not taken](#what-breakstep-takes-from-leetcode-and-what-it-does-not).
 
 **Analyze** — two independent answers to "what is the complexity?":
 
@@ -155,6 +160,10 @@ Requires Node 20+. The smoke tests use Playwright driving your installed Chrome.
 | Inputs | Top-level constants the panel rewrites | `breakstep.param('name')` |
 | Benchmark | Harness appended on your behalf | Visible in the source |
 
+A LeetCode problem has no instrumented variant — it is plain code with an
+auto-traced run, and the two sources would be identical — so the toggle is
+disabled there and says why, rather than changing the badge and nothing else.
+
 Auto-tracing steps aside the moment your code calls `breakstep.show` itself, so you can
 start from plain code, reveal the instrumentation, and edit it — without ever
 getting duplicate frames.
@@ -172,6 +181,22 @@ breakstep.param('name', fallback)   // read a value from the Parameters panel
 breakstep.randomInts(n, max, seed)  // deterministic pseudo-random input
 breakstep.bench({ input, run })     // register the harness the Analyze tab sweeps
 ```
+
+The benchmark harness is the one piece the empirical sweep cannot infer, because
+it needs two things the source does not say: how to build a *bigger* input, and
+what to call with it.
+
+```ts
+breakstep.bench({
+  // Build an input of size n. Building it is not measured.
+  input: (n) => breakstep.randomInts(n),
+  // Call the code being measured. Add any other arguments it takes.
+  run: (data) => twoSumSorted(data),
+});
+```
+
+The Analyze tab shows this same example, in the language you are editing and
+naming a function from your own file, whenever nothing has registered one.
 
 `options` accepts:
 
@@ -204,7 +229,10 @@ Python uses the same API, with `kind=` in place of the reserved word `as`:
 ```python
 breakstep.show(stack, kind="stack", label="push")
 breakstep.show(arr, frame)          # `frame` is a zero-arg callable returning a dict
-breakstep.bench(input=lambda n: ..., run=solve)
+breakstep.bench(
+    input=lambda n: breakstep.random_ints(n),
+    run=lambda data: two_sum_sorted(data),
+)
 ```
 
 ---
@@ -229,6 +257,8 @@ src/
     staticPy.ts        the same, driven by Python's indentation
     fit.ts             score growth models against measured operation counts
   components/        panels and the ten visualizers
+    ProblemPanel.tsx   the problem you are solving, beside the code
+    ProblemDrawer.tsx  finding one: paste a link, or browse by technique
   leetcode/          the offline problem catalogue
     types.ts           what a problem is: prompt, dataset, techniques, sources
     catalogue.ts       40 problems, five per pattern, written out in full
@@ -331,11 +361,22 @@ origin simply cannot call it. That is not a policy choice on our side; a static
 site with no backend has no way to fetch any of this at runtime. Everything is
 therefore vendored by hand, by the two scripts under `scripts/`, and committed.
 
-**The colour key lists what the run used, not what the format allows.**
-Auto-traced code only ever marks the current position — the other states come
-from templates that drive the visualizer by hand — so a fixed four-colour key
-described something most runs could not produce. The panel scans the frames and
-keys only the colours it finds.
+**Cursors say more than "here".** Auto-tracing used to mark every cursor
+`active`, which meant the colour key advertised three states plain code could
+never produce. It now reads the cursors as a group: the one that moved since the
+last frame is *current*, any other conventionally-named cursor is what it is
+being *compared* against, and everywhere a cursor has already been in this pass
+is *visited*. A cursor jumping backwards starts a new pass, which is what stops
+the second sweep of a nested loop painting the whole array purple. The key still
+lists only the colours a run actually used, so a single binary search shows one
+entry and a bubble sort shows three.
+
+**Connectors sit on the cells' centre line by construction.** The arrows and the
+`head`/`null` captions in the linked-list views used to be nudged down by
+hand-measured pixels, which held only while nothing above or below the cells
+changed — and pointers and index labels come and go. Each one is now a column
+with the same structure as a node: empty pointer row, empty pointer arrow, a
+body exactly a cell high, empty index line.
 
 **Every verdict ships with its evidence.** The static pass is a heuristic and says
 so, with a confidence score and the reasoning that produced it. The empirical

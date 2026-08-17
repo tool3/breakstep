@@ -1,91 +1,43 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Drawer, Input, Tag, Tooltip } from 'antd';
-import {
-  ApartmentOutlined,
-  BulbOutlined,
-  CodeOutlined,
-  ExportOutlined,
-  EyeOutlined,
-  LinkOutlined,
-  LockOutlined,
-} from '@ant-design/icons';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Drawer, Input, Tag } from 'antd';
+import { ExportOutlined, LinkOutlined, LockOutlined } from '@ant-design/icons';
+import { StructureLinks, TechniqueCard, UnmappedTags } from './TechniqueCard';
 import { PROBLEMS, problemsByPattern } from '@/leetcode/catalogue';
 import { recommend } from '@/leetcode/recommend';
 import { loadProblemIndex, type ProblemIndex } from '@/leetcode/problemIndex';
 import { detailCount, loadDetail } from '@/leetcode/details';
 import { synthesizeProblem, problemUrl } from '@/leetcode/synthesize';
-import { tagLabel } from '@/leetcode/topics';
-import { PATTERN_LABEL, type LeetProblem, type Technique } from '@/leetcode/types';
-import { getTemplate } from '@/templates';
-import type { Language } from '@/types';
+import { PATTERN_LABEL, type LeetProblem } from '@/leetcode/types';
 import styles from './ProblemDrawer.module.scss';
 
 interface Props {
   open: boolean;
-  language: Language;
   /** The problem currently loaded in the editor, if any. */
   currentSlug: string | null;
   compact?: boolean;
   onClose: () => void;
-  /** Put the starter code in the editor. */
+  /**
+   * Open a problem in the editor. Everything about a loaded problem — its
+   * statement, its examples, revealing the solution — lives in the problem
+   * panel, so this drawer only has to find one and hand it over.
+   */
   onLoad: (problem: LeetProblem) => void;
-  /** Replace the editor buffer with the finished solution. */
-  onReveal: (problem: LeetProblem) => void;
   /** Open a pattern or structure template by id. */
   onOpenTemplate: (templateId: string) => void;
 }
 
 const DIFFICULTY_COLOR = { Easy: 'green', Medium: 'gold', Hard: 'red' } as const;
 
-function TechniqueCard({
-  technique,
-  onOpenTemplate,
-}: {
-  technique: Technique;
-  onOpenTemplate: (templateId: string) => void;
-}) {
-  const known = technique.complexity.time !== 'unknown';
-
-  return (
-    <li className={styles.technique} data-rank={technique.rank}>
-      <div className={styles.techniqueHead}>
-        <span className={styles.rank}>{technique.rank === 1 ? 'reach for' : 'also works'}</span>
-        <span className={styles.techniqueName}>{PATTERN_LABEL[technique.pattern]}</span>
-        {known && (
-          <span className={styles.techniqueCost}>
-            {technique.complexity.time} time · {technique.complexity.space} space
-          </span>
-        )}
-      </div>
-
-      <p className={styles.techniqueWhy}>{technique.why}</p>
-
-      <Button
-        size="small"
-        type="link"
-        className={styles.patternLink}
-        icon={<BulbOutlined />}
-        onClick={() => onOpenTemplate(technique.pattern)}
-      >
-        Open the {PATTERN_LABEL[technique.pattern].toLowerCase()} template
-      </Button>
-    </li>
-  );
-}
-
 export function ProblemDrawer({
   open,
-  language,
   currentSlug,
   compact,
   onClose,
   onLoad,
-  onReveal,
   onOpenTemplate,
 }: Props) {
   const [input, setInput] = useState('');
   const [submitted, setSubmitted] = useState('');
-  const [browsing, setBrowsing] = useState<LeetProblem | null>(null);
   const [index, setIndex] = useState<ProblemIndex | null>(null);
   // Assembled from LeetCode's published interface when a problem is not one of
   // the ones written out here. Null while it loads, and for problems that have
@@ -143,25 +95,45 @@ export function ProblemDrawer({
     };
   }, [result]);
 
-  // What the body shows: a pasted result wins — written out if Breakstep has
-  // it, otherwise the runnable version — and failing that, whatever was browsed.
-  const problem = result?.problem ?? generated ?? browsing ?? null;
-  const written = problem !== null && problem.origin !== 'generated';
-  const techniques = result
-    ? result.techniques
-    : problem
-      ? [...problem.techniques].sort((a, b) => a.rank - b.rank)
-      : [];
+  // Written out here, or assembled from what LeetCode publishes — either way,
+  // something that can be opened.
+  const openable = result?.problem ?? generated ?? null;
 
+  /*
+   * Finding a problem and opening it are the same action.
+   *
+   * Pressing Find used to leave you on a summary with a Load button, which is
+   * the same two-step-behind-a-one-step-affordance the list rows had. A problem
+   * that can be opened is opened, and the problem panel takes it from there;
+   * the drawer only has to say something when it *cannot* open one.
+   *
+   * Guarded on the slug and read through refs, because it must fire once per
+   * problem found — not once per render. Depending on the callbacks directly
+   * re-ran it whenever the parent re-rendered, which quietly reloaded the
+   * starter over a solution someone had just revealed.
+   */
+  const openedRef = useRef<string | null>(null);
+  const loadRef = useRef(onLoad);
+  loadRef.current = onLoad;
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+
+  useEffect(() => {
+    if (!openable || openedRef.current === openable.slug) return;
+    openedRef.current = openable.slug;
+    loadRef.current(openable);
+    closeRef.current();
+  }, [openable]);
+
+  const techniques = result?.techniques ?? [];
   const indexed = result?.indexed;
-  const headline = problem
-    ? { number: problem.number, title: problem.title, difficulty: problem.difficulty }
-    : indexed
-      ? { number: indexed.number, title: indexed.title, difficulty: indexed.difficulty }
-      : null;
+  const headline = indexed
+    ? { number: indexed.number, title: indexed.title, difficulty: indexed.difficulty }
+    : null;
 
   const submit = (value: string) => {
-    setBrowsing(null);
+    // A fresh search may well be for the problem already open; let it reopen.
+    openedRef.current = null;
     setSubmitted(value);
   };
 
@@ -205,19 +177,17 @@ export function ProblemDrawer({
                 result.source === 'unrecognised'
                   ? 'That link was not a problem link'
                   : result.source === 'indexed'
-                    ? generated
-                      ? 'Ready to run — statement on LeetCode'
-                      : loadingDetail
-                        ? 'Looking it up…'
-                        : 'Breakstep knows this problem, but cannot build a runnable version'
+                    ? // A problem that can be opened has been; this branch is
+                      // only ever the ones that cannot.
+                      loadingDetail
+                      ? 'Looking it up…'
+                      : 'Breakstep knows this problem, but cannot open it'
                     : `Unknown problem: ${result.slug}`
               }
               description={
-                result.source === 'indexed' && generated
-                  ? "The examples below are LeetCode's own, already wired to a stub with the right signature. The statement is their writing, so it is not copied here — the link opens it."
-                  : result.source === 'indexed' && !loadingDetail && !generated
-                    ? 'Its examples are stated in a shape nothing can turn into a call — a design problem, or a parameter type with no obvious literal. Read it on LeetCode and start from a pattern template.'
-                    : result.note
+                result.source === 'indexed' && !loadingDetail
+                  ? 'Nothing it publishes can be turned into a call — a premium problem, a design problem, or a parameter type with no literal form. Read it on LeetCode and start from the pattern below.'
+                  : result.note
               }
             />
           </div>
@@ -271,32 +241,15 @@ export function ProblemDrawer({
               ))}
             </ul>
 
-            {result && result.structures.length > 0 && (
-              <div className={styles.structures}>
-                <span className={styles.structuresLabel}>Structures it leans on</span>
-                {result.structures.map((id) => (
-                  <Button
-                    key={id}
-                    size="small"
-                    icon={<ApartmentOutlined />}
-                    onClick={() => onOpenTemplate(id)}
-                  >
-                    {getTemplate(id).title}
-                  </Button>
-                ))}
-              </div>
-            )}
-
-            {result && result.unmapped.length > 0 && (
-              <p className={styles.unmapped}>
-                LeetCode also tags it {result.unmapped.map(tagLabel).join(', ')} — Breakstep has no
-                template for {result.unmapped.length > 1 ? 'those' : 'that'} yet.
-              </p>
-            )}
+            <StructureLinks
+              structures={result?.structures ?? []}
+              onOpenTemplate={onOpenTemplate}
+            />
+            <UnmappedTags tags={result?.unmapped ?? []} />
           </section>
         )}
 
-        {/* --- The problem itself ------------------------------------------ */}
+        {/* --- What it is, for a problem that cannot be opened -------------- */}
         {headline && (
           <section className={styles.section}>
             <div className={styles.problemHead}>
@@ -310,10 +263,8 @@ export function ProblemDrawer({
               )}
             </div>
 
-            {problem && <p className={styles.prompt}>{problem.prompt}</p>}
-
             <div className={styles.topics}>
-              {(indexed?.topics ?? problem?.topics ?? []).map((topic) => (
+              {(indexed?.topics ?? []).map((topic) => (
                 <span key={topic} className={styles.topic}>
                   {topic}
                 </span>
@@ -333,65 +284,12 @@ export function ProblemDrawer({
           </section>
         )}
 
-        {problem && (
-          <>
-            <section className={styles.section}>
-              <h3 className={styles.heading}>Examples</h3>
-              <ul className={styles.examples}>
-                {problem.examples.map((example, i) => (
-                  <li key={example.input} className={styles.example}>
-                    <span className={styles.exampleLabel}>{i + 1}</span>
-                    <div className={styles.exampleBody}>
-                      <code className={styles.exampleIn}>{example.input}</code>
-                      <code className={styles.exampleOut}>→ {example.output}</code>
-                      {example.note && <span className={styles.exampleNote}>{example.note}</span>}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </section>
-
-            {problem.constraints.length > 0 && (
-              <section className={styles.section}>
-                <h3 className={styles.heading}>Constraints</h3>
-                <ul className={styles.constraints}>
-                  {problem.constraints.map((line) => (
-                    <li key={line}>
-                      <code>{line}</code>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-
-            <div className={styles.actions}>
-              <Tooltip title="Put the starter code and the example datasets in the editor">
-                <Button type="primary" icon={<CodeOutlined />} onClick={() => onLoad(problem)}>
-                  Load the problem
-                </Button>
-              </Tooltip>
-              {written ? (
-                <Tooltip title="Replace the editor with a worked solution in the current language">
-                  <Button icon={<EyeOutlined />} onClick={() => onReveal(problem)}>
-                    Reveal the solution
-                  </Button>
-                </Tooltip>
-              ) : (
-                <span className={styles.noSolution}>
-                  No solution to reveal — LeetCode publishes none to take, and this
-                  one is not written out here.
-                </span>
-              )}
-              <span className={styles.langHint}>in {language}</span>
-            </div>
-          </>
-        )}
-
         {/* --- Browse ------------------------------------------------------- */}
         <section className={styles.section}>
           <h3 className={styles.heading}>
             Written out in full
             <span className={styles.count}>{PROBLEMS.length}</span>
+            <span className={styles.headingHint}>click to open in the editor</span>
           </h3>
           {problemsByPattern().map(({ pattern, problems }) => (
             <div key={pattern} className={styles.group}>
@@ -402,11 +300,15 @@ export function ProblemDrawer({
                     <button
                       type="button"
                       className={styles.groupItem}
-                      aria-current={p.slug === problem?.slug}
-                      data-active={p.slug === problem?.slug}
+                      aria-current={p.slug === currentSlug}
+                      data-active={p.slug === currentSlug}
+                      // Clicking a problem opens it, which is what the row
+                      // looks like it does. Everything about it then lives in
+                      // the problem panel, beside the code.
                       onClick={() => {
                         setSubmitted('');
-                        setBrowsing(p);
+                        onLoad(p);
+                        onClose();
                       }}
                     >
                       <span className={styles.groupNumber}>{p.number}</span>

@@ -196,7 +196,16 @@ for (const profile of PROFILES) {
     await page.waitForTimeout(400);
 
     // --- 8. The LeetCode drawer must fit too ---------------------------------
-    await page.locator('button[aria-label="LeetCode problems"]').click();
+    //
+    // On a phone the entry point lives in the overflow menu, alongside every
+    // other secondary action — it moves rather than disappearing.
+    if (mode === 'compact') {
+      await page.getByRole('button', { name: 'More options' }).click();
+      await page.waitForTimeout(300);
+      await page.getByText('LeetCode problems').click();
+    } else {
+      await page.locator('button[aria-label="LeetCode problems"]').click();
+    }
     await page.waitForTimeout(500);
 
     const problemDrawer = await page.evaluate(() => {

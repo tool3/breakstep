@@ -126,8 +126,25 @@ interface LiveFrame extends CallStackEntry {
   line: number;
 }
 
+/**
+ * What the cursors have done so far in the current pass.
+ *
+ * Without this a frame can only say "here". With it, the cursor that just moved
+ * is the current one, any other cursor is something being compared against it,
+ * and the ground already covered is visited — which is the difference between a
+ * colour key that describes the format and one that describes the run.
+ */
+interface PointerTrail {
+  /** The structure these cursors belong to; a different one starts over. */
+  owner: unknown;
+  size: number;
+  last: Record<string, number>;
+  visited: Set<number>;
+}
+
 export function createAutoTracer(host: AutoTracerHost): AutoTracer {
   const callStack: LiveFrame[] = [];
+  const trail: { current: PointerTrail | null } = { current: null };
   /** Function names currently on the stack, for recursion detection. */
   const active = new Map<string, number>();
   let lastSubject: string | null = null;
@@ -172,7 +189,7 @@ export function createAutoTracer(host: AutoTracerHost): AutoTracer {
     } else if (subject) {
       lastSubject = subject.name;
       remember(snapshot, history);
-      view = buildFocusedView(subject, snapshot);
+      view = buildFocusedView(subject, snapshot, trail);
       label = captionFor(subject.name, scalars, tag);
     } else {
       return;
@@ -464,7 +481,11 @@ export function pickSubject(
  * Re-normalize the subject with pointers and identity highlights derived from
  * everything else in scope.
  */
-function buildFocusedView(subject: Candidate, snapshot: Record<string, unknown>): VizView {
+function buildFocusedView(
+  subject: Candidate,
+  snapshot: Record<string, unknown>,
+  trail: { current: PointerTrail | null },
+): VizView {
   const opts: ShowOptions = {};
 
   // Objects other than the subject may be nodes *inside* it — `curr`, `node`,
@@ -502,11 +523,7 @@ function buildFocusedView(subject: Candidate, snapshot: Record<string, unknown>)
     }
     if (Object.keys(pointers).length > 0) {
       opts.pointers = pointers;
-      const highlight: Record<string, CellState> = {};
-      for (const index of Object.values(pointers)) {
-        if (index >= 0 && index < length) highlight[index] = 'active';
-      }
-      opts.highlight = highlight;
+      opts.highlight = markProgress(pointers, length, subject.raw, trail);
     }
   }
 
@@ -531,6 +548,61 @@ function buildFocusedView(subject: Candidate, snapshot: Record<string, unknown>)
   } catch {
     return subject.view;
   }
+}
+
+/**
+ * Turn the cursors into states: current, comparing, and visited.
+ *
+ * The cursor that changed since the last frame is the one doing the work, so it
+ * is current; any other cursor is what it is being measured against. Everywhere
+ * a cursor has already been in this pass is visited — and a cursor jumping
+ * backwards starts a new pass, which is what keeps a nested loop from painting
+ * the whole array purple on its second sweep.
+ */
+function markProgress(
+  pointers: Record<string, number>,
+  length: number,
+  owner: unknown,
+  trail: { current: PointerTrail | null },
+): Record<string, CellState> {
+  const previous =
+    trail.current && trail.current.owner === owner && trail.current.size === length
+      ? trail.current
+      : null;
+
+  const names = Object.keys(pointers).sort((a, b) => pointerRank(a) - pointerRank(b));
+  const moved = names.filter((name) => previous && previous.last[name] !== pointers[name]);
+  // Nothing moved on the first frame, so fall back to the best-named cursor.
+  const primary = moved[0] ?? names[0];
+
+  const wentBackwards =
+    previous !== null && previous.last[primary] !== undefined && pointers[primary] < previous.last[primary];
+
+  const visited = wentBackwards || !previous ? new Set<number>() : new Set(previous.visited);
+
+  const highlight: Record<string, CellState> = {};
+  for (const index of visited) {
+    if (index >= 0 && index < length) highlight[index] = 'visited';
+  }
+
+  // Cursors win over the trail they left behind. Only a conventionally named
+  // one counts as "comparing", because an ordinary number that happens to be a
+  // valid index — a running maximum, a count — is drawn as a pointer but is not
+  // being compared against anything.
+  for (const name of names) {
+    const index = pointers[name];
+    if (index < 0 || index >= length) continue;
+    if (name === primary) highlight[index] = 'active';
+    else if (POINTER_NAMES.includes(name)) highlight[index] = 'compare';
+  }
+
+  for (const name of names) {
+    const index = pointers[name];
+    if (index >= 0 && index < length) visited.add(index);
+  }
+
+  trail.current = { owner, size: length, last: { ...pointers }, visited };
+  return highlight;
 }
 
 function pointerRank(name: string): number {

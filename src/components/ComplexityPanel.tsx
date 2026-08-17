@@ -5,7 +5,8 @@ import { ComplexityChart } from './ComplexityChart';
 import { compareComplexity } from '@/analysis';
 import { GROWTH_MODELS, project } from '@/analysis/fit';
 import { formatCount } from './visualizers/format';
-import type { ComplexityClass, ComplexityReport, Template } from '@/types';
+import { NO_BENCHMARK, benchExample } from '@/engine/benchNotice';
+import type { ComplexityClass, ComplexityReport, Language, Template } from '@/types';
 import styles from './ComplexityPanel.module.scss';
 
 interface Props {
@@ -14,6 +15,13 @@ interface Props {
   stale: boolean;
   detail: string;
   template: Template;
+  /** Shapes the worked benchmark example for the language in the editor. */
+  language: Language;
+  /**
+   * A function in the current file, so the example refers to the reader's own
+   * code rather than an invented `solve`.
+   */
+  benchFn?: string;
   onAnalyze: () => void;
 }
 
@@ -33,7 +41,16 @@ function confidenceTone(confidence: number): 'success' | 'warning' | 'error' {
   return 'error';
 }
 
-export function ComplexityPanel({ report, analyzing, stale, detail, template, onAnalyze }: Props) {
+export function ComplexityPanel({
+  report,
+  analyzing,
+  stale,
+  detail,
+  template,
+  language,
+  benchFn,
+  onAnalyze,
+}: Props) {
   const empirical = report?.empirical;
 
   const bestFit = useMemo(
@@ -200,8 +217,27 @@ export function ComplexityPanel({ report, analyzing, stale, detail, template, on
             <Alert
               type="warning"
               showIcon
-              message="The benchmark could not complete"
-              description={empirical.error}
+              message={
+                empirical.error.startsWith(NO_BENCHMARK)
+                  ? 'Nothing to measure yet'
+                  : 'The benchmark could not complete'
+              }
+              description={
+                empirical.error.startsWith(NO_BENCHMARK) ? (
+                  <>
+                    <p className={styles.benchNote}>{empirical.error}</p>
+                    <pre className={styles.benchExample}>
+                      <code>{benchExample(language, benchFn)}</code>
+                    </pre>
+                    <p className={styles.benchNote}>
+                      The static reading above needs none of this — it comes from the source
+                      itself.
+                    </p>
+                  </>
+                ) : (
+                  empirical.error
+                )
+              }
             />
           )}
 

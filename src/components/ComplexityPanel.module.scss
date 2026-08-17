@@ -351,3 +351,30 @@
     color: var(--breakstep-accent-text);
   }
 }
+
+/** The worked benchmark example shown when there is nothing to measure. */
+.benchNote {
+  margin: 0 0 $space-2;
+  font-size: 12px;
+  line-height: 1.6;
+
+  &:last-child {
+    margin: $space-2 0 0;
+  }
+}
+
+.benchExample {
+  margin: 0;
+  padding: $space-2 $space-3;
+  border-radius: $radius-md;
+  background: var(--breakstep-bg-deep);
+  border: 1px solid var(--breakstep-border);
+  overflow-x: auto;
+  @include scrollbars;
+
+  code {
+    @include mono(11px);
+    color: var(--breakstep-text-dim);
+    white-space: pre;
+  }
+}

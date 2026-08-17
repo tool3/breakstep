@@ -28,6 +28,8 @@ interface Props {
   status: RunStatus;
   analyzing: boolean;
   isDirty: boolean;
+  /** False when there is no `breakstep.*` variant of this template to show. */
+  hasInstrumented: boolean;
   theme: ThemeName;
   layout: LayoutMode;
   onOpenTemplates: () => void;
@@ -73,6 +75,7 @@ export function Header({
   status,
   analyzing,
   isDirty,
+  hasInstrumented,
   theme,
   layout,
   onOpenTemplates,
@@ -91,9 +94,11 @@ export function Header({
   const instrumented = mode === 'instrumented';
   const compact = layout === 'compact';
 
-  const modeTooltip = instrumented
-    ? 'Hide the breakstep.* API and go back to plain code'
-    : 'Show the breakstep.* API calls that drive the visualizer';
+  const modeTooltip = !hasInstrumented
+    ? 'This one is plain code either way — a problem has no breakstep.* variant, and the run is auto-traced'
+    : instrumented
+      ? 'Hide the breakstep.* API and go back to plain code'
+      : 'Show the breakstep.* API calls that drive the visualizer';
 
   /**
    * Everything that does not fit on a phone lives here. Nothing is dropped —
@@ -120,6 +125,7 @@ export function Header({
       key: 'mode',
       icon: instrumented ? <EyeOutlined /> : <EyeInvisibleOutlined />,
       label: instrumented ? 'Hide instrumentation' : 'Show instrumentation',
+      disabled: !hasInstrumented,
       onClick: () => onMode(instrumented ? 'clean' : 'instrumented'),
     },
     {
@@ -196,17 +202,6 @@ export function Header({
         )}
       </Button>
 
-      <Tooltip title="Paste a LeetCode link and get the technique, the dataset and a solution">
-        <Button
-          className={styles.problemsButton}
-          icon={<TrophyOutlined />}
-          onClick={onOpenProblems}
-          aria-label="LeetCode problems"
-        >
-          <span className={styles.problemsLabel}>Problems</span>
-        </Button>
-      </Tooltip>
-
       {!compact && (
         <Segmented<Language>
           className={styles.languages}
@@ -233,14 +228,15 @@ export function Header({
             */}
             <Tooltip title={modeTooltip}>
               <Button
-                className={instrumented ? styles.modeOn : undefined}
-                icon={instrumented ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+                className={instrumented && hasInstrumented ? styles.modeOn : undefined}
+                icon={instrumented && hasInstrumented ? <EyeOutlined /> : <EyeInvisibleOutlined />}
                 onClick={() => onMode(instrumented ? 'clean' : 'instrumented')}
+                disabled={!hasInstrumented}
                 aria-label={instrumented ? 'Hide instrumentation' : 'Show instrumentation'}
-                aria-pressed={instrumented}
+                aria-pressed={instrumented && hasInstrumented}
               >
                 <span className={styles.modeLabel}>
-                  {instrumented ? 'Instrumented' : 'Plain code'}
+                  {instrumented && hasInstrumented ? 'Instrumented' : 'Plain code'}
                 </span>
               </Button>
             </Tooltip>
@@ -270,6 +266,17 @@ export function Header({
                 rel="noreferrer noopener"
                 aria-label="Source"
               />
+            </Tooltip>
+
+            <Tooltip title="Paste a LeetCode link and get the technique, the dataset and a solution">
+              <Button
+                className={styles.problemsButton}
+                icon={<TrophyOutlined />}
+                onClick={onOpenProblems}
+                aria-label="LeetCode problems"
+              >
+                <span className={styles.problemsLabel}>Problems</span>
+              </Button>
             </Tooltip>
 
             <Tooltip title="Record a run and step through it line by line">
@@ -323,10 +330,19 @@ export function Header({
 }
 
 /** Small badge above the editor explaining the current mode. */
-export function ModeBadge({ mode, compact }: { mode: EditorMode; compact?: boolean }) {
-  const clean = mode === 'clean';
+export function ModeBadge({
+  mode,
+  compact,
+  hasInstrumented = true,
+}: {
+  mode: EditorMode;
+  compact?: boolean;
+  /** With no variant to show, the badge must not claim there is one. */
+  hasInstrumented?: boolean;
+}) {
+  const clean = mode === 'clean' || !hasInstrumented;
   return (
-    <span className={styles.badge} data-mode={mode}>
+    <span className={styles.badge} data-mode={clean ? 'clean' : mode}>
       <CodeOutlined />
       {compact
         ? clean

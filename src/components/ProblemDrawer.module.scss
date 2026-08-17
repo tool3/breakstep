@@ -377,3 +377,12 @@
   flex: 1;
   min-width: 140px;
 }
+
+/** Says what a click in the list below will do. */
+.headingHint {
+  @include mono(9px);
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--breakstep-text-faint);
+  margin-left: auto;
+}

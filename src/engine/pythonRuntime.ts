@@ -15,6 +15,8 @@
  *     object cycles so shape detection works identically for both languages.
  */
 
+import { NO_BENCHMARK_MESSAGE } from './benchNotice';
+
 export const PYTHON_BOOTSTRAP = String.raw`
 # NOTE ON NAMING: every injected hook uses a SINGLE leading underscore.
 # Python mangles any identifier written as \`__name\` inside a class body into
@@ -530,7 +532,7 @@ def _breakstep_bench(source, params, sizes, op_limit):
         return json.dumps(
             {
                 "samples": [],
-                "error": "No benchmark registered. Add breakstep.bench(input=lambda n: ..., run=lambda data: ...) to measure growth.",
+                "error": ${JSON.stringify(NO_BENCHMARK_MESSAGE)},
             }
         )
 
