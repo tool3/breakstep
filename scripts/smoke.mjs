@@ -379,6 +379,79 @@ try {
     await page.getByRole('button', { name: /Template: 125\. Valid Palindrome/ }).isVisible(),
   );
 
+  console.log('▸ Submitting an answer');
+  await page.getByRole('button', { name: 'Submit', exact: true }).click();
+  await page.getByRole('heading', { name: /Wrong answer|Accepted/ }).waitFor({ timeout: 30_000 });
+
+  const stubVerdict = await page.locator('[class*="SubmissionsPanel-module__panel"]').first().innerText();
+  check(
+    'submitting the stub is judged wrong, not accepted',
+    /Wrong answer/.test(stubVerdict),
+    stubVerdict.slice(0, 160),
+  );
+  check(
+    'and it shows the case, the published answer and what came back',
+    /expected true/.test(stubVerdict) && /got false/.test(stubVerdict),
+    stubVerdict.slice(0, 400),
+  );
+
+  await page.getByRole('tab', { name: /Problem/ }).click();
+  await page.getByRole('button', { name: /Reveal the solution/ }).click();
+  await page.waitForTimeout(1200);
+  await page.getByRole('tab', { name: /Submissions/ }).click();
+
+  // Submitted from the keyboard, with focus inside Monaco — the case where the
+  // editor could have swallowed the chord before the app ever saw it.
+  await page.locator('.view-lines').first().click();
+  await page.keyboard.press('Shift+Meta+Enter');
+  await page.getByRole('heading', { name: 'Accepted' }).waitFor({ timeout: 30_000 });
+
+  const acceptedVerdict = await page
+    .locator('[class*="SubmissionsPanel-module__panel"]')
+    .first()
+    .innerText();
+  check(
+    'the worked solution is accepted on every published case',
+    /Accepted/.test(acceptedVerdict) && /3\/3 cases/.test(acceptedVerdict),
+    acceptedVerdict.slice(0, 200),
+  );
+  check(
+    'the record carries the metrics that make it worth keeping',
+    /RUN TIME/i.test(acceptedVerdict) &&
+      /TIME/i.test(acceptedVerdict) &&
+      /SPACE/i.test(acceptedVerdict),
+    acceptedVerdict.slice(0, 300),
+  );
+  check(
+    'and names the function it actually called',
+    /isPalindrome\(\)/.test(acceptedVerdict),
+    acceptedVerdict.slice(0, 300),
+  );
+  check('both attempts are in the history', /2 attempts/.test(acceptedVerdict), acceptedVerdict.slice(0, 120));
+
+  // The verdict has to be visible without opening the history: on the tab, and
+  // beside the problem itself.
+  check(
+    'the tab carries the last verdict',
+    (await page.getByRole('tab', { name: /Submissions/ }).locator('[aria-label="Accepted"]').count()) > 0,
+  );
+  await page.getByRole('tab', { name: /Problem/ }).click();
+  check(
+    'and so does the problem, beside its difficulty',
+    await page.getByText('Accepted', { exact: true }).first().isVisible(),
+  );
+
+  await page.getByRole('button', { name: 'LeetCode problems' }).click();
+  await page.waitForTimeout(600);
+  const solvedRow = page.getByRole('button', { name: /Valid Palindrome/ });
+  check(
+    'the problem list ticks what has been solved',
+    (await solvedRow.locator('[aria-label="solved"]').count()) > 0,
+  );
+  check('and says how many', await page.getByText('1 solved').isVisible());
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(400);
+
   // Back to a built-in template so the sections below test what they say.
   await page.locator('button[aria-label^="Template:"]').click();
   await page.getByRole('button', { name: /^Graph/ }).first().click();
@@ -445,6 +518,31 @@ try {
     );
     await page.getByRole('button', { name: 'Stop debugging' }).click();
     await page.waitForTimeout(300);
+
+    // Judging is a generated harness, and Python's is a different generator, so
+    // the only proof it is right is running one.
+    console.log('▸ Submitting a Python answer');
+    await page.getByRole('button', { name: 'LeetCode problems' }).click();
+    await page.waitForTimeout(500);
+    await page.getByRole('button', { name: /Valid Palindrome/ }).click();
+    await page.waitForTimeout(1200);
+    await page.getByRole('button', { name: /Reveal the solution/ }).click();
+    await page.waitForTimeout(1200);
+
+    const pySource = (await page.locator('.view-lines').first().innerText()).replace(/\u00a0/g, ' ');
+    check('the Python solution is what the editor holds', /def is_palindrome/.test(pySource), pySource.slice(0, 120));
+
+    await page.getByRole('button', { name: 'Submit', exact: true }).click();
+    await page.getByRole('heading', { name: /Accepted|Wrong answer|Runtime error/ }).waitFor({
+      timeout: 120_000,
+    });
+    const pyVerdict = await page.locator('[class*="SubmissionsPanel-module__panel"]').first().innerText();
+    check(
+      'the Python judge accepts the Python solution',
+      /Accepted/.test(pyVerdict) && /3\/3 cases/.test(pyVerdict),
+      pyVerdict.slice(0, 300),
+    );
+    check('and records it as a Python attempt', /\bPY\b/.test(pyVerdict), pyVerdict.slice(0, 200));
   }
 
   console.log('▸ Checking responsive layout');

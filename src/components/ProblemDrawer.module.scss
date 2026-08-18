@@ -386,3 +386,18 @@
   color: var(--breakstep-text-faint);
   margin-left: auto;
 }
+
+/// An accepted submission, on the row of the problem it accepted.
+.solved {
+  color: var(--breakstep-mint);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.solvedCount {
+  @include mono(9px);
+  margin-left: auto;
+  color: var(--breakstep-mint);
+  text-transform: none;
+  letter-spacing: 0;
+}

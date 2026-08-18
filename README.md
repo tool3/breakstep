@@ -4,13 +4,23 @@ An in-browser studio for data structures and algorithms. Pick a template, edit t
 code, run it, watch it draw itself, and get a complexity verdict backed by an
 actual measurement.
 
-Think of it as the companion to NeetCode or LeetCode: a place to *see* what your
-code does, step through it line by line, and — when you do want a problem — paste
-a LeetCode link and get the technique, the dataset and a worked solution.
+Think of it as a companion to sites like NeetCode or LeetCode: a place to *see*
+what your code does, step through it line by line, and — when you do want a
+problem — paste a LeetCode link and get the technique, the dataset and a worked
+solution.
 
 Everything runs client-side. There is no backend, no account, and no network call
 after the page loads (except the one-time Pyodide download if you switch to
 Python).
+
+> **Not affiliated with LeetCode or NeetCode.** Breakstep is an independent,
+> unaffiliated project, not sponsored or endorsed by either. "LeetCode" and
+> "NeetCode" are the trademarks of their respective owners and are used here only
+> to say which site a problem came from. No problem statement, editorial or
+> community solution is reproduced: every problem links back to its own page,
+> which is where it should be read. See
+> [what is and is not taken](#what-breakstep-takes-from-leetcode-and-what-it-does-not)
+> and [notices](#notices).
 
 ---
 
@@ -72,6 +82,24 @@ the pane with **Parameters**: the statement, the examples, the recommended
 technique, and the buttons that reveal a solution or reset you to the stub. The
 drawer is only for finding. Nothing is fetched at runtime; see
 [what is and is not taken](#what-breakstep-takes-from-leetcode-and-what-it-does-not).
+
+**Submit** — Run is a scratchpad; **Submit** is the verdict. It calls your
+function once per example case LeetCode publishes for the problem and compares
+every answer, so a submission asks the same question the judge asks — not "did
+the right thing get printed". You get **Accepted** or **Wrong answer** with the
+case that failed, what it should have returned, and what it did return. Every
+attempt is kept, with the run time of the judged calls alone, the operation
+count, and the static time and space estimate, so the history shows an O(n²)
+answer being replaced by an O(n) one. The last verdict rides on the tab, beside
+the problem's difficulty, and as a tick on every solved problem in the list.
+
+It judges a solution named however you liked — the function is resolved from your
+file, not assumed — and it handles the awkward corners honestly: an in-place
+problem is judged on the argument it mutated, a set-valued answer (subsets, group
+anagrams) is accepted in any order the way its judge accepts it, and a *flat*
+answer with the right values in the wrong order is counted wrong with that said
+out loud rather than guessed at. Submissions live in browser storage behind an
+async store interface, which is the seam a real service drops into.
 
 **Analyze** — two independent answers to "what is the complexity?":
 
@@ -259,6 +287,7 @@ src/
   components/        panels and the ten visualizers
     ProblemPanel.tsx   the problem you are solving, beside the code
     ProblemDrawer.tsx  finding one: paste a link, or browse by technique
+    SubmissionsPanel.tsx  the verdict, the cases behind it, and the history
   leetcode/          the offline problem catalogue
     types.ts           what a problem is: prompt, dataset, techniques, sources
     catalogue.ts       40 problems, five per pattern, written out in full
@@ -271,12 +300,17 @@ src/
     topics.ts          LeetCode's topic tags → Breakstep's patterns and structures
     recommend.ts       URL → slug → catalogue, index, or keyword guess
     toTemplate.ts      wrap a problem as an ordinary template
+  submissions/       right or wrong, and the record of it
+    types.ts           what a submission is, and the store interface
+    judge.ts           generate a judge harness, then grade what it reports
+    store.ts           localStorage today, one call away from a service
   templates/
     structures/        the twelve classic structures
     patterns/          the eight classic techniques, on named problems
     examples/          the original catalogue, preserved
   hooks/             workspace state, theme, persistence
     useDebugger.ts     the debug cursor: search a recording, both directions
+    useSubmissions.ts  the history for the problem on screen, read async
 ```
 
 A few decisions worth knowing about:
@@ -452,6 +486,10 @@ a real cycle rather than an infinite copy.
 Everything here is public and unauthenticated, and it is all vendored at build
 time by `npm run problems:refresh` and `npm run problems:details` — never fetched
 from a user's browser, which their missing CORS headers make impossible anyway.
+The vendored files are a dated snapshot, refreshed by hand: the scripts run
+sequentially with a delay between requests, back off for thirty seconds when
+rate-limited, identify themselves honestly in the `User-Agent`, send no
+credentials, and read only endpoints that answer to anyone with a browser.
 
 **Taken**, because it is data rather than writing:
 
@@ -462,7 +500,9 @@ from a user's browser, which their missing CORS headers make impossible anyway.
 | Example cases | the inputs LeetCode publishes, and the answers its statement gives for them |
 
 That is exactly enough to identify a problem, recommend a technique from its real
-tags, generate a correctly typed stub, and run every published example.
+tags, generate a correctly typed stub, run every published example — and judge a
+submission against those answers, which is what makes Accepted mean something
+here without ever contacting the site.
 
 **Not taken:**
 
@@ -477,10 +517,46 @@ tags, generate a correctly typed stub, and run every published example.
 - **Premium problems** (~780 of the 4,023). Nothing about them is published, so
   they are flagged and left alone.
 
+- **Anything behind an account.** No login, no cookie, no API key, no session is
+  used anywhere in this project, and nothing paywalled is read or worked around.
+  Premium problems are identified from the public flag and skipped.
+- **Anything from NeetCode.** Nothing is taken from it at all — not its curated
+  lists, not its orderings, not its videos or solutions. Breakstep's own pattern
+  groupings come from the topic tags LeetCode publishes, mapped in `topics.ts`.
+
 **Also not generated**, for technical rather than legal reasons: design problems
 — `LRUCache` and friends — drive a class through a list of operations rather than
 calling one function, and a few problems take parameter types with no obvious
 literal form. Those are recognised and recommended for, but not scaffolded.
+
+### Why this is the line
+
+What is kept is the *functional* description of a problem — the name of a
+function, the names and types of its parameters, the type it returns — plus the
+short example values a statement quotes. That is the interface, not the writing
+about it: it is what any two programs must agree on to run the same exercise, and
+it is what makes a verdict here mean the same thing a verdict there means. It is
+taken for interoperability and study, not as a substitute for the source, which is
+why every problem carries a link to its own page and why the ~2,990 assembled
+problems deliberately have no statement to read.
+
+What is *not* kept is everything a person wrote: the prose, the constraints
+embedded in it, the editorials, the community solutions. The forty problems
+written out in `catalogue.ts` are original work — the task restated in our own
+words, datasets chosen here, solutions written here — and Breakstep's copyright,
+not a copy of anyone's.
+
+**Nothing leaves your browser.** Your code, your submissions and your progress are
+yours: they stay in `localStorage`, are never uploaded, and are never sent to
+LeetCode or anywhere else. There is no analytics on what you write.
+
+**On request.** If a rights holder believes something here should not be, we will
+remove it in good faith and without argument — raise an issue on the repository.
+The vendored dataset is regenerable from a script, so removing it costs nothing
+but a commit.
+
+This section describes how the project is built and why; it is a statement of
+posture, not a legal opinion.
 
 ## Testing
 
@@ -489,10 +565,11 @@ literal form. Those are recognised and recommended for, but not scaffolded.
 | `engine/*.test.ts`     | shape detection, sandbox, instrumentation, TS stripping, Python bridge |
 | `analysis/*.test.ts`   | static heuristics for both languages, curve fitting                |
 | `components/*.test.tsx`| every visualizer, both layout engines, all panels                  |
-| `hooks/*.test.tsx`     | workspace state machine, persistence, theming                      |
+| `hooks/*.test.tsx`     | workspace state machine, persistence, theming, submission history   |
+| `submissions/*.test.ts`| **every written problem's own solution is judged Accepted, and its stub is not**; the store contract, independent of `localStorage` |
 | `templates/*.test.ts`  | **both faces of every template run, draw, bind their parameters, and measure the complexity they document** |
 | `leetcode/*.test.ts`   | **every catalogue solution runs and reproduces its stated output**; the generator scaffolds 98% of the vendored problems, and a filled-in stub reproduces LeetCode's published answers |
-| `scripts/smoke.mjs`    | real Chrome: Monaco boots, workers load, Pyodide executes, the debugger steps, a problem reveals |
+| `scripts/smoke.mjs`    | real Chrome: Monaco boots, workers load, Pyodide executes, the debugger steps, a problem reveals, a stub is judged wrong and a solution Accepted — in both runtimes |
 | `scripts/responsive.mjs` | 16 device profiles: layout mode, overflow, tap targets, reachability |
 | `scripts/editor-perf.mjs` | editor scrolling: main-thread work per frame, against a 120 fps budget |
 | `templates/typecheck.test.ts` | **every template and problem compiles clean**, with the editor's own options |
@@ -500,6 +577,13 @@ literal form. Those are recognised and recommended for, but not scaffolded.
 Every solution in the LeetCode catalogue is executed by the test suite and its
 output compared, line for line, against the answers the problem statement
 publishes. A solution that stops being correct fails the build.
+
+The judge gets the same treatment from the other direction: all forty written
+problems are *submitted*, through the generated harness, and every one must come
+back Accepted on every published case. That single test is what catches a renamed
+function, a tree rebuilt wrongly, or an in-place problem graded on its return
+value — the failures that would otherwise tell a learner their correct answer was
+wrong.
 
 The template contract tests are the ones that matter most. A template that throws,
 captures nothing, or disagrees with its own documented complexity is a broken
@@ -580,4 +664,65 @@ callables for years.
 Every colour comes
 from a token in `src/styles/global.scss`, and Monaco has a matching theme for
 each.
+
+---
+
+## License
+
+MIT — see [`LICENSE`](LICENSE). It covers Breakstep's own source and content,
+including the forty problems written out in `src/leetcode/problems/`, which are
+original restatements and original solutions authored here.
+
+It does not cover the vendored metadata in `src/leetcode/problemIndex.json` and
+`src/leetcode/details/`, which is factual data about a third-party service rather
+than this project's work. No problem statement, editorial or community solution
+from any third party is in this repository.
+
+---
+
+## Notices
+
+- **Independence.** Breakstep is an independent project. It is not affiliated
+  with, sponsored by, endorsed by, or connected to LeetCode, NeetCode, or any
+  other site it can open a problem from.
+- **Trademarks.** "LeetCode", "NeetCode" and any other marks that appear are the
+  property of their respective owners. They are used nominatively — to identify
+  where a problem comes from and to link to it — and not as branding for this
+  project or to suggest any endorsement.
+- **Statements stay at the source.** No problem statement, constraint text,
+  editorial or community solution is reproduced here. Every problem links to its
+  own page, and the ~2,990 assembled problems carry no description precisely
+  because the description is not ours to carry.
+- **What is vendored, and why.** Only factual, functional metadata: a problem's
+  number, slug, title, difficulty, public premium flag and topic tags, its
+  function signature, and the example inputs and answers its statement quotes.
+  Taken to make the same exercise runnable and judgeable here, not to replace the
+  source.
+- **Public endpoints only.** The refresh scripts read unauthenticated endpoints
+  that answer to any browser. No account, cookie, API key or session is used
+  anywhere in this project; nothing paywalled is accessed or circumvented;
+  premium problems are skipped.
+- **Politely, and by hand.** The scripts are run manually, one request at a time,
+  with a delay between them, a thirty-second back-off when rate-limited, and a
+  `User-Agent` that says what they are. The result is a dated snapshot committed
+  to the repository, not a live dependency on anyone's servers.
+- **Original work.** The forty written-out problems — restated tasks, chosen
+  datasets, worked solutions — the templates, the visualizers, the analyzers and
+  the judge are the work of this project.
+- **License.** Breakstep's own code and content — the application, the templates,
+  the visualizers, the analyzers, the judge, and the forty written-out problems —
+  is MIT licensed; see [`LICENSE`](LICENSE). Use it, fork it, sell it.
+- **Ownership of the vendored data.** The files under `src/leetcode/details/` and
+  `src/leetcode/problemIndex.json` describe a third-party service. They are not
+  Breakstep's work, are not claimed as such, and are not covered by the MIT grant
+  above — that license cannot give away rights this project never held.
+- **Your data is yours.** Code, submissions and progress stay in your browser's
+  `localStorage`. Nothing is uploaded, nothing is sent to LeetCode or NeetCode,
+  and there is no analytics on what you write. There is no backend to send it to.
+- **Removal.** If you hold rights in something here and would rather it were not,
+  open an issue on the repository and it will be removed in good faith, without
+  argument. The dataset is generated by a script, so removing it costs a commit.
+
+These notices describe how the project is built and the reasoning behind it. They
+are not legal advice, and they are not a warranty.
 

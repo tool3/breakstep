@@ -2,9 +2,11 @@ import { useMemo } from 'react';
 import { Button, Empty, Tag, Tooltip } from 'antd';
 import { ExportOutlined, EyeOutlined, LockOutlined, UndoOutlined } from '@ant-design/icons';
 import { StructureLinks, TechniqueCard, UnmappedTags } from './TechniqueCard';
+import { VERDICT } from './SubmissionsPanel';
 import { readTopics } from '@/leetcode/topics';
 import { problemUrl } from '@/leetcode/synthesize';
 import type { LeetProblem } from '@/leetcode/types';
+import type { Verdict } from '@/submissions/types';
 import type { Language } from '@/types';
 import styles from './ProblemPanel.module.scss';
 
@@ -12,6 +14,13 @@ interface Props {
   /** The problem currently in the editor, or null when none is loaded. */
   problem: LeetProblem | null;
   language: Language;
+  /**
+   * How the last submission went, or null if there has not been one.
+   *
+   * Shown beside the title, because whether this problem is solved belongs with
+   * the problem itself and not only in the submission history.
+   */
+  verdict: Verdict | null;
   /** Put the worked solution in the editor. Only offered when there is one. */
   onReveal: (problem: LeetProblem) => void;
   /** Back to the stub, throwing away this attempt. */
@@ -33,6 +42,7 @@ const DIFFICULTY_COLOR = { Easy: 'green', Medium: 'gold', Hard: 'red' } as const
 export function ProblemPanel({
   problem,
   language,
+  verdict,
   onReveal,
   onResetToStarter,
   onOpenTemplate,
@@ -95,6 +105,16 @@ export function ProblemPanel({
             <span className={styles.number}>{problem.number}</span>
             <h3 className={styles.title}>{problem.title}</h3>
             <Tag color={DIFFICULTY_COLOR[problem.difficulty]}>{problem.difficulty}</Tag>
+            {verdict && verdict !== 'unjudged' && (
+              <Tag
+                className={styles.verdict}
+                icon={VERDICT[verdict].icon}
+                color={verdict === 'accepted' ? 'success' : verdict === 'wrong-answer' ? 'error' : 'warning'}
+                bordered={false}
+              >
+                {VERDICT[verdict].label}
+              </Tag>
+            )}
             {!written && (
               <Tooltip title="Assembled from LeetCode's published interface and examples">
                 <Tag icon={<LockOutlined />} color="default">
@@ -162,6 +182,20 @@ export function ProblemPanel({
             <UnmappedTags tags={topics.unmapped} />
           </section>
         )}
+
+        {/*
+          Provenance, with the problem it belongs to. A reader looking at a
+          restated prompt beside a LeetCode number deserves to be told which
+          parts came from where, without going to find a README.
+        */}
+        <section className={styles.section}>
+          <p className={styles.provenance}>
+            {written
+              ? 'Task restated and solved here; the numbering, the topic tags and the example data are LeetCode’s.'
+              : 'Assembled from the interface and example cases LeetCode publishes. The statement is LeetCode’s writing and is not reproduced — read it there.'}{' '}
+            Breakstep is not affiliated with or endorsed by LeetCode.
+          </p>
+        </section>
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ import { ProblemPanel } from './ProblemPanel';
 import { getProblem } from '@/leetcode/catalogue';
 import { synthesizeProblem } from '@/leetcode/synthesize';
 import type { LeetProblem } from '@/leetcode/types';
+import type { Verdict } from '@/submissions/types';
 
 const written = getProblem('koko-eating-bananas')!;
 
@@ -28,10 +29,11 @@ const generated = synthesizeProblem(
   },
 )!;
 
-function setup(problem: LeetProblem | null) {
+function setup(problem: LeetProblem | null, verdict: Verdict | null = null) {
   const props = {
     problem,
     language: 'typescript' as const,
+    verdict,
     onReveal: vi.fn(),
     onResetToStarter: vi.fn(),
     onOpenTemplate: vi.fn(),
@@ -116,3 +118,36 @@ describe('ProblemPanel', () => {
     expect(screen.getByText('→ [0,1]')).toBeInTheDocument();
   });
 });
+
+describe('the verdict beside the problem', () => {
+  it('says a problem is solved without opening the history', () => {
+    setup(written, 'accepted');
+    expect(screen.getByText('Accepted')).toBeInTheDocument();
+  });
+
+  it('says when the last attempt was wrong', () => {
+    setup(written, 'wrong-answer');
+    expect(screen.getByText('Wrong answer')).toBeInTheDocument();
+  });
+
+  it('says nothing at all before there has been an attempt', () => {
+    setup(written);
+    expect(screen.queryByText('Accepted')).not.toBeInTheDocument();
+    expect(screen.queryByText('Wrong answer')).not.toBeInTheDocument();
+  });
+});
+
+describe('where the parts of a problem came from', () => {
+  it('credits the data and disclaims the association, for a written problem', () => {
+    setup(written);
+    expect(screen.getByText(/Task restated and solved here/)).toBeInTheDocument();
+    expect(screen.getByText(/not affiliated with or endorsed by LeetCode/)).toBeInTheDocument();
+  });
+
+  it('says an assembled problem is assembled, and where to read it', () => {
+    setup(generated);
+    expect(screen.getByText(/Assembled from the interface and example cases/)).toBeInTheDocument();
+    expect(screen.getByText(/is not reproduced/)).toBeInTheDocument();
+  });
+});
+

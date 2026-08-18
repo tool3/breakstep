@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Drawer, Input, Tag } from 'antd';
-import { ExportOutlined, LinkOutlined, LockOutlined } from '@ant-design/icons';
+import { CheckCircleFilled, ExportOutlined, LinkOutlined, LockOutlined } from '@ant-design/icons';
 import { StructureLinks, TechniqueCard, UnmappedTags } from './TechniqueCard';
 import { PROBLEMS, problemsByPattern } from '@/leetcode/catalogue';
 import { recommend } from '@/leetcode/recommend';
@@ -14,6 +14,8 @@ interface Props {
   open: boolean;
   /** The problem currently loaded in the editor, if any. */
   currentSlug: string | null;
+  /** Problems with an accepted submission, marked so the list shows progress. */
+  solvedSlugs?: Set<string>;
   compact?: boolean;
   onClose: () => void;
   /**
@@ -31,6 +33,7 @@ const DIFFICULTY_COLOR = { Easy: 'green', Medium: 'gold', Hard: 'red' } as const
 export function ProblemDrawer({
   open,
   currentSlug,
+  solvedSlugs,
   compact,
   onClose,
   onLoad,
@@ -125,6 +128,9 @@ export function ProblemDrawer({
     closeRef.current();
   }, [openable]);
 
+  /** How many of the written problems have an accepted submission. */
+  const solved = PROBLEMS.reduce((count, p) => count + (solvedSlugs?.has(p.slug) ? 1 : 0), 0);
+
   const techniques = result?.techniques ?? [];
   const indexed = result?.indexed;
   const headline = indexed
@@ -165,6 +171,14 @@ export function ProblemDrawer({
             {runnable > 0 && `; another ${(runnable - PROBLEMS.length).toLocaleString()} open with their
               published examples already wired up to run`}
             . Statements stay on LeetCode — they are LeetCode's writing.
+          </p>
+          {/*
+            Said where LeetCode's name is most present, rather than buried in an
+            about box: this is the screen that could imply an association.
+          */}
+          <p className={styles.privacy}>
+            Breakstep is not affiliated with or endorsed by LeetCode. LeetCode is a
+            trademark of its owner, used here to say where a problem comes from.
           </p>
         </div>
 
@@ -289,6 +303,7 @@ export function ProblemDrawer({
           <h3 className={styles.heading}>
             Written out in full
             <span className={styles.count}>{PROBLEMS.length}</span>
+            {solved > 0 && <span className={styles.solvedCount}>{solved} solved</span>}
             <span className={styles.headingHint}>click to open in the editor</span>
           </h3>
           {problemsByPattern().map(({ pattern, problems }) => (
@@ -313,6 +328,9 @@ export function ProblemDrawer({
                     >
                       <span className={styles.groupNumber}>{p.number}</span>
                       <span className={styles.groupTitle}>{p.title}</span>
+                      {solvedSlugs?.has(p.slug) && (
+                        <CheckCircleFilled className={styles.solved} aria-label="solved" />
+                      )}
                       <Tag
                         className={styles.groupTag}
                         color={DIFFICULTY_COLOR[p.difficulty]}

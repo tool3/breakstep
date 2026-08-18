@@ -194,3 +194,18 @@
     padding: $space-2;
   }
 }
+
+/// The last verdict, sitting with the difficulty it was earned against.
+.verdict {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/// Where the parts of a problem came from, said plainly and quietly.
+.provenance {
+  margin: 0;
+  @include mono(10px);
+  line-height: 1.7;
+  color: var(--breakstep-text-faint);
+}

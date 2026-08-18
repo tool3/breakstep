@@ -15,10 +15,12 @@ import {
   BugOutlined,
   ExperimentOutlined,
   TrophyOutlined,
+  CloudUploadOutlined,
   PartitionOutlined,
   SlidersOutlined,
 } from '@ant-design/icons';
 import { Header, ModeBadge } from './components/Header';
+import { SubmissionsPanel, VerdictDot } from './components/SubmissionsPanel';
 import { ParamsPanel } from './components/ParamsPanel';
 import { ProblemPanel } from './components/ProblemPanel';
 import { DebugPanel } from './components/DebugPanel';
@@ -30,8 +32,10 @@ import { ProblemDrawer } from './components/ProblemDrawer';
 import { SplitPane } from './components/SplitPane';
 import { useWorkspace } from './hooks/useWorkspace';
 import { useDebugger } from './hooks/useDebugger';
+import { useSubmissions } from './hooks/useSubmissions';
 import { listFunctions } from './analysis/functions';
 import type { LeetProblem } from './leetcode/types';
+import type { Submission } from './submissions/types';
 import { themeDefinition, useTheme, type ThemeName } from './hooks/useTheme';
 import { useLayout } from './hooks/useLayout';
 import { useLocalStorage } from './hooks/useLocalStorage';
@@ -41,6 +45,8 @@ import styles from './App.module.scss';
 type PanelKey = 'visualize' | 'output' | 'complexity';
 /** On a phone the editor and parameters join the same tab strip. */
 type CompactKey = 'code' | 'params' | PanelKey;
+/** The tabs under the editor: what you are solving, how it went, what it runs on. */
+type BottomKey = 'problem' | 'submissions' | 'params';
 
 // Monaco is by far the largest dependency. Splitting it out means the shell,
 // the visualizers and the analysis panels paint before it arrives.
@@ -127,14 +133,15 @@ function compactTabs(debugging: boolean): { key: CompactKey; label: string; icon
 export default function App() {
   const workspace = useWorkspace();
   const debug = useDebugger();
+  const submissions = useSubmissions(workspace.problemSlug);
   const { theme, setTheme } = useTheme();
   const layout = useLayout();
   const antdConfig = useAntdTheme(theme, layout.coarsePointer);
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [problemsOpen, setProblemsOpen] = useState(false);
-  /** Which of the two bottom-left tabs is showing. */
-  const [bottomTab, setBottomTab] = useState<'problem' | 'params'>('params');
+  /** Which of the three bottom-left tabs is showing. */
+  const [bottomTab, setBottomTab] = useState<BottomKey>('params');
 
   const openProblems = useCallback(() => setProblemsOpen(true), []);
   const closeProblems = useCallback(() => setProblemsOpen(false), []);
@@ -194,6 +201,33 @@ export default function App() {
     });
   }, [debugRun, debug, reveal, compact, workspace.code, workspace.language]);
 
+  /**
+   * Judge the buffer and record the attempt.
+   *
+   * The verdict is the point, so the panel showing it comes forward — and the
+   * frames on screen are left exactly as they were, because a submission is not
+   * a run and should not wipe the picture you were reading.
+   */
+  const handleSubmit = useCallback(async () => {
+    // A debug session owns this whole pane, so the verdict would land behind it.
+    debug.end();
+    setBottomTab('submissions');
+    if (compact) setCompactTab('params');
+
+    const draft = await workspace.submit();
+    if (draft) await submissions.record(draft);
+  }, [workspace, submissions, debug, compact]);
+
+  /** Put a past attempt back in the editor, in the language it was written in. */
+  const handleRestore = useCallback(
+    (submission: Submission) => {
+      debug.end();
+      workspace.restoreCode(submission.code, submission.language);
+      if (compact) setCompactTab('code');
+    },
+    [workspace, debug, compact],
+  );
+
   const handleAnalyze = useCallback(() => {
     analyze();
     reveal('complexity');
@@ -252,7 +286,9 @@ export default function App() {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault();
-        handleRun();
+        // Shift makes it a submission: the same gesture, one step further on.
+        if (e.shiftKey) void handleSubmit();
+        else handleRun();
       } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setPickerOpen(true);
@@ -260,7 +296,7 @@ export default function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [handleRun]);
+  }, [handleRun, handleSubmit]);
 
   // --- The pieces, arranged differently per layout ---------------------------
 
@@ -286,6 +322,7 @@ export default function App() {
           onToggleBreakpoint={debug.toggleBreakpoint}
           onChange={workspace.setCode}
           onRun={handleRun}
+          onSubmit={workspace.problem ? handleSubmit : undefined}
           resetKey={`${workspace.templateId}:${workspace.language}:${workspace.mode}`}
           registerGoToLine={registerGoToLine}
         />
@@ -320,6 +357,7 @@ export default function App() {
     <ProblemPanel
       problem={workspace.problem}
       language={workspace.language}
+      verdict={submissions.latest?.verdict ?? null}
       onReveal={handleRevealSolution}
       onResetToStarter={workspace.resetCode}
       onOpenTemplate={handleOpenTemplate}
@@ -333,6 +371,20 @@ export default function App() {
    * A debug session takes the whole pane — the transport, the variables and the
    * call stack need the room, and neither tab is any use while paused.
    */
+  const submissionsPanel = (
+    <SubmissionsPanel
+      problem={workspace.problem}
+      items={submissions.items}
+      loading={submissions.loading}
+      judging={workspace.judging}
+      onSubmit={handleSubmit}
+      onRestore={handleRestore}
+      onRemove={submissions.remove}
+      onClear={submissions.clear}
+      onFindProblem={openProblems}
+    />
+  );
+
   const params = debug.active ? (
     <DebugPanel debug={debug} onGoToLine={goToLine} onStop={debug.end} />
   ) : (
@@ -340,7 +392,7 @@ export default function App() {
       <Tabs
         className={styles.tabs}
         activeKey={bottomTab}
-        onChange={(key) => setBottomTab(key as 'problem' | 'params')}
+        onChange={(key) => setBottomTab(key as BottomKey)}
         items={[
           {
             key: 'problem',
@@ -355,6 +407,27 @@ export default function App() {
               </span>
             ),
             children: problemPanel,
+          },
+          {
+            key: 'submissions',
+            // A problem is what makes a submission mean anything, so this is
+            // greyed out with the Problem tab rather than on its own.
+            disabled: workspace.problem === null,
+            label: (
+              <span className={styles.tabLabel}>
+                <CloudUploadOutlined />
+                Submissions
+                {/* The last verdict, carried on the tab: whether this problem is
+                    solved is worth knowing without opening anything. */}
+                {submissions.latest && (
+                  <VerdictDot
+                    verdict={submissions.latest.verdict}
+                    title={`Last submission: ${submissions.latest.verdict.replace('-', ' ')}`}
+                  />
+                )}
+              </span>
+            ),
+            children: submissionsPanel,
           },
           {
             key: 'params',
@@ -493,6 +566,9 @@ export default function App() {
             onLanguage={workspace.setLanguage}
             onMode={workspace.setMode}
             onRun={handleRun}
+            onSubmit={handleSubmit}
+            canSubmit={workspace.problem !== null}
+            judging={workspace.judging}
             onDebug={handleDebug}
             debugging={debug.active}
             onAnalyze={handleAnalyze}
@@ -590,6 +666,7 @@ export default function App() {
           <ProblemDrawer
             open={problemsOpen}
             currentSlug={workspace.problemSlug}
+            solvedSlugs={submissions.solved}
             compact={compact}
             onClose={closeProblems}
             onLoad={handleLoadProblem}

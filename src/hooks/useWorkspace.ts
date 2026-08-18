@@ -19,6 +19,10 @@ import {
   templateSource,
 } from '@/templates';
 import { getProblem } from '@/leetcode/catalogue';
+import { loadDetail } from '@/leetcode/details';
+import { buildJudgePlan, judgeResult, withoutJudgeLine } from '@/submissions/judge';
+import { LOCAL_OWNER, SUBMISSION_SCHEMA } from '@/submissions/store';
+import type { SubmissionDraft } from '@/submissions/types';
 import {
   problemTemplate,
   slugFromTemplateId,
@@ -117,6 +121,23 @@ export interface Workspace {
   debugRun: () => Promise<DebugStep[]>;
   /** Open a LeetCode problem — the starter by default, or the worked solution. */
   loadProblem: (problem: LeetProblem, variant?: 'starter' | 'solution') => void;
+  /**
+   * Put a specific buffer back in the editor — the code from a past submission.
+   *
+   * Takes the language with it, because an attempt written in Python is not
+   * something to drop into the TypeScript slot.
+   */
+  restoreCode: (code: string, language?: Language) => void;
+  /**
+   * Judge the current buffer against the problem's published examples.
+   *
+   * Resolves with a record ready to store, or null when there is no problem
+   * open. The run itself is untraced: nothing is drawn, so the time reported is
+   * the algorithm's rather than the visualizer's.
+   */
+  submit: () => Promise<SubmissionDraft | null>;
+  /** True while a submission is being judged. */
+  judging: boolean;
   analyze: () => void;
   cancel: () => void;
 }
@@ -164,6 +185,7 @@ export function useWorkspace(): Workspace {
   const [result, setResult] = useState<RunResult | null>(null);
   const [detail, setDetail] = useState('');
 
+  const [judging, setJudging] = useState(false);
   const [analysis, setAnalysis] = useState<ComplexityReport | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisStale, setAnalysisStale] = useState(true);
@@ -335,6 +357,20 @@ export function useWorkspace(): Workspace {
     [language, mode, setTemplateId, clearResults],
   );
 
+  const restoreCode = useCallback(
+    (next: string, nextLanguage?: Language) => {
+      const target = nextLanguage ?? language;
+      setLanguageState(target);
+      setCodeState(next);
+      writeStored(codeKey(templateId, target, mode), next);
+      setParams(
+        readStored(paramsKey(templateId, mode), defaultParams(template, target, mode, next)),
+      );
+      setAnalysisStale(true);
+    },
+    [templateId, language, mode, template, setLanguageState],
+  );
+
   /** What actually executes: the buffer, plus the harness when in clean mode. */
   const runnable = useCallback(
     () => assembleRunnable(template, language, mode, code),
@@ -387,6 +423,90 @@ export function useWorkspace(): Workspace {
     const visible = code.split('\n').length;
     return (res.steps ?? []).filter((step) => step.line <= visible);
   }, [execute, code]);
+
+  /**
+   * Run the buffer against the problem's published cases and report the verdict.
+   *
+   * Deliberately not a Run: the judge harness is appended, auto-tracing is off,
+   * and the frames on screen are left alone, so submitting never disturbs the
+   * picture you were reading. The log is shown as usual, minus the one line the
+   * harness reports its answers on.
+   */
+  const submit = useCallback(async (): Promise<SubmissionDraft | null> => {
+    // Guarded here rather than only on the button: the keyboard route reaches
+    // this directly, and two judged runs at once would race over the panel.
+    if (!problem || judging) return null;
+
+    const engine = engineRef.current!;
+    setJudging(true);
+    setStatus(language === 'python' ? 'preparing' : 'running');
+    setLogs([]);
+    setResult(null);
+    setDetail('');
+
+    // A missing shard is a normal outcome, not a failure: the plan falls back
+    // to comparing printed output, or says there is nothing to judge.
+    const problemDetail = await loadDetail(problem.slug, problem.number).catch(() => null);
+    const plan = buildJudgePlan(problem, problemDetail, language, code);
+    const base = assembleRunnable(template, language, mode, code);
+    const source = plan.kind === 'cases' ? `${base}\n\n${plan.harness}` : base;
+
+    const res = await engine.run({
+      code: source,
+      language,
+      params,
+      autoTrace: false,
+      onProgress: (update) => {
+        if (update.logs) setLogs(withoutJudgeLine(update.logs));
+        if (update.detail) {
+          setDetail(update.detail);
+          setStatus('running');
+        }
+      },
+    });
+
+    const visible = withoutJudgeLine(res.logs);
+    setResult({ ...res, logs: visible });
+    setLogs(visible);
+    setStatus(res.status === 'done' ? 'done' : res.status);
+    setDetail('');
+    setJudging(false);
+
+    const judgement = judgeResult(plan, res);
+    const staticReport = analyzeStatic(code, language);
+    const measured = !analysisStale ? analysis?.empirical : undefined;
+
+    return {
+      schema: SUBMISSION_SCHEMA,
+      owner: LOCAL_OWNER,
+      problemSlug: problem.slug,
+      problemNumber: problem.number,
+      problemTitle: problem.title,
+      difficulty: problem.difficulty,
+      language,
+      submittedAt: new Date().toISOString(),
+      verdict: judgement.verdict,
+      entry: judgement.entry,
+      passed: judgement.passed,
+      total: judgement.total,
+      cases: judgement.cases,
+      runtimeMs: judgement.runtimeMs,
+      totalMs: res.durationMs,
+      operations: res.operations,
+      complexity: {
+        time: staticReport.time,
+        space: staticReport.space,
+        confidence: staticReport.confidence,
+      },
+      empirical:
+        measured && measured.best !== 'unknown'
+          ? { time: measured.best, confidence: measured.confidence }
+          : undefined,
+      code,
+      error: judgement.error,
+      note: judgement.note,
+    };
+  }, [problem, judging, template, language, mode, code, params, analysis, analysisStale]);
 
   const analyze = useCallback(() => {
     const engine = engineRef.current!;
@@ -452,6 +572,9 @@ export function useWorkspace(): Workspace {
     run,
     debugRun,
     loadProblem,
+    restoreCode,
+    submit,
+    judging,
     analyze,
     cancel,
   };

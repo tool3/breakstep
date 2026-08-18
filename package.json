@@ -2,6 +2,7 @@
   "name": "breakstep",
   "private": true,
   "version": "1.0.0",
+  "license": "MIT",
   "type": "module",
   "description": "Breakstep \u2014 step through data structures and algorithms in the browser: run, debug, visualize and complexity-analyze TypeScript, JavaScript and Python.",
   "scripts": {

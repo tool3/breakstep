@@ -5,6 +5,7 @@ import {
   BugOutlined,
   CaretRightOutlined,
   CheckOutlined,
+  CloudUploadOutlined,
   CodeOutlined,
   ExperimentOutlined,
   EyeInvisibleOutlined,
@@ -38,6 +39,12 @@ interface Props {
   onLanguage: (language: Language) => void;
   onMode: (mode: EditorMode) => void;
   onRun: () => void;
+  /** Judge the buffer against the problem's published examples and record it. */
+  onSubmit: () => void;
+  /** False when no problem is open, so there is nothing to be judged against. */
+  canSubmit: boolean;
+  /** True while a submission is being judged. */
+  judging: boolean;
   /** Record a run and hand it to the debugger. */
   onDebug: () => void;
   /** True while a recording is loaded and the debugger owns the panel. */
@@ -50,6 +57,7 @@ interface Props {
 
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
 const runShortcut = isMac ? '⌘↵' : 'Ctrl+Enter';
+const submitShortcut = isMac ? '⇧⌘↵' : 'Ctrl+Shift+Enter';
 
 function themeMenuItems(theme: ThemeName, onTheme: (t: ThemeName) => void): MenuProps['items'] {
   return THEMES.map((t) => ({
@@ -83,6 +91,9 @@ export function Header({
   onLanguage,
   onMode,
   onRun,
+  onSubmit,
+  canSubmit,
+  judging,
   onDebug,
   debugging,
   onAnalyze,
@@ -134,6 +145,17 @@ export function Header({
       label: 'LeetCode problems',
       onClick: onOpenProblems,
     },
+    ...(canSubmit
+      ? [
+          {
+            key: 'submit',
+            icon: judging ? <LoadingOutlined /> : <CloudUploadOutlined />,
+            label: 'Submit for judging',
+            disabled: busy || judging,
+            onClick: onSubmit,
+          },
+        ]
+      : []),
     {
       key: 'debug',
       icon: <BugOutlined />,
@@ -313,8 +335,36 @@ export function Header({
           </Button>
         ) : (
           <Tooltip title={compact ? 'Run' : `Run (${runShortcut})`}>
-            <Button type="primary" icon={<CaretRightOutlined />} onClick={onRun} aria-label="Run">
+            <Button
+              // Submit takes the primary weight when it is there to take it:
+              // with a problem open, submitting is the action being worked
+              // towards. Without one, Run is still the point of the app.
+              type={canSubmit && !compact ? 'default' : 'primary'}
+              icon={<CaretRightOutlined />}
+              onClick={onRun}
+              aria-label="Run"
+            >
               <span className={styles.runLabel}>Run</span>
+            </Button>
+          </Tooltip>
+        )}
+
+        {/*
+          Submit only exists for a problem, because only a problem has a right
+          answer to be judged against. A permanently disabled button would be
+          clutter on every template; this appears with the thing it acts on.
+        */}
+        {canSubmit && !compact && (
+          <Tooltip title={`Run the published examples and record the verdict (${submitShortcut})`}>
+            <Button
+              className={styles.submitButton}
+              type="primary"
+              icon={judging ? <LoadingOutlined /> : <CloudUploadOutlined />}
+              onClick={onSubmit}
+              disabled={busy || judging}
+              aria-label="Submit"
+            >
+              <span className={styles.runLabel}>{judging ? 'Judging' : 'Submit'}</span>
             </Button>
           </Tooltip>
         )}

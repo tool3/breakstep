@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { VisualizerPanel } from './VisualizerPanel';
 import { OutputPanel } from './OutputPanel';
@@ -745,6 +745,9 @@ describe('Header — progressive disclosure', () => {
     onLanguage: vi.fn(),
     onMode: vi.fn(),
     onRun: vi.fn(),
+    onSubmit: vi.fn(),
+    canSubmit: false,
+    judging: false,
     onDebug: vi.fn(),
     debugging: false,
     onAnalyze: vi.fn(),
@@ -752,6 +755,30 @@ describe('Header — progressive disclosure', () => {
     onResetCode: vi.fn(),
     onTheme: vi.fn(),
   };
+
+  it('offers Submit only when there is a problem to be judged against', async () => {
+    const user = userEvent.setup();
+    render(<Header {...headerProps} layout="desktop" canSubmit={false} />);
+    // A template has no right answer, so a permanently disabled button would
+    // be clutter on every screen but one.
+    expect(screen.queryByRole('button', { name: 'Submit' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Run' })).toHaveClass('ant-btn-primary');
+
+    cleanup();
+    render(<Header {...headerProps} layout="desktop" canSubmit />);
+    const submit = screen.getByRole('button', { name: 'Submit' });
+    expect(submit).toHaveClass('ant-btn-primary');
+    // Submit takes the primary weight; Run keeps working, quieter.
+    expect(screen.getByRole('button', { name: 'Run' })).not.toHaveClass('ant-btn-primary');
+
+    await user.click(submit);
+    expect(headerProps.onSubmit).toHaveBeenCalled();
+  });
+
+  it('says when a submission is being judged, and refuses a second', () => {
+    render(<Header {...headerProps} layout="desktop" canSubmit judging />);
+    expect(screen.getByRole('button', { name: 'Submit' })).toBeDisabled();
+  });
 
   it('will not offer instrumentation a template does not have', () => {
     render(<Header {...headerProps} layout="desktop" hasInstrumented={false} />);

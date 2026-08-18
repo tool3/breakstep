@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ProblemDrawer } from './ProblemDrawer';
 import { getProblem } from '@/leetcode/catalogue';
@@ -127,3 +127,46 @@ describe('ProblemDrawer', () => {
     expect(row.querySelector('[aria-label="loaded"]')).not.toBeNull();
   });
 });
+
+describe('problems already solved', () => {
+  it('ticks the ones with an accepted submission, and counts them', async () => {
+    render(
+      <ProblemDrawer
+        open
+        currentSlug={null}
+        solvedSlugs={new Set(['two-sum-ii-input-array-is-sorted'])}
+        onClose={vi.fn()}
+        onLoad={vi.fn()}
+        onOpenTemplate={vi.fn()}
+      />,
+    );
+
+    const row = await screen.findByRole('button', { name: /Two Sum II/ });
+    expect(within(row).getByLabelText('solved')).toBeInTheDocument();
+    expect(screen.getByText('1 solved')).toBeInTheDocument();
+
+    // A problem nobody has solved carries no mark at all.
+    const other = screen.getByRole('button', { name: /Container With Most Water/ });
+    expect(within(other).queryByLabelText('solved')).not.toBeInTheDocument();
+  });
+});
+
+describe('provenance', () => {
+  it('says it is not LeetCode, where LeetCode links are pasted', async () => {
+    render(
+      <ProblemDrawer
+        open
+        currentSlug={null}
+        onClose={vi.fn()}
+        onLoad={vi.fn()}
+        onOpenTemplate={vi.fn()}
+      />,
+    );
+
+    expect(
+      await screen.findByText(/not affiliated with or endorsed by LeetCode/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/trademark of its owner/)).toBeInTheDocument();
+  });
+});
+

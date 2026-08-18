@@ -47,7 +47,7 @@ const PY_TYPES: Record<string, string> = {
  * Nesting has to be unwrapped from the outside in, keeping any `[]` already on
  * the end — `list<list<integer>>` is `integer[][]`, not `list<integer>[]`.
  */
-function normalizeType(type: string): string {
+export function normalizeType(type: string): string {
   let out = type.trim();
   for (;;) {
     const match = out.match(/^list<([\s\S]+)>((?:\[\])*)$/);
@@ -57,10 +57,21 @@ function normalizeType(type: string): string {
   return out;
 }
 
-function baseOf(type: string): { base: string; depth: number } {
+export function baseOf(type: string): { base: string; depth: number } {
   const normalized = normalizeType(type);
   const depth = (normalized.match(/\[\]/g) ?? []).length;
   return { base: normalized.replace(/\[\]/g, '').trim(), depth };
+}
+
+/**
+ * Whether a type has a literal form the app can build an argument out of.
+ *
+ * Exported because the judge needs the same gate: a problem whose published
+ * parameter is a `Node` or a `NestedInteger` cannot be called from a literal,
+ * and pretending otherwise would produce a confident wrong verdict.
+ */
+export function supportedType(type: string): boolean {
+  return tsType(type) !== null;
 }
 
 function tsType(type: string): string | null {

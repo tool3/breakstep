@@ -65,6 +65,31 @@
   flex-shrink: 0;
 }
 
+/**
+ * Submit is green, not accent-blue.
+ *
+ * Everything else in the header is a tool; this one commits an answer and gets
+ * graded, and it shares its colour with the Accepted verdict it is reaching for.
+ */
+.submitButton {
+  flex-shrink: 0;
+
+  &:global(.ant-btn-primary) {
+    background: var(--breakstep-mint);
+    border-color: var(--breakstep-mint);
+
+    &:hover:not(:disabled) {
+      background: color-mix(in srgb, var(--breakstep-mint) 86%, #fff);
+      border-color: color-mix(in srgb, var(--breakstep-mint) 86%, #fff);
+    }
+
+    &:active:not(:disabled) {
+      background: color-mix(in srgb, var(--breakstep-mint) 88%, #000);
+      border-color: color-mix(in srgb, var(--breakstep-mint) 88%, #000);
+    }
+  }
+}
+
 .templateName {
   @include truncate;
   max-width: 190px;

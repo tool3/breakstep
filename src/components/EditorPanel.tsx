@@ -33,6 +33,14 @@ interface Props {
   onChange: (value: string) => void;
   onRun: () => void;
   /**
+   * Submit for judging, when there is a problem open to submit to.
+   *
+   * Bound inside the editor as well as globally because Monaco claims
+   * Cmd+Shift+Enter for "insert line above" and would otherwise swallow it —
+   * the same reason Cmd+Enter is claimed back for Run.
+   */
+  onSubmit?: () => void;
+  /**
    * Changes when a different file is put in the editor — another template,
    * language or mode. Editing does not change it, so the view only jumps back
    * to the top when the thing being edited is genuinely new.
@@ -54,6 +62,7 @@ export function EditorPanel({
   onToggleBreakpoint,
   onChange,
   onRun,
+  onSubmit,
   resetKey,
   registerGoToLine,
 }: Props) {
@@ -64,6 +73,8 @@ export function EditorPanel({
   const debugDecorations = useRef<editor.IEditorDecorationsCollection | null>(null);
   const runRef = useRef(onRun);
   runRef.current = onRun;
+  const submitRef = useRef(onSubmit);
+  submitRef.current = onSubmit;
   // Read through a ref for the same reason as the options memo: a new function
   // identity makes the wrapper tear down and re-attach its model listener.
   const changeRef = useRef(onChange);
@@ -124,6 +135,10 @@ export function EditorPanel({
 
     // Cmd/Ctrl+Enter runs, matching every notebook and REPL people already use.
     ed.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => runRef.current());
+    // And with Shift, it submits — one step further on from the same gesture.
+    ed.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Enter, () =>
+      submitRef.current?.(),
+    );
 
     debugDecorations.current = ed.createDecorationsCollection([]);
 
