@@ -361,6 +361,24 @@ origin simply cannot call it. That is not a policy choice on our side; a static
 site with no backend has no way to fetch any of this at runtime. Everything is
 therefore vendored by hand, by the two scripts under `scripts/`, and committed.
 
+**A string is a sequence, so it draws like one.** A multi-character string
+becomes a strip of characters, which means the machinery already built for
+sequences — pointers, highlights, the visited trail — applies to string problems
+for free: a palindrome check shows both ends closing in, a sliding window shows
+its edges. Before this, `valid-palindrome` had *nothing* on screen, because the
+only thing it works on is a string.
+
+Promoting a string is guarded, because most strings in scope are labels rather
+than data. It needs two independent signals to agree: at least two
+conventionally-named cursors (`lo`, `hi`, `start`, `end` — the same names that
+earn a pointer marker on an array) currently sitting inside its bounds, and the
+same text as the previous frame. Either alone is too weak: one small integer
+proves nothing, and "unchanged" alone would promote any constant caption. With
+neither, a string is still a candidate — just ranked below real structures, so it
+draws when nothing else is there and stays out of the way when a trie is. Five
+tests pin both directions, including the case that caught it out: the four-letter
+key a hash map is mid-insert must not displace the map.
+
 **Cursors say more than "here".** Auto-tracing used to mark every cursor
 `active`, which meant the colour key advertised three states plain code could
 never produce. It now reads the cursors as a group: the one that moved since the
@@ -553,8 +571,11 @@ tokens, is not available: the worker keeps `getEncodedSemanticClassifications`
 to itself. The distinction is therefore lexical — a name straight after a dot is
 a member, a member straight before a `(` is a call — which is enough for the
 distinction worth having, and knows nothing of a function stored in a property.
-Midnight and Light map those tokens back onto their ordinary identifier colour,
-so only Graphite reads differently for now.
+All three themes do it, each in its own register: Graphite keeps the object blue
+and puts the member in near-white with calls in Dark+ yellow; Midnight gives the
+member a cooler blue-grey than the near-white objects it hangs off; Light uses a
+deep navy for members and the olive-brown that light editors have used for
+callables for years.
 
 Every colour comes
 from a token in `src/styles/global.scss`, and Monaco has a matching theme for

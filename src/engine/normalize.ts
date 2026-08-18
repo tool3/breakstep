@@ -30,6 +30,12 @@ import type {
   VizView,
 } from '@/types/viz';
 
+/**
+ * Shortest string worth drawing as a strip of characters rather than a value.
+ * One character has no positions to point at.
+ */
+export const MIN_STRING_CELLS = 2;
+
 /** Hard ceilings so a runaway structure can't lock up the renderer. */
 export const LIMITS = {
   nodes: 500,
@@ -655,6 +661,20 @@ export function normalize(value: unknown, opts: ShowOptions = {}): VizView {
         : { kind: 'tree', root: null, binary: true };
     }
     return { kind: 'raw', value };
+  }
+
+  /*
+   * A string is a sequence, and string algorithms are about positions in it —
+   * two converging pointers, a window's edges, the character being compared. So
+   * a multi-character string draws as a strip of characters, which gets it
+   * pointers, highlights and a visited trail for free.
+   *
+   * A single character stays a scalar: there is no structure to point at, and
+   * it is almost always a value being read rather than the thing being worked
+   * on.
+   */
+  if (typeof target === 'string' && target.length >= MIN_STRING_CELLS) {
+    return buildArray([...target], opts, 'array');
   }
 
   if (isPrimitive(target)) return { kind: 'raw', value: target };

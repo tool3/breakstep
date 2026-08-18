@@ -88,9 +88,11 @@ export function setupMonaco(): typeof monaco {
       { token: 'identifier', foreground: 'e3e5ea' },
       { token: 'delimiter', foreground: '868d99' },
       { token: 'function', foreground: '93b3ff' },
-      // Members are lexically distinguishable everywhere, but only Graphite
-      // gives them their own colour for now; here they stay identifiers.
-      { token: 'member', foreground: 'e3e5ea' },
+      // `trie.size` — a cooler, quieter blue-grey than the near-white objects
+      // it hangs off, so the two read as different kinds of name.
+      { token: MEMBER_TOKEN, foreground: 'a9c1de' },
+      // A call is a call whether it is `insert(…)` or `trie.insert(…)`.
+      { token: MEMBER_CALL_TOKEN, foreground: '93b3ff' },
     ],
     colors: {
       'editor.background': '#08090b',
@@ -177,6 +179,10 @@ export function setupMonaco(): typeof monaco {
       { token: 'string', foreground: '0f7d5a' },
       { token: 'number', foreground: 'b06d0f' },
       { token: 'type', foreground: '2558c4' },
+      // Objects keep the body text colour; a member is a deep navy, a call the
+      // olive-brown that light editors have used for callables for years.
+      { token: MEMBER_TOKEN, foreground: '12307d' },
+      { token: MEMBER_CALL_TOKEN, foreground: '7a5c1e' },
     ],
     colors: {
       'editor.background': '#ffffff',

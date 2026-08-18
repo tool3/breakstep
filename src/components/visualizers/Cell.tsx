@@ -43,19 +43,40 @@ interface CellProps {
   small?: boolean;
 }
 
+/**
+ * A space in a string strip is a cell that looks empty, which reads as a hole in
+ * the data rather than as a character. Whitespace gets a visible stand-in — only
+ * here, so logs and parameter fields keep the real characters.
+ */
+const WHITESPACE_MARK: Record<string, string> = {
+  ' ': '·',
+  '\t': '⇥',
+  '\n': '⏎',
+};
+
 export const Cell = memo(function Cell({ value, state, index, note, small }: CellProps) {
-  const display = formatValue(value);
+  const whitespace = typeof value === 'string' ? WHITESPACE_MARK[value] : undefined;
+  const display = whitespace ?? formatValue(value);
   const full = formatFull(value);
 
   return (
     <div className={styles.slot}>
       <div
-        className={[styles.cell, small ? styles.small : '', stateClass(state)].filter(Boolean).join(' ')}
+        className={[
+          styles.cell,
+          small ? styles.small : '',
+          whitespace ? styles.whitespace : '',
+          stateClass(state),
+        ]
+          .filter(Boolean)
+          .join(' ')}
         // The truncated display is unreadable for long values; the title is the
         // escape hatch, and it doubles as the accessible name.
         title={display === full ? undefined : full}
         role="gridcell"
-        aria-label={`${index !== undefined ? `index ${index}: ` : ''}${full}${state ? ` (${state})` : ''}`}
+        aria-label={`${index !== undefined ? `index ${index}: ` : ''}${
+          whitespace ? 'space' : full
+        }${state ? ` (${state})` : ''}`}
       >
         {display}
       </div>

@@ -433,3 +433,8 @@ $lift: 3px;
   border-radius: 3px;
   border: 1px solid var(--breakstep-border-strong);
 }
+
+/** The stand-in glyph for whitespace is a marker, not content. */
+.whitespace {
+  color: var(--breakstep-text-faint);
+}

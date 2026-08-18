@@ -6,6 +6,22 @@ import { formatCount, formatDuration, formatValue } from './format';
 import { normalize } from '@/engine/normalize';
 import type { TreeNode, VizKind } from '@/types/viz';
 
+describe('string strips', () => {
+  it('gives whitespace a visible stand-in', () => {
+    render(<Visualizer view={normalize('a b')} />);
+    // The middle cell is a space; an empty box reads as missing data.
+    expect(screen.getByText('·')).toBeInTheDocument();
+    expect(screen.getByRole('gridcell', { name: /index 1: space/ })).toBeInTheDocument();
+  });
+
+  it('draws each character in order, with its index', () => {
+    render(<Visualizer view={normalize('abc')} />);
+    for (const [i, ch] of ['a', 'b', 'c'].entries()) {
+      expect(screen.getByRole('gridcell', { name: `index ${i}: ${ch}` })).toBeInTheDocument();
+    }
+  });
+});
+
 describe('Visualizer dispatch', () => {
   it('names every view kind', () => {
     const kinds: VizKind[] = [

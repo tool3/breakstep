@@ -296,6 +296,68 @@ function isStructural(v: unknown): boolean {
   return v !== null && typeof v === 'object';
 }
 
+/**
+ * Longest string worth drawing. A window over a paragraph is still a window,
+ * but past a screenful of cells there is nothing to see.
+ */
+const MAX_STRING_CELLS = 160;
+
+/**
+ * A string the tracer may pick as its subject.
+ *
+ * String algorithms are about positions — the two ends closing in, a window's
+ * edges, the character being compared — and every one of those is already drawn
+ * for a sequence. Without this, a palindrome check has nothing on screen at all,
+ * because the only thing it works on is the string.
+ */
+function isVisualString(v: unknown): v is string {
+  return typeof v === 'string' && v.length >= 2 && v.length <= MAX_STRING_CELLS;
+}
+
+/**
+ * How much worse a string is than a real structure of the same size.
+ *
+ * Most strings in scope are labels, names or captions, so the default is to
+ * assume this one is scenery: enough of a penalty that the trie wins over the
+ * word being inserted into it, but not so much that a string loses to nothing.
+ */
+const STRING_PENALTY = 4;
+
+/**
+ * ...unless it is plainly the thing being traversed.
+ *
+ * Two independent signals have to agree, because either alone is too weak. One
+ * in-bounds integer proves nothing — a loop counter over something else is
+ * usually small too. And "unchanged" alone would promote any constant label.
+ *
+ *  1. **Two positions inside it.** A window has two edges and a converging pair
+ *     has two ends; that is the shape of every string algorithm this is for.
+ *  2. **The same string as last frame.** Data being traversed holds still while
+ *     cursors move over it. A string that changes every frame is a value in
+ *     flight — the key a hash map is currently inserting, say — and drawing
+ *     that instead of the map was exactly the mistake to avoid.
+ */
+const STRING_CURSOR_BONUS = 5;
+const CURSORS_FOR_STRING = 2;
+
+/**
+ * How many *named* cursors in scope are positions inside this string.
+ *
+ * Named, not merely numeric: a running total is an integer and is often small
+ * enough to look like an index. `lo`, `hi`, `start`, `end` and the rest are the
+ * same names that already earn a pointer marker on an array, so this asks the
+ * question the drawing already answers — is anything pointing into it?
+ */
+function cursorsInto(text: string, snapshot: Record<string, unknown>): number {
+  const positions = new Set<number>();
+  for (const [name, value] of Object.entries(snapshot)) {
+    if (!POINTER_NAMES.includes(name)) continue;
+    if (typeof value !== 'number' || !Number.isInteger(value)) continue;
+    if (value >= 0 && value <= text.length) positions.add(value);
+  }
+  return positions.size;
+}
+
 /** Rough node count, used to prefer the richest structure in scope. */
 export function viewSize(view: VizView): number {
   switch (view.kind) {
@@ -339,12 +401,15 @@ export function viewSize(view: VizView): number {
 /** Record every structural binding's size, tracking how long it has sat still. */
 function remember(snapshot: Record<string, unknown>, history: Map<string, Observation>): void {
   for (const [name, raw] of Object.entries(snapshot)) {
-    if (!isStructural(raw)) continue;
+    // Strings are candidates too, so their sizes have to be remembered — that
+    // history is what tells a growing result from unchanging input.
+    if (!isVisualString(raw) && !isStructural(raw)) continue;
     try {
       const size = viewSize(normalize(raw));
       const previous = history.get(name);
       history.set(name, {
         size,
+        text: typeof raw === 'string' ? raw : undefined,
         stale: previous && previous.size === size ? previous.stale + 1 : 0,
       });
     } catch {
@@ -363,6 +428,8 @@ function isContainer(raw: unknown): boolean {
 /** What we remember about a binding between frames. */
 export interface Observation {
   size: number;
+  /** For a string binding, the text itself — length alone cannot tell two apart. */
+  text?: string;
   /** Consecutive frames this binding has been the same size. */
   stale: number;
 }
@@ -398,8 +465,9 @@ export function pickSubject(
 
   for (const [name, raw] of Object.entries(snapshot)) {
     const position = index++;
-    if (!isStructural(raw)) continue;
-    if (typeof (raw as { then?: unknown }).then === 'function') continue; // promises
+    const isString = isVisualString(raw);
+    if (!isString && !isStructural(raw)) continue;
+    if (!isString && typeof (raw as { then?: unknown }).then === 'function') continue; // promises
 
     let view: VizView;
     try {
@@ -433,6 +501,11 @@ export function pickSubject(
       // into.
       Math.log2(size + 1) * 3.5 +
       KIND_BONUS[view.kind] +
+      (isString
+        ? cursorsInto(raw, snapshot) >= CURSORS_FOR_STRING && seen?.text === raw
+          ? STRING_CURSOR_BONUS
+          : -STRING_PENALTY
+        : 0) +
       // Inner scopes come first in the snapshot; the first few get a boost.
       Math.max(0, 3 - position * 0.5) +
       (name === opts.lastName ? 3 : 0) +

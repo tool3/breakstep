@@ -11,6 +11,28 @@ import type {
   TrieView,
 } from '@/types/viz';
 
+describe('normalize — strings', () => {
+  it('draws a string as a strip of its characters', () => {
+    const view = normalize('abc');
+    expect(view.kind).toBe('array');
+    expect(view.kind === 'array' && view.items.map((c) => c.value)).toEqual(['a', 'b', 'c']);
+    expect(view.kind === 'array' && view.showIndices).toBe(true);
+  });
+
+  it('takes pointers and highlights like any other sequence', () => {
+    const view = normalize('racecar', { pointers: { lo: 0, hi: 6 }, highlight: { 3: 'match' } });
+    expect(view.kind === 'array' && view.pointers?.map((p) => [p.name, p.index])).toEqual([
+      ['lo', 0],
+      ['hi', 6],
+    ]);
+    expect(view.kind === 'array' && view.items[3].state).toBe('match');
+  });
+
+  it('leaves an empty string alone', () => {
+    expect(normalize('')).toEqual({ kind: 'raw', value: '' });
+  });
+});
+
 describe('normalize — shape detection', () => {
   it('renders a flat array as an array view with index labels', () => {
     const view = normalize([1, 2, 3]) as ArrayView;
@@ -143,7 +165,8 @@ describe('normalize — shape detection', () => {
 
   it('falls back to a raw view for primitives', () => {
     expect(normalize(42)).toEqual({ kind: 'raw', value: 42 });
-    expect(normalize('hi')).toEqual({ kind: 'raw', value: 'hi' });
+    // A single character has no positions to point at, so it stays a value.
+    expect(normalize('h')).toEqual({ kind: 'raw', value: 'h' });
   });
 });
 
