@@ -1,5 +1,8 @@
 # Breakstep
 
+![](https://shellfie.vercel.app/s/BgQdYNk.svg)
+
+
 An in-browser studio for data structures and algorithms. Pick a template, edit the
 code, run it, watch it draw itself, and get a complexity verdict backed by an
 actual measurement.

@@ -21,6 +21,7 @@ import { LANGUAGES, type EditorMode, type Language, type RunStatus, type Templat
 import { THEMES, type ThemeName } from '@/hooks/useTheme';
 import type { LayoutMode } from '@/hooks/useLayout';
 import styles from './Header.module.scss';
+import Logo from './svgs/logo';
 
 interface Props {
   template: Template;
@@ -191,21 +192,7 @@ export function Header({
   return (
     <header className={styles.header} data-layout={layout}>
       <div className={styles.brand}>
-        <span className={styles.logo} aria-hidden="true">
-          <svg viewBox="0 0 32 32" width="24" height="24">
-            <circle cx="9" cy="10" r="3" fill="var(--breakstep-accent)" />
-            <circle cx="22" cy="9" r="3" fill="var(--breakstep-mint)" />
-            <circle cx="10" cy="23" r="3" fill="var(--breakstep-amber)" />
-            <circle cx="23" cy="22" r="3" fill="var(--breakstep-violet)" />
-            <path
-              d="M9 10 L22 9 M9 10 L10 23 M22 9 L23 22 M10 23 L23 22"
-              stroke="var(--breakstep-border-strong)"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              fill="none"
-            />
-          </svg>
-        </span>
+        <Logo width={25} />
         <span className={styles.wordmark}>Breakstep</span>
         <span className={styles.tagline}>data structures, step by step</span>
       </div>

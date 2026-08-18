@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="144"
+     viewBox="0 0 128 144" role="img" aria-labelledby="bs-reversed">
+  <title id="bs-reversed">Breakstep</title>
+  <!--
+    Breakstep — Reversed. The B cut out, the S standing in the cut.
+
+    The B and the S share one 96×112 footprint at the same origin, with the S over the
+    top. Every stroke of the S falls inside a stroke of the B — which is why the
+    silhouette of this mark is the B and the colour of it is the S, and why showing
+    the B at all takes a deliberate device.
+
+    Treatment: figure and ground swapped. The field is mint, the B is a hole in it,
+    and the S stands back up inside that hole in blue — held off the edges by four
+    units so the two never touch. The B is read as the space it takes up rather than
+    as a stroke, which is the one reading of this footprint that costs the S
+    nothing.
+
+    Grid: stroke 24, counters 20, bars at 24/44/88/112. Colours are the debugger's own
+    legend from viz.module.scss — active, compare, visited, match.
+  -->
+  <defs>
+    <clipPath id="bs-rev-b" transform="translate(16 16)">
+      <rect x="0" y="0" width="24" height="112" />
+      <rect x="0" y="0" width="80" height="24" />
+      <rect x="56" y="0" width="24" height="68" />
+      <rect x="0" y="44" width="96" height="24" />
+      <rect x="72" y="44" width="24" height="68" />
+      <rect x="0" y="88" width="96" height="24" />
+    </clipPath>
+  </defs>
+
+  <!-- Frame: the mark plus 16 a side, so it keeps the letterforms' proportions. -->
+  <rect width="128" height="144" rx="18" fill="#2cbb5d" />
+
+  <g transform="translate(16 16)">
+    <!-- B — cut out of the mint field. Its counters need no drawing: they are
+         simply field the cut leaves behind. -->
+    <g fill="#141414">
+      <!-- spine -->
+      <rect x="0" y="0" width="24" height="112" />
+      <!-- top bar, cut short — the notch that makes it a B and not an 8 -->
+      <rect x="0" y="0" width="80" height="24" />
+      <!-- upper riser, inset by the notch -->
+      <rect x="56" y="0" width="24" height="68" />
+      <!-- middle bar -->
+      <rect x="0" y="44" width="96" height="24" />
+      <!-- lower riser, flush right -->
+      <rect x="72" y="44" width="24" height="68" />
+      <!-- bottom bar -->
+      <rect x="0" y="88" width="96" height="24" />
+    </g>
+
+    <!-- S — standing back up inside the cut, in the active blue -->
+    <g fill="#58a6ff">
+      <!-- top bar -->
+      <rect x="0" y="0" width="80" height="24" />
+      <!-- upper riser, left -->
+      <rect x="0" y="0" width="24" height="68" />
+      <!-- middle bar, short -->
+      <rect x="0" y="44" width="76" height="24" />
+      <!-- lower riser, right -->
+      <rect x="72" y="44" width="24" height="68" />
+      <!-- bottom bar, short -->
+      <rect x="0" y="88" width="86" height="24" />
+    </g>
+
+    <!-- and sunk 4 units into the cut, so it never touches the field it was
+         carved out of -->
+    <g clip-path="url(#bs-rev-b)">
+      <path d="M0,0 H80 V24 H24 V44 H96 V112 H0 V88 H72 V68 H0 Z" fill="none" stroke="#141414" stroke-width="8" />
+    </g>
+  </g>
+</svg>

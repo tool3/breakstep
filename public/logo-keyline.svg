@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="136" height="152"
+     viewBox="0 0 136 152" role="img" aria-labelledby="bs-keyline">
+  <title id="bs-keyline">Breakstep</title>
+  <!--
+    Breakstep — Keyline. The B drawn over the S.
+
+    The B and the S share one 96×112 footprint at the same origin, with the S over the
+    top. Every stroke of the S falls inside a stroke of the B — which is why the
+    silhouette of this mark is the B and the colour of it is the S, and why showing
+    the B at all takes a deliberate device.
+
+    Treatment: the B is not filled at all — it is drawn, as a line, straight over
+    the solid S. Since the composite's silhouette is already the B, that line reads
+    as the mark's own edge coming forward, with the counters closing the two bowls.
+    Violet rather than blue, so it is never mistaken for Nested at a glance.
+
+    Grid: stroke 24, counters 20, bars at 24/44/88/112. Colours are the debugger's own
+    legend from viz.module.scss — active, compare, visited, match.
+  -->
+  <!-- Frame: the mark plus 20 a side, so it keeps the letterforms' proportions. -->
+  <rect width="136" height="152" rx="18" fill="#141414" />
+  <rect x="0.5" y="0.5" width="135" height="151" rx="17.5" fill="none" stroke="#3e3e3e" />
+
+  <g transform="translate(20 20)">
+    <!-- S — solid, in the match mint -->
+    <g fill="#2cbb5d">
+      <!-- top bar -->
+      <rect x="0" y="0" width="80" height="24" />
+      <!-- upper riser, left -->
+      <rect x="0" y="0" width="24" height="68" />
+      <!-- middle bar, short -->
+      <rect x="0" y="44" width="76" height="24" />
+      <!-- lower riser, right -->
+      <rect x="72" y="44" width="24" height="68" />
+      <!-- bottom bar, short -->
+      <rect x="0" y="88" width="86" height="24" />
+    </g>
+
+    <!-- B — its outline drawn straight over the S, in the visited violet -->
+    <g fill="none" stroke="#b48ef2" stroke-width="8">
+      <path d="M0,0 H80 V44 H96 V112 H0 Z" />
+      <rect x="24" y="24" width="32" height="20" />
+      <rect x="24" y="68" width="48" height="20" />
+    </g>
+  </g>
+</svg>

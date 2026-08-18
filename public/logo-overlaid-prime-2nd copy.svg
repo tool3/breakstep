@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="137" height="150" viewBox="0 0 137 150" role="img"
+  aria-labelledby="bs-overlaid">
+  <title id="bs-overlaid">Breakstep</title>
+  <!-- Frame: the mark plus 16 a side. The play triangle takes it to 105 wide, and
+       moving the bars down to 50/94 took the letter to 118 tall — the old 144 left
+       only 10 under the bottom bar against 16 above the top one. -->
+  <rect width="137" height="150" rx="18" fill="#141414" />
+  <rect x="0.5" y="0.5" width="136" height="149" rx="17.5" fill="none" stroke="#3e3e3e" />
+
+  <g transform="translate(16 16)">
+    <!-- B — underneath, in the active blue -->
+    <g fill="#75BEFE">
+      <!-- <rect x="56" y="0" width="24" height="68" /> -->
+      <rect x="0" y="100" width="96" height="24" />
+      
+      <rect x="65" y="0" width="5" height="48" />
+      <!-- Play, aligned to the bar: base at x=72 (the same 2-unit gap the bar has
+           from the top bar), spanning the bar's full height 0..48, apex on its centre
+           line at 24. Points are inset by half the stroke width so the outer edge
+           lands on 72,0 / 104,24 / 72,48 — miter joins make that exact. -->
+      <polygon points="74.5,5 99.833,24 74.5,43" fill="none" stroke="#75BEFE" stroke-width="5" />
+      
+    </g>
+
+    <!-- The left block, recoloured: the two exposed blocks are the only
+         B left to see, so they get two different states rather than one. -->
+    <g fill="#F38671">
+      <!-- left block — compare amber -->
+      <rect x="0" y="68" width="24" height="30" />
+    </g>
+
+    <!-- Cross sections: tile colour, so each block reads as sitting behind
+         the S rather than joined to it. -->
+    <g fill="#141414">
+
+      <!-- <rect x="55" y="24" width="26" height="2" /> -->
+      <rect x="55" y="48" width="26" height="2" />
+
+      <rect x="-1" y="68" width="26" height="5" />
+      <rect x="-1" y="74" width="26" height="2" />
+
+    </g>
+
+    <!-- S — over the top, in the match mint -->
+    <g fill="#8ad184">
+      <!-- top bar -->
+      <rect x="0" y="0" width="63" height="24" />
+      <!-- upper riser, left -->
+      <rect x="0" y="0" width="24" height="68" />
+      <!-- middle bar, short — lets the B through below it -->
+      <rect x="0" y="50" width="76" height="24" />
+      <!-- lower riser, right -->
+      <rect x="72" y="50" width="24" height="74" />
+      <!-- bottom bar, short -->
+      <rect x="0" y="100" width="86" height="24" />
+    </g>
+  </g>
+</svg>

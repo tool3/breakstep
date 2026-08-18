@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="136" height="152"
+     viewBox="0 0 136 152" role="img" aria-labelledby="bs-ghost">
+  <title id="bs-ghost">Breakstep</title>
+  <!--
+    Breakstep — Ghost. Paper, one step apart.
+
+    The B and the S occupy one 96×112 footprint, at the same origin, and the S is laid
+    over the B. The S's bars are trimmed short on purpose: that is the only reason
+    any of the B shows at all, and where it shows is the whole design.
+
+    Treatment: the same two letters, 8 units apart. The S is stepped down and to
+    the right, which leaves the B's whole top-left edge showing as a ghost of
+    itself — so the B is legible along its entire length rather than at two
+    windows, and the pair reads as one thing caught mid-move. Light ground, and the
+    Light theme's own values for the same two states.
+
+    Grid: stroke 24, counters 20, bars at 24/44/88/112. The frame is the mark plus 16 on
+    every side, so it carries the letterforms' proportions instead of squaring them off.
+  -->
+  <!-- Frame: sized to the mark, not to a square. -->
+  <rect width="136" height="152" rx="18" fill="#f6f7f9" />
+  <rect x="0.5" y="0.5" width="135" height="151" rx="17.5" fill="none" stroke="#e0e4ea" />
+
+  <g transform="translate(16 16)">
+    <!-- B — offset up and left, so its whole edge shows as a ghost -->
+    <g transform="translate(0 0)">
+      <g fill="#2f6bea">
+        <!-- spine -->
+        <rect x="0" y="0" width="24" height="112" />
+        <!-- top bar, cut short — the notch that makes it a B and not an 8 -->
+        <rect x="0" y="0" width="80" height="24" />
+        <!-- upper riser, inset by the notch -->
+        <rect x="56" y="0" width="24" height="68" />
+        <!-- middle bar -->
+        <rect x="0" y="44" width="96" height="24" />
+        <!-- lower riser, flush right -->
+        <rect x="72" y="44" width="24" height="68" />
+        <!-- bottom bar -->
+        <rect x="0" y="88" width="96" height="24" />
+      </g>
+    </g>
+
+    <!-- Relief, then the S, both shifted down and right by the offset -->
+    <g transform="translate(8 8)">
+      <g fill="#f6f7f9">
+        <rect x="-4" y="-4" width="88" height="32" />
+        <rect x="-4" y="-4" width="32" height="76" />
+        <rect x="-4" y="40" width="84" height="32" />
+        <rect x="68" y="40" width="32" height="76" />
+        <rect x="-4" y="84" width="94" height="32" />
+      </g>
+      <g fill="#0f9d6f">
+        <!-- top bar -->
+        <rect x="0" y="0" width="80" height="24" />
+        <!-- upper riser, left -->
+        <rect x="0" y="0" width="24" height="68" />
+        <!-- middle bar, short — lets the B through below it -->
+        <rect x="0" y="44" width="76" height="24" />
+        <!-- lower riser, right -->
+        <rect x="72" y="44" width="24" height="68" />
+        <!-- bottom bar, short -->
+        <rect x="0" y="88" width="86" height="24" />
+      </g>
+    </g>
+  </g>
+</svg>

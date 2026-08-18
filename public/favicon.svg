@@ -1,9 +1,49 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="7" fill="#08090b"/>
-  <rect x="0.5" y="0.5" width="31" height="31" rx="6.5" fill="none" stroke="#1f6feb" stroke-opacity="0.5"/>
-  <circle cx="9" cy="10" r="3" fill="#58a6ff"/>
-  <circle cx="22" cy="9" r="3" fill="#3fb950"/>
-  <circle cx="10" cy="23" r="3" fill="#d29922"/>
-  <circle cx="23" cy="22" r="3" fill="#a371f7"/>
-  <path d="M9 10 L22 9 M9 10 L10 23 M22 9 L23 22 M10 23 L23 22" stroke="#2c2e35" stroke-width="1.6" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="137" height="150" viewBox="0 0 137 150" role="img"
+  aria-labelledby="bs-overlaid">
+  <title id="bs-overlaid">Breakstep</title>
+  <g transform="translate(20 13)">
+    <!-- B — underneath, in the active blue -->
+    <g fill="#F38671">
+      <rect x="56" y="0" width="24" height="68" />
+      <rect x="0" y="100" width="96" height="24" />
+    </g>
+
+    <!-- The left block, recoloured: the two exposed blocks are the only
+         B left to see, so they get two different states rather than one. -->
+    <g fill="#75BEFE">
+      <!-- left block — compare amber -->
+      <rect x="0" y="68" width="24" height="30" />
+    </g>
+
+    <!-- Cross sections: tile colour, so each block reads as sitting behind
+         the S rather than joined to it. -->
+    <g fill="#141414">
+
+      <rect x="55" y="24" width="26" height="2" />
+      <rect x="55" y="48" width="26" height="2" />
+
+      <rect x="-1" y="68" width="26" height="5" />
+      <rect x="-1" y="74" width="26" height="2" />
+
+      <rect x="10" y="74" width="4" height="24" />
+
+    </g>
+
+    <!-- S — over the top, in the match mint -->
+    <g fill="#8AD184">
+      <!-- top bar -->
+      <rect x="0" y="0" width="80" height="24" />
+  
+
+
+      <!-- upper riser, left -->
+      <rect x="0" y="0" width="24" height="68" />
+      <!-- middle bar, short — lets the B through below it -->
+      <rect x="0" y="50" width="76" height="24" />
+      <!-- lower riser, right -->
+      <rect x="72" y="50" width="24" height="74" />
+      <!-- bottom bar, short -->
+      <rect x="0" y="100" width="86" height="24" />
+    </g>
+  </g>
 </svg>

@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256"
+     role="img" aria-labelledby="bs-overlay">
+  <title id="bs-overlay">Breakstep</title>
+  <!-- Tile: near-black, with the chrome hairline. -->
+  <rect width="256" height="256" rx="24" fill="#141414" />
+  <rect x="0.5" y="0.5" width="255" height="255" rx="23.5" fill="none" stroke="#3e3e3e" />
+
+  <!-- B — near-white, behind -->
+  <g fill="#2c84bb">
+    <!-- spine -->
+    <rect x="55" y="28" width="24" height="112" />
+    <!-- top bar, cut short — the notch that makes it a B and not an 8 -->
+    <rect x="55" y="28" width="80" height="24" />
+    <!-- upper riser, inset by the notch -->
+    <rect x="111" y="28" width="24" height="68" />
+    <!-- middle bar -->
+  </g>
+  <g fill="#d55cf6">
+    <rect x="55" y="72" width="96" height="24" />
+    <!-- lower riser, flush right -->
+    <rect x="127" y="72" width="24" height="68" />
+    <!-- bottom bar -->
+    <rect x="55" y="116" width="96" height="24" />
+  </g>
+
+  <!-- The slits: tile colour, so they read as the S casting the B into shadow. -->
+  <g fill="#141414">
+    <!-- down the left edge of the S's bar -->
+    <!-- <rect x="100" y="121" width="5" height="24" /> -->
+    <!-- across the B's lower riser, which passes behind -->
+    <rect x="110" y="52" width="26" height="5" />
+    <rect x="110" y="68" width="26" height="5" />
+
+    <rect x="54" y="96" width="26" height="5" />
+    <rect x="54" y="111" width="26" height="5" />
+  </g>
+
+  <!-- S — mint, in front -->
+  <g fill="#2cbb5d">
+    <!-- top bar -->
+    <rect x="55" y="28" width="80" height="24" />
+    <!-- upper riser, left -->
+    <rect x="55" y="28" width="24" height="68" />
+    <!-- middle bar -->
+    <rect x="55" y="72" width="76" height="24" />
+    <!-- lower riser, right -->
+    <rect x="127" y="72" width="24" height="68" />
+    <!-- bottom bar -->
+    <rect x="55" y="116" width="86" height="24" />
+  </g>
+</svg>

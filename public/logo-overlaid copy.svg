@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="144"
+     viewBox="0 0 128 144" role="img" aria-labelledby="bs-overlaid">
+  <title id="bs-overlaid">Breakstep</title>
+  <!--
+    Breakstep — Overlaid. Near-black frame, mint S over a blue B.
+
+    The B and the S occupy one 96×112 footprint, at the same origin, and the S is laid
+    over the B. The S's bars are trimmed short on purpose: that is the only reason
+    any of the B shows at all, and where it shows is the whole design.
+
+    Treatment: the S wins the footprint and the B survives as two blocks, one
+    upper-right and one lower-left. They are the only B you can see, so they take
+    two different states from the debugger's legend — active blue on the right,
+    compare amber on the left — and the four cross sections keep each of them
+    reading as something behind the S rather than part of it.
+
+    Grid: stroke 24, counters 20, bars at 24/44/88/112. The frame is the mark plus 16 on
+    every side, so it carries the letterforms' proportions instead of squaring them off.
+  -->
+  <!-- Frame: sized to the mark, not to a square. -->
+  <rect width="128" height="144" rx="18" fill="#141414" />
+  <rect x="0.5" y="0.5" width="127" height="143" rx="17.5" fill="none" stroke="#3e3e3e" />
+
+  <g transform="translate(16 16)">
+    <!-- B — underneath, in the active blue -->
+    <g fill="#F38671">
+      <!-- spine -->
+      <rect x="0" y="0" width="24" height="112" />
+      <!-- top bar, cut short — the notch that makes it a B and not an 8 -->
+      <rect x="0" y="0" width="80" height="24" />
+      <!-- upper riser, inset by the notch -->
+      <rect x="56" y="0" width="24" height="68" />
+      <!-- middle bar -->
+      <rect x="0" y="50" width="96" height="24" />
+      <!-- lower riser, flush right -->
+      <rect x="72" y="50" width="24" height="68" />
+      <!-- bottom bar -->
+      <rect x="0" y="94" width="96" height="24" />
+    </g>
+
+    <!-- The left block, recoloured: the two exposed blocks are the only
+         B left to see, so they get two different states rather than one. -->
+    <g fill="#ffb800">
+      <!-- left block — compare amber -->
+      <rect x="0" y="68" width="24" height="27" />
+    </g>
+
+    <!-- Cross sections: tile colour, so each block reads as sitting behind
+         the S rather than joined to it. -->
+    <g fill="#141414">
+
+      <rect x="55" y="24" width="26" height="2" />
+      <rect x="55" y="48" width="26" height="2" />
+
+      <rect x="-1" y="68" width="26" height="5" />
+      <rect x="-1" y="74" width="26" height="2" />
+      
+      <rect x="10" y="73" width="4" height="19" />
+
+      <rect x="0" y="92" width="26" height="2" />
+    </g>
+
+    <!-- S — over the top, in the match mint -->
+    <g fill="#8ad184">
+      <!-- top bar -->
+      <rect x="0" y="0" width="80" height="24" />
+      <!-- upper riser, left -->
+      <rect x="0" y="0" width="24" height="68" />
+      <!-- middle bar, short — lets the B through below it -->
+      <rect x="0" y="50" width="76" height="24" />
+      <!-- lower riser, right -->s
+      <rect x="72" y="50" width="24" height="68" />
+      <!-- bottom bar, short -->
+      <rect x="0" y="94" width="86" height="24" />
+    </g>
+  </g>
+</svg>

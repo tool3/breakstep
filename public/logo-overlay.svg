@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256"
+     role="img" aria-labelledby="bs-overlay">
+  <title id="bs-overlay">Breakstep</title>
+  <!--
+    Breakstep — Overlay. Near-black tile, near-white B under a mint S.
+
+    A square-cut B above a square-cut S, the S offset 50 right and 88 down so that the
+    B's bottom bar and the S's top bar land on exactly the same 24-unit band. Every
+    edge sits on a 24/44/88/112 grid; the mark measures 146×200 and is centred in a
+    256 tile. The tile is the first shape in the file — delete it for a
+    transparent mark.
+
+    Treatment: the S lies on top and simply wins the band. The B's bottom bar is
+    all still there — it is wearing the S's colour from x=105 rightwards, which is
+    what "in front" looks like when neither letter may be sacrificed.
+
+    Two 5-unit slits of tile colour do the rest of the work. One down the left edge
+    of the S's bar says where the S starts rather than leaving a two-tone bar to be
+    read as one stroke; one across the top of the B's lower riser says that riser
+    continues behind the bar. They are the whole difference between overlapping and
+    merging, and there is not a gradient in sight.
+  -->
+
+  <!-- Tile: near-black, with the chrome hairline. -->
+  <rect width="256" height="256" rx="24" fill="#141414" />
+  <rect x="0.5" y="0.5" width="255" height="255" rx="23.5" fill="none" stroke="#3e3e3e" />
+
+  <!-- B — near-white, behind -->
+  <g fill="#eff1f6">
+    <!-- spine -->
+    <rect x="55" y="28" width="24" height="112" />
+    <!-- top bar, cut short — the notch that makes it a B and not an 8 -->
+    <rect x="55" y="28" width="80" height="24" />
+    <!-- upper riser, inset by the notch -->
+    <rect x="111" y="28" width="24" height="68" />
+    <!-- middle bar -->
+    <rect x="55" y="72" width="96" height="24" />
+    <!-- lower riser, flush right -->
+    <rect x="127" y="72" width="24" height="68" />
+    <!-- bottom bar -->
+    <rect x="55" y="116" width="96" height="24" />
+  </g>
+
+  <!-- The slits: tile colour, so they read as the S casting the B into shadow. -->
+  <g fill="#141414">
+    <!-- down the left edge of the S's bar -->
+    <rect x="100" y="116" width="5" height="24" />
+    <!-- across the B's lower riser, which passes behind -->
+    <rect x="127" y="111" width="24" height="5" />
+  </g>
+
+  <!-- S — mint, in front -->
+  <g fill="#2cbb5d">
+    <!-- top bar -->
+    <rect x="105" y="116" width="96" height="24" />
+    <!-- upper riser, left -->
+    <rect x="105" y="116" width="24" height="68" />
+    <!-- middle bar -->
+    <rect x="105" y="160" width="96" height="24" />
+    <!-- lower riser, right -->
+    <rect x="177" y="160" width="24" height="68" />
+    <!-- bottom bar -->
+    <rect x="105" y="204" width="96" height="24" />
+  </g>
+</svg>
