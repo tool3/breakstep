@@ -168,7 +168,7 @@ export default function App() {
     [compact],
   );
 
-  const { run, debugRun, analyze, status, result } = workspace;
+  const { run, debugRun, analyze, status, result, flushCode, currentCode } = workspace;
 
   /** Show a panel, wherever that panel currently lives. */
   const reveal = useCallback(
@@ -179,11 +179,21 @@ export default function App() {
     [compact],
   );
 
+  /*
+   * Every explicit action flushes the pending publish first.
+   *
+   * Typing is deliberately debounced, so `workspace.code` can be up to a moment
+   * behind what is on screen. The runners read the live buffer and are never
+   * wrong, but anything derived from the published one — the function list the
+   * debugger offers breakpoints for, the entry name the Analyze tab shows — would
+   * be. Pressing a button means "use what I can see", so flush and mean it.
+   */
   const handleRun = useCallback(() => {
+    flushCode();
     debug.end();
     run();
     reveal('visualize');
-  }, [run, reveal, debug]);
+  }, [flushCode, run, reveal, debug]);
 
   /**
    * Record a run, then hand it to the debugger.
@@ -193,13 +203,16 @@ export default function App() {
    * would have produced.
    */
   const handleDebug = useCallback(() => {
+    flushCode();
     debug.end();
     reveal('visualize');
     void debugRun().then((steps) => {
-      debug.begin(steps, listFunctions(workspace.code, workspace.language));
+      // The live buffer, not the published one: this runs after an await, and
+      // the closure still holds whatever `code` was before the flush.
+      debug.begin(steps, listFunctions(currentCode(), workspace.language));
       if (compact) setCompactTab('params');
     });
-  }, [debugRun, debug, reveal, compact, workspace.code, workspace.language]);
+  }, [debugRun, debug, reveal, compact, flushCode, currentCode, workspace.language]);
 
   /**
    * Judge the buffer and record the attempt.
@@ -209,6 +222,7 @@ export default function App() {
    * a run and should not wipe the picture you were reading.
    */
   const handleSubmit = useCallback(async () => {
+    flushCode();
     // A debug session owns this whole pane, so the verdict would land behind it.
     debug.end();
     setBottomTab('submissions');
@@ -216,7 +230,7 @@ export default function App() {
 
     const draft = await workspace.submit();
     if (draft) await submissions.record(draft);
-  }, [workspace, submissions, debug, compact]);
+  }, [workspace, submissions, debug, compact, flushCode]);
 
   /** Put a past attempt back in the editor, in the language it was written in. */
   const handleRestore = useCallback(
@@ -229,9 +243,10 @@ export default function App() {
   );
 
   const handleAnalyze = useCallback(() => {
+    flushCode();
     analyze();
     reveal('complexity');
-  }, [analyze, reveal]);
+  }, [flushCode, analyze, reveal]);
 
   /** Load a problem's starter code and get out of the way. */
   const handleLoadProblem = useCallback(
@@ -312,6 +327,7 @@ export default function App() {
       >
         <EditorPanel
           code={workspace.code}
+          docVersion={workspace.docVersion}
           language={workspace.language}
           theme={theme}
           error={workspace.result?.error}

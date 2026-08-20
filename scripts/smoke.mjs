@@ -14,6 +14,7 @@ import { preview } from 'vite';
 const HEADED = process.argv.includes('--headed');
 const WITH_PYTHON = process.argv.includes('--python');
 
+const isMac = process.platform === 'darwin';
 const failures = [];
 const notes = [];
 
@@ -47,7 +48,9 @@ try {
   console.log('▸ Loading the app');
   await page.goto(base, { waitUntil: 'networkidle' });
 
-  check('the header renders', await page.getByText('Breakstep', { exact: true }).isVisible());
+  // Not `getByText`: the logo's SVG carries a <title>Breakstep</title>, which
+  // matches an exact text search and is not a visible node.
+  check('the header renders', await page.locator('[class*="wordmark"]').first().isVisible());
   check(
     'the default template is selected',
     await page.getByRole('button', { name: /Template: Linked List/ }).isVisible(),
@@ -76,6 +79,62 @@ try {
     'the default view is plain code with no Breakstep API',
     !/breakstep\s*\./.test(editorText),
     JSON.stringify(editorText.slice(0, 120)),
+  );
+
+  console.log('▸ Editing like an editor');
+  /*
+   * The three that are configuration rather than contributions, so a well-meant
+   * perf change can switch them off without breaking anything that would notice.
+   * `scripts/editor-features.mjs` covers the other dozen.
+   */
+  // Focus first, then measure: taking focus can reveal the cursor and scroll the
+  // view, which would leave the coordinates measured a moment ago pointing at a
+  // different line.
+  await page.locator('.monaco-editor textarea').first().click({ force: true });
+  await page.waitForTimeout(400);
+
+  const wordBox = await page.evaluateHandle(() => {
+    const spans = [...document.querySelectorAll('.view-line span span')].filter((el) =>
+      /^[A-Za-z_]\w{3,}$/.test(el.textContent?.trim() ?? ''),
+    );
+    const counts = new Map();
+    for (const el of spans) {
+      const key = el.textContent.trim();
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    const repeated = [...counts.entries()].find(([, n]) => n > 1)?.[0];
+    return spans.find((el) => el.textContent.trim() === repeated) ?? spans[0] ?? null;
+  });
+  const wordRect = await wordBox.asElement()?.boundingBox();
+
+  if (wordRect) {
+    await page.mouse.dblclick(wordRect.x + wordRect.width / 2, wordRect.y + wordRect.height / 2);
+    await page.waitForTimeout(1200);
+    check(
+      'double-clicking a word highlights every other one',
+      await page.evaluate(
+        () =>
+          document.querySelectorAll(
+            '.selectionHighlight, .wordHighlight, .wordHighlightStrong, .wordHighlightText',
+          ).length > 0,
+      ),
+      await page.evaluate(() => window.getSelection()?.toString() ?? '(no selection)'),
+    );
+
+    await page.keyboard.press(isMac ? 'Meta+d' : 'Control+d');
+    await page.waitForTimeout(400);
+    check(
+      'Cmd+D adds a cursor at the next match',
+      (await page.evaluate(() => document.querySelectorAll('.cursors-layer .cursor').length)) >= 2,
+    );
+    await page.keyboard.press('Escape');
+  } else {
+    check('a word was found to double-click', false);
+  }
+
+  check(
+    'indent guides are drawn',
+    (await page.evaluate(() => document.querySelectorAll('[class*="core-guide"]').length)) > 0,
   );
 
   console.log('▸ Running the code');

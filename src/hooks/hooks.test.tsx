@@ -139,7 +139,10 @@ describe('useWorkspace', () => {
 
   it('marks the workspace dirty once the code is edited', () => {
     const { result } = renderHook(() => useWorkspace());
-    act(() => result.current.setCode('// mine'));
+    act(() => {
+      result.current.setCode('// mine');
+      result.current.flushCode();
+    });
     expect(result.current.code).toBe('// mine');
     expect(result.current.isDirty).toBe(true);
   });
@@ -220,7 +223,10 @@ describe('useWorkspace', () => {
     const { result } = renderHook(() => useWorkspace());
     act(() => result.current.analyze());
     await waitFor(() => expect(result.current.analysisStale).toBe(false));
-    act(() => result.current.setCode('// changed'));
+    act(() => {
+      result.current.setCode('// changed');
+      result.current.flushCode();
+    });
     expect(result.current.analysisStale).toBe(true);
   });
 
@@ -288,3 +294,91 @@ describe('useWorkspace', () => {
     expect(second.result.current.language).toBe('python');
   });
 });
+
+/**
+ * The typing path, guarded.
+ *
+ * This is the contract that keeps the editor fast, and it is easy to undo by
+ * accident: one `setState` or one `writeStored` added to `setCode` puts the cost
+ * of persisting, re-parsing and re-rendering back onto every keystroke. It
+ * measured 35ms of synchronous work per character inside the input handler, and
+ * keystroke-to-paint at 48ms. These tests fail if any of it comes back.
+ *
+ * `scripts/editor-perf.mjs --typing` measures the same thing in a real browser;
+ * this measures the architecture that makes the numbers possible.
+ */
+describe('typing costs nothing until you pause', () => {
+  it('does not publish, persist or re-render while the keys are still coming', () => {
+    const { result } = renderHook(() => useWorkspace());
+    const before = result.current.code;
+    const writes = vi.spyOn(window.localStorage, 'setItem');
+
+    act(() => {
+      for (const ch of 'const x = 1;') result.current.setCode(`${before}\n// ${ch}`);
+    });
+
+    // The buffer the app sees has not moved, and nothing was written.
+    expect(result.current.code).toBe(before);
+    expect(writes).not.toHaveBeenCalled();
+    // Nor has the document version: only the app moves that, never the user.
+    expect(result.current.docVersion).toBe(0);
+    writes.mockRestore();
+  });
+
+  it('publishes once when the typing stops, with the final text', () => {
+    const { result } = renderHook(() => useWorkspace());
+    const writes = vi.spyOn(window.localStorage, 'setItem');
+
+    act(() => {
+      result.current.setCode('// one');
+      result.current.setCode('// two');
+      result.current.setCode('// three');
+      result.current.flushCode();
+    });
+
+    expect(result.current.code).toBe('// three');
+    // One write for the code; a clean-mode template also re-syncs its params.
+    const codeWrites = writes.mock.calls.filter(([key]) => String(key).includes(':code:'));
+    expect(codeWrites).toHaveLength(1);
+    expect(String(codeWrites[0][1])).toContain('// three');
+    writes.mockRestore();
+  });
+
+  it('runs what is on screen, not what has been published', async () => {
+    const { result } = renderHook(() => useWorkspace());
+    runMock.mockResolvedValue(doneResult);
+
+    // Typed and deliberately not flushed: the debounce must not be able to make
+    // Run execute stale text.
+    act(() => result.current.setCode('console.log("live buffer");'));
+    expect(result.current.code).not.toContain('live buffer');
+
+    act(() => result.current.run());
+    await waitFor(() => expect(runMock).toHaveBeenCalled());
+    expect(runMock.mock.calls.at(-1)?.[0].code).toContain('live buffer');
+  });
+
+  it('keeps a pending edit when the slot changes underneath it', () => {
+    const { result } = renderHook(() => useWorkspace());
+
+    act(() => result.current.setCode('// unflushed edit'));
+    act(() => result.current.selectTemplate('trie'));
+    expect(result.current.code).not.toContain('unflushed edit');
+
+    // Switching template flushed it to the slot being left, so it is still there.
+    act(() => result.current.selectTemplate(DEFAULT_TEMPLATE_ID));
+    expect(result.current.code).toBe('// unflushed edit');
+  });
+
+  it('moves the document version when the app writes, so the editor picks it up', () => {
+    const { result } = renderHook(() => useWorkspace());
+    const start = result.current.docVersion;
+
+    act(() => result.current.setCode('// typed'));
+    expect(result.current.docVersion).toBe(start);
+
+    act(() => result.current.resetCode());
+    expect(result.current.docVersion).toBeGreaterThan(start);
+  });
+});
+

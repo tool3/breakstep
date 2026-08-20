@@ -20,6 +20,7 @@
     "screenshots": "npm run build && node scripts/shots.mjs",
     "responsive": "npm run build && node scripts/responsive.mjs",
     "editor:perf": "npm run build && node scripts/editor-perf.mjs",
+    "editor:features": "npm run build && node scripts/editor-features.mjs",
     "editor:compare": "node scripts/editor-compare.mjs",
     "responsive:shots": "npm run build && node scripts/responsive.mjs --shots"
   },

@@ -11,31 +11,58 @@
 // imported explicitly instead — roughly a quarter of the bytes.
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 
-// `editor.all.js` would register every contrib Monaco has, including diff
-// editors, peek views, sticky scroll and inline-edit machinery this app has no
-// UI for. Registering only what a single-file code pane actually uses roughly
-// halves the chunk.
+// `editor.all.js` would register every contrib Monaco has, including the diff
+// editor and the inline-edit machinery this app has no UI for. What is left is
+// everything a single-file editor can actually do — which is very nearly all of
+// VS Code's editing surface, because that is what people expect their fingers
+// to find.
+import 'monaco-editor/esm/vs/editor/contrib/anchorSelect/browser/anchorSelect.js';
 import 'monaco-editor/esm/vs/editor/contrib/bracketMatching/browser/bracketMatching.js';
 import 'monaco-editor/esm/vs/editor/contrib/caretOperations/browser/caretOperations.js';
 import 'monaco-editor/esm/vs/editor/contrib/clipboard/browser/clipboard.js';
+import 'monaco-editor/esm/vs/editor/contrib/codeAction/browser/codeActionContributions.js';
+import 'monaco-editor/esm/vs/editor/contrib/colorPicker/browser/colorContributions.js';
 import 'monaco-editor/esm/vs/editor/contrib/comment/browser/comment.js';
 import 'monaco-editor/esm/vs/editor/contrib/contextmenu/browser/contextmenu.js';
 import 'monaco-editor/esm/vs/editor/contrib/cursorUndo/browser/cursorUndo.js';
+import 'monaco-editor/esm/vs/editor/contrib/dnd/browser/dnd.js';
+import 'monaco-editor/esm/vs/editor/contrib/documentSymbols/browser/documentSymbols.js';
+import 'monaco-editor/esm/vs/editor/contrib/dropOrPasteInto/browser/copyPasteContribution.js';
 import 'monaco-editor/esm/vs/editor/contrib/find/browser/findController.js';
 import 'monaco-editor/esm/vs/editor/contrib/folding/browser/folding.js';
+import 'monaco-editor/esm/vs/editor/contrib/fontZoom/browser/fontZoom.js';
 import 'monaco-editor/esm/vs/editor/contrib/format/browser/formatActions.js';
+import 'monaco-editor/esm/vs/editor/contrib/gotoError/browser/gotoError.js';
+import 'monaco-editor/esm/vs/editor/contrib/gotoSymbol/browser/goToCommands.js';
 import 'monaco-editor/esm/vs/editor/contrib/hover/browser/hoverContribution.js';
+import 'monaco-editor/esm/vs/editor/contrib/inPlaceReplace/browser/inPlaceReplace.js';
 import 'monaco-editor/esm/vs/editor/contrib/indentation/browser/indentation.js';
+import 'monaco-editor/esm/vs/editor/contrib/inlayHints/browser/inlayHintsContribution.js';
 import 'monaco-editor/esm/vs/editor/contrib/lineSelection/browser/lineSelection.js';
 import 'monaco-editor/esm/vs/editor/contrib/linesOperations/browser/linesOperations.js';
+import 'monaco-editor/esm/vs/editor/contrib/linkedEditing/browser/linkedEditing.js';
+import 'monaco-editor/esm/vs/editor/contrib/links/browser/links.js';
+import 'monaco-editor/esm/vs/editor/contrib/message/browser/messageController.js';
 import 'monaco-editor/esm/vs/editor/contrib/multicursor/browser/multicursor.js';
 import 'monaco-editor/esm/vs/editor/contrib/parameterHints/browser/parameterHints.js';
+import 'monaco-editor/esm/vs/editor/contrib/rename/browser/rename.js';
 import 'monaco-editor/esm/vs/editor/contrib/smartSelect/browser/smartSelect.js';
 import 'monaco-editor/esm/vs/editor/contrib/snippet/browser/snippetController2.js';
+import 'monaco-editor/esm/vs/editor/contrib/stickyScroll/browser/stickyScrollContribution.js';
 import 'monaco-editor/esm/vs/editor/contrib/suggest/browser/suggestController.js';
+import 'monaco-editor/esm/vs/editor/contrib/toggleTabFocusMode/browser/toggleTabFocusMode.js';
 import 'monaco-editor/esm/vs/editor/contrib/wordHighlighter/browser/wordHighlighter.js';
 import 'monaco-editor/esm/vs/editor/contrib/wordOperations/browser/wordOperations.js';
 import 'monaco-editor/esm/vs/editor/contrib/wordPartOperations/browser/wordPartOperations.js';
+
+// The quick-access family: the command palette, go to line, and go to symbol.
+// These are standalone-editor pieces rather than contribs — in VS Code proper
+// the workbench provides them.
+import 'monaco-editor/esm/vs/editor/standalone/browser/quickAccess/standaloneCommandsQuickAccess.js';
+import 'monaco-editor/esm/vs/editor/standalone/browser/quickAccess/standaloneGotoLineQuickAccess.js';
+import 'monaco-editor/esm/vs/editor/standalone/browser/quickAccess/standaloneGotoSymbolQuickAccess.js';
+import 'monaco-editor/esm/vs/editor/standalone/browser/quickAccess/standaloneHelpQuickAccess.js';
+import 'monaco-editor/esm/vs/editor/standalone/browser/referenceSearch/standaloneReferenceSearch.js';
 
 import 'monaco-editor/esm/vs/language/typescript/monaco.contribution';
 import 'monaco-editor/esm/vs/basic-languages/typescript/typescript.contribution';

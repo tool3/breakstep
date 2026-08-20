@@ -206,25 +206,57 @@ export function useDebugger(): DebuggerState {
    */
   const frameIndex = useMemo(() => step?.frame ?? null, [step]);
 
-  return {
-    active,
-    steps,
-    index,
-    step,
-    functions,
-    breakFunctions,
-    breakpoints,
-    playing,
-    frameIndex,
-    begin,
-    end,
-    seek,
-    run,
-    play,
-    pause,
-    toggleFunction,
-    setAllFunctions,
-    toggleBreakpoint,
-    clearBreakpoints,
-  };
+  /**
+   * Memoised, because this object is a dependency of half the app's callbacks.
+   *
+   * A fresh literal every render gave every one of them a new identity, which in
+   * turn defeated `EditorPanel`'s memo — so a run streaming its frames in, or a
+   * scrub of the timeline, re-rendered the editor along with everything else.
+   * Every function below is a `useCallback`, so this only changes when something
+   * about the recording actually has.
+   */
+  return useMemo(
+    () => ({
+      active,
+      steps,
+      index,
+      step,
+      functions,
+      breakFunctions,
+      breakpoints,
+      playing,
+      frameIndex,
+      begin,
+      end,
+      seek,
+      run,
+      play,
+      pause,
+      toggleFunction,
+      setAllFunctions,
+      toggleBreakpoint,
+      clearBreakpoints,
+    }),
+    [
+      active,
+      steps,
+      index,
+      step,
+      functions,
+      breakFunctions,
+      breakpoints,
+      playing,
+      frameIndex,
+      begin,
+      end,
+      seek,
+      run,
+      play,
+      pause,
+      toggleFunction,
+      setAllFunctions,
+      toggleBreakpoint,
+      clearBreakpoints,
+    ],
+  );
 }

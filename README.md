@@ -33,6 +33,29 @@ Python).
 by default is ordinary computer-science code: a `ListNode` class, a `while`
 loop, `console.log`. No app-specific API anywhere.
 
+Your fingers should already know it, so nearly all of VS Code's editing surface
+is here — Monaco ships those as separately-importable contributions, and the ones
+a single-file editor can support are all imported:
+
+| | |
+| --- | --- |
+| Double-click a word | highlights every other one; so does resting the caret in a symbol |
+| `Cmd+D` / `Cmd+Shift+L` | add the next match / select every occurrence |
+| `Alt+Click`, `Alt+Cmd+↑/↓` | multiple cursors, column selection |
+| `Cmd+F`, `Cmd+Alt+F` | find, find and replace — regex, whole word, in selection |
+| `F1` | command palette. `Ctrl+G` go to line, `Cmd+Shift+O` go to symbol |
+| `F12`, `F2`, `Cmd+.` | go to definition, rename symbol, quick fix |
+| `Cmd+/`, `Shift+Alt+F` | toggle comment, format document |
+| `Alt+↑/↓`, `Shift+Alt+↑/↓` | move a line, copy a line. `Cmd+Shift+K` deletes one |
+| `Alt+Z` | word wrap. `Cmd+K Cmd+0` folds, `Cmd+Shift+[` / `]` fold one |
+| `F8` | next problem. Sticky scroll, indent guides, bracket colouring, IntelliSense |
+
+Two things VS Code has are deliberately off. The minimap, because in a pane this
+narrow it costs more width than it gives — one line in `EditorPanel.tsx` if you
+disagree. And code lenses, because nothing in a single file provides any, so
+leaving them on would buy a model scan per change in exchange for nothing to
+show.
+
 **Run** — user code executes in a Web Worker, so a runaway loop cannot freeze the
 tab. An instrumented operation counter stops infinite loops, and a hard timeout
 terminates the worker if anything survives that.
@@ -318,6 +341,28 @@ src/
 
 A few decisions worth knowing about:
 
+**The editor owns the text; React hears about it when you pause.** Typing used
+to round-trip through React state, and everything downstream of the buffer is
+expensive: persisting it, re-reading the bound literals out of it, type-stripping
+and parsing it to find the entry function, and re-rendering the tree. That put
+**35 ms of synchronous work inside every input event** and keystroke-to-paint at
+**48 ms**, with outliers past 180 ms — which is exactly what "laggy" feels like.
+
+Now a keystroke is one ref assignment and one timer. The buffer is published to
+React when typing stops, so all of that work happens once instead of per
+character, and the frame belongs to Monaco: **1 ms of app work per keystroke,
+24 ms to the screen**, which is the vsync floor on a 60 Hz display. Nothing is
+lost to the debounce — the runners read the live buffer, every explicit action
+flushes first, and leaving a template, hiding the tab or closing the page all
+force the pending write through.
+
+The invariant is easy to undo by accident, so it is guarded twice: `hooks.test.tsx`
+asserts that typing neither publishes nor persists nor bumps the document
+version, and `scripts/editor-perf.mjs` fails the build if the app spends more
+than a budgeted slice of a keystroke inside the input handler. Reintroducing the
+old behaviour was tried once to check both alarms actually ring: the unit tests
+fail and the perf run exits non-zero, reporting 18.9 ms where it budgets 3.
+
 **Operation counts, not wall-clock.** Both runtimes rewrite user code to bump a
 counter at every loop iteration and function entry. The resulting number is
 machine-independent — immune to JIT warmup, GC pauses and whatever else your
@@ -574,7 +619,8 @@ posture, not a legal opinion.
 | `leetcode/*.test.ts`   | **every catalogue solution runs and reproduces its stated output**; the generator scaffolds 98% of the vendored problems, and a filled-in stub reproduces LeetCode's published answers |
 | `scripts/smoke.mjs`    | real Chrome: Monaco boots, workers load, Pyodide executes, the debugger steps, a problem reveals, a stub is judged wrong and a solution Accepted — in both runtimes |
 | `scripts/responsive.mjs` | 16 device profiles: layout mode, overflow, tap targets, reachability |
-| `scripts/editor-perf.mjs` | editor scrolling: main-thread work per frame, against a 120 fps budget |
+| `scripts/editor-perf.mjs` | **editor scrolling *and* typing**: main-thread work per frame against a 120 fps budget, and per keystroke against a handler budget — the guard on the typing path |
+| `scripts/editor-features.mjs` | fifteen real keystrokes in a real browser: occurrence highlighting, `Cmd+D`, the palette, find and replace, rename, comment toggle, sticky scroll, folding, word wrap |
 | `templates/typecheck.test.ts` | **every template and problem compiles clean**, with the editor's own options |
 
 Every solution in the LeetCode catalogue is executed by the test suite and its

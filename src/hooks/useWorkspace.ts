@@ -44,6 +44,13 @@ import type {
   Template,
 } from '@/types';
 
+/**
+ * How long after the last keystroke the rest of the app hears about the buffer,
+ * and the longest it may be deferred while someone types without pausing.
+ */
+const PUBLISH_IDLE_MS = 200;
+const PUBLISH_MAX_MS = 1200;
+
 /** Storage key for a problem assembled from LeetCode's published metadata. */
 const generatedKey = (slug: string) => `generated:${slug}`;
 
@@ -109,6 +116,20 @@ export interface Workspace {
   setLanguage: (language: Language) => void;
   setMode: (mode: EditorMode) => void;
   setCode: (code: string) => void;
+  /**
+   * Bumped when the app replaces the buffer, never when the user types. The
+   * editor applies `code` when this changes and ignores it otherwise, which is
+   * what keeps a keystroke from making a round trip through React.
+   */
+  docVersion: number;
+  /** Force the pending publish through — before reading `code` for anything. */
+  flushCode: () => void;
+  /**
+   * The buffer as it is this instant, for the callers that cannot wait for a
+   * re-render — anything reading it inside a click handler that has just
+   * flushed, where the closure still holds the pre-flush value.
+   */
+  currentCode: () => string;
   setParam: (name: string, value: unknown) => void;
   resetParams: () => void;
   resetCode: () => void;
@@ -171,9 +192,24 @@ export function useWorkspace(): Workspace {
     [template, language],
   );
 
+  /**
+   * The published buffer: what the rest of the app sees.
+   *
+   * Deliberately *not* what the editor holds. Monaco owns the text, and this
+   * catches up when typing pauses — see `setCode` below for why.
+   */
   const [code, setCodeState] = useState<string>(() =>
     readStored(codeKey(templateId, language, mode), pristine),
   );
+  /** The buffer as it is this instant. The only thing a keystroke touches. */
+  const liveCode = useRef(code);
+  /**
+   * Bumped when the *app* replaces the buffer — a template switch, a revealed
+   * solution, a slider rewriting a literal — and never when the user types. The
+   * editor watches this rather than the text, so its own edits never round-trip
+   * back through React.
+   */
+  const [docVersion, setDocVersion] = useState(0);
   const [params, setParams] = useState<ParamValues>(() => {
     const source = readStored(codeKey(templateId, language, mode), pristine);
     return readStored(paramsKey(templateId, mode), defaultParams(template, language, mode, source));
@@ -198,6 +234,81 @@ export function useWorkspace(): Workspace {
     [mode, code, template.params, language],
   );
 
+  /**
+   * Publishing the buffer.
+   *
+   * Everything downstream of the text is expensive: persisting it, re-reading
+   * the bound literals out of it, and — through the panels — type-stripping and
+   * parsing it to find the entry function. Doing that per keystroke cost 35ms of
+   * synchronous work inside the input handler and put keystroke-to-paint at
+   * 48ms, which is exactly what "laggy" feels like. None of it is needed until
+   * you stop typing, so none of it happens until you do.
+   */
+  const publishTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** When the current burst of typing began, for the max-wait below. */
+  const burstStart = useRef(0);
+
+  /** Held in a ref so the timer always runs against the current slot. */
+  const publish = useRef<() => void>(() => {});
+  publish.current = () => {
+    publishTimer.current = null;
+    burstStart.current = 0;
+
+    const next = liveCode.current;
+    setCodeState(next);
+    writeStored(codeKey(templateId, language, mode), next);
+    setAnalysisStale(true);
+
+    // Editing a bound constant by hand must move the slider, not desync it.
+    if (mode === 'clean') {
+      setParams((prev) => {
+        const merged = { ...prev, ...defaultParams(template, language, mode, next) };
+        writeStored(paramsKey(templateId, mode), merged);
+        return merged;
+      });
+    }
+  };
+
+  const currentCode = useCallback(() => liveCode.current, []);
+
+  const flushCode = useCallback(() => {
+    if (!publishTimer.current) return;
+    clearTimeout(publishTimer.current);
+    publish.current();
+  }, []);
+
+  /**
+   * Nothing is lost to the debounce: a hidden tab, a closing page or an
+   * unmounting workspace all force the pending publish through first.
+   */
+  useEffect(() => {
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') flushCode();
+    };
+    window.addEventListener('pagehide', flushCode);
+    document.addEventListener('visibilitychange', onHide);
+    return () => {
+      window.removeEventListener('pagehide', flushCode);
+      document.removeEventListener('visibilitychange', onHide);
+      flushCode();
+    };
+  }, [flushCode]);
+
+  /**
+   * Drop the pending publish and put a new buffer in place at once — for the
+   * app's own writes, which must be visible everywhere immediately.
+   */
+  const replaceCode = useCallback((next: string) => {
+    if (publishTimer.current) {
+      clearTimeout(publishTimer.current);
+      publishTimer.current = null;
+    }
+    burstStart.current = 0;
+    liveCode.current = next;
+    setCodeState(next);
+    setDocVersion((version) => version + 1);
+  }, []);
+
   const clearResults = useCallback(() => {
     setFrames([]);
     setLogs([]);
@@ -211,10 +322,13 @@ export function useWorkspace(): Workspace {
   /** Load the stored (or pristine) source whenever the slot changes. */
   const loadSlot = useCallback(
     (nextId: string, nextLanguage: Language, nextMode: EditorMode) => {
+      // Whatever the debounce is still holding belongs to the slot being left,
+      // so it goes to storage before the slot changes underneath it.
+      flushCode();
       const next = getTemplate(nextId);
       const fresh = templateSource(next, nextLanguage, nextMode);
       const source = readStored(codeKey(nextId, nextLanguage, nextMode), fresh);
-      setCodeState(source);
+      replaceCode(source);
       setParams(
         readStored(
           paramsKey(nextId, nextMode),
@@ -223,7 +337,7 @@ export function useWorkspace(): Workspace {
       );
       clearResults();
     },
-    [clearResults],
+    [clearResults, replaceCode, flushCode],
   );
 
   const selectTemplate = useCallback(
@@ -250,24 +364,23 @@ export function useWorkspace(): Workspace {
     [templateId, language, loadSlot, setModeState],
   );
 
-  const setCode = useCallback(
-    (next: string) => {
-      setCodeState(next);
-      writeStored(codeKey(templateId, language, mode), next);
-      setAnalysisStale(true);
+  /**
+   * A keystroke. One assignment and one timer — no state, no storage, no
+   * parsing, so React does not re-render and the frame belongs to Monaco.
+   *
+   * The publish is idle-debounced, with a ceiling so that typing without ever
+   * pausing still persists roughly once a second.
+   */
+  const setCode = useCallback((next: string) => {
+    liveCode.current = next;
 
-      // Editing a bound constant by hand must move the slider, not desync it.
-      if (mode === 'clean') {
-        setParams((prev) => {
-          const fromSource = defaultParams(template, language, mode, next);
-          const merged = { ...prev, ...fromSource };
-          writeStored(paramsKey(templateId, mode), merged);
-          return merged;
-        });
-      }
-    },
-    [templateId, language, mode, template],
-  );
+    const now = Date.now();
+    if (!burstStart.current) burstStart.current = now;
+    if (publishTimer.current) clearTimeout(publishTimer.current);
+
+    const wait = Math.min(PUBLISH_IDLE_MS, Math.max(0, burstStart.current + PUBLISH_MAX_MS - now));
+    publishTimer.current = setTimeout(() => publish.current(), wait);
+  }, []);
 
   /**
    * Changing a parameter rewrites the literal it binds to, so the code on
@@ -284,17 +397,17 @@ export function useWorkspace(): Workspace {
       if (mode === 'clean') {
         const spec = template.params.find((p) => p.name === name);
         if (spec) {
-          setCodeState((prev) => {
-            const { code: rewritten } = writeParamToSource(prev, spec, value, language);
-            writeStored(codeKey(templateId, language, mode), rewritten);
-            return rewritten;
-          });
+          // Rewritten from the live buffer, not the published one: the slider
+          // has to act on the text as it is on screen this instant.
+          const { code: rewritten } = writeParamToSource(liveCode.current, spec, value, language);
+          writeStored(codeKey(templateId, language, mode), rewritten);
+          replaceCode(rewritten);
         }
       }
 
       setAnalysisStale(true);
     },
-    [templateId, language, mode, template],
+    [templateId, language, mode, template, replaceCode],
   );
 
   const resetParams = useCallback(() => {
@@ -305,25 +418,23 @@ export function useWorkspace(): Workspace {
 
     if (mode === 'clean') {
       // Restore every bound literal without touching the rest of the file.
-      setCodeState((prev) => {
-        let next = prev;
-        for (const spec of template.params) {
-          next = writeParamToSource(next, spec, defaults[spec.name], language).code;
-        }
-        writeStored(codeKey(templateId, language, mode), next);
-        return next;
-      });
+      let next = liveCode.current;
+      for (const spec of template.params) {
+        next = writeParamToSource(next, spec, defaults[spec.name], language).code;
+      }
+      writeStored(codeKey(templateId, language, mode), next);
+      replaceCode(next);
     }
 
     setAnalysisStale(true);
-  }, [template, templateId, language, mode]);
+  }, [template, templateId, language, mode, replaceCode]);
 
   const resetCode = useCallback(() => {
     removeStored(codeKey(templateId, language, mode));
-    setCodeState(pristine);
+    replaceCode(pristine);
     setParams(defaultParams(template, language, mode, pristine));
     setAnalysisStale(true);
-  }, [templateId, language, mode, pristine, template]);
+  }, [templateId, language, mode, pristine, template, replaceCode]);
 
   /**
    * Load a problem into the editor.
@@ -335,6 +446,7 @@ export function useWorkspace(): Workspace {
    */
   const loadProblem = useCallback(
     (problem: LeetProblem, variant: 'starter' | 'solution' = 'starter') => {
+      flushCode();
       // A generated problem has to survive a reload; a written one is already
       // in the catalogue and needs nothing stored.
       if (problem.origin === 'generated') writeStored(generatedKey(problem.slug), problem);
@@ -349,32 +461,38 @@ export function useWorkspace(): Workspace {
       const source = variant === 'solution' ? fresh : readStored(key, fresh);
 
       setTemplateId(next.id);
-      setCodeState(source);
+      replaceCode(source);
       writeStored(key, source);
       setParams(readStored(paramsKey(next.id, mode), defaultParams(next, language, mode, source)));
       clearResults();
     },
-    [language, mode, setTemplateId, clearResults],
+    [language, mode, setTemplateId, clearResults, replaceCode, flushCode],
   );
 
   const restoreCode = useCallback(
     (next: string, nextLanguage?: Language) => {
+      flushCode();
       const target = nextLanguage ?? language;
       setLanguageState(target);
-      setCodeState(next);
+      replaceCode(next);
       writeStored(codeKey(templateId, target, mode), next);
       setParams(
         readStored(paramsKey(templateId, mode), defaultParams(template, target, mode, next)),
       );
       setAnalysisStale(true);
     },
-    [templateId, language, mode, template, setLanguageState],
+    [templateId, language, mode, template, setLanguageState, replaceCode, flushCode],
   );
 
   /** What actually executes: the buffer, plus the harness when in clean mode. */
+  /**
+   * What actually executes. Reads the live buffer rather than the published
+   * one, so pressing Run mid-keystroke runs what is on screen — the debounce is
+   * invisible to correctness, only to React.
+   */
   const runnable = useCallback(
-    () => assembleRunnable(template, language, mode, code),
-    [template, language, mode, code],
+    () => assembleRunnable(template, language, mode, liveCode.current),
+    [template, language, mode],
   );
 
   const execute = useCallback(
@@ -420,9 +538,9 @@ export function useWorkspace(): Workspace {
   const debugRun = useCallback(async () => {
     const res = await execute(true);
     // Everything past the last line the user can see belongs to the harness.
-    const visible = code.split('\n').length;
+    const visible = liveCode.current.split('\n').length;
     return (res.steps ?? []).filter((step) => step.line <= visible);
-  }, [execute, code]);
+  }, [execute]);
 
   /**
    * Run the buffer against the problem's published cases and report the verdict.
@@ -447,8 +565,9 @@ export function useWorkspace(): Workspace {
     // A missing shard is a normal outcome, not a failure: the plan falls back
     // to comparing printed output, or says there is nothing to judge.
     const problemDetail = await loadDetail(problem.slug, problem.number).catch(() => null);
-    const plan = buildJudgePlan(problem, problemDetail, language, code);
-    const base = assembleRunnable(template, language, mode, code);
+    const source_ = liveCode.current;
+    const plan = buildJudgePlan(problem, problemDetail, language, source_);
+    const base = assembleRunnable(template, language, mode, source_);
     const source = plan.kind === 'cases' ? `${base}\n\n${plan.harness}` : base;
 
     const res = await engine.run({
@@ -473,7 +592,7 @@ export function useWorkspace(): Workspace {
     setJudging(false);
 
     const judgement = judgeResult(plan, res);
-    const staticReport = analyzeStatic(code, language);
+    const staticReport = analyzeStatic(source_, language);
     const measured = !analysisStale ? analysis?.empirical : undefined;
 
     return {
@@ -502,11 +621,11 @@ export function useWorkspace(): Workspace {
         measured && measured.best !== 'unknown'
           ? { time: measured.best, confidence: measured.confidence }
           : undefined,
-      code,
+      code: source_,
       error: judgement.error,
       note: judgement.note,
     };
-  }, [problem, judging, template, language, mode, code, params, analysis, analysisStale]);
+  }, [problem, judging, template, language, mode, params, analysis, analysisStale]);
 
   const analyze = useCallback(() => {
     const engine = engineRef.current!;
@@ -515,7 +634,7 @@ export function useWorkspace(): Workspace {
 
     // The static pass is synchronous and instant; show it immediately so the
     // panel is never empty while the sweep runs.
-    const staticReport = analyzeStatic(code, language);
+    const staticReport = analyzeStatic(liveCode.current, language);
     setAnalysis({ static: staticReport });
 
     engine
@@ -533,7 +652,7 @@ export function useWorkspace(): Workspace {
         setAnalysisStale(false);
         setDetail('');
       });
-  }, [code, runnable, language, params]);
+  }, [runnable, language, params]);
 
   const cancel = useCallback(() => {
     engineRef.current?.cancel();
@@ -566,6 +685,9 @@ export function useWorkspace(): Workspace {
     setLanguage,
     setMode,
     setCode,
+    docVersion,
+    flushCode,
+    currentCode,
     setParam,
     resetParams,
     resetCode,

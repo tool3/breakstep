@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
 import Editor, { type OnMount } from '@monaco-editor/react';
 import type { editor } from 'monaco-editor';
 import { Skeleton } from 'antd';
@@ -12,7 +12,16 @@ import styles from './EditorPanel.module.scss';
 setupMonaco();
 
 interface Props {
+  /**
+   * The buffer the app wants in the editor.
+   *
+   * Applied on mount and then only when `docVersion` changes. It is not a
+   * controlled value: Monaco owns the text, and feeding every keystroke back in
+   * through React is what made typing cost 35ms a character.
+   */
   code: string;
+  /** Incremented by the app when it replaces the buffer. */
+  docVersion?: number;
   language: Language;
   theme: ThemeName;
   error?: RunError;
@@ -50,8 +59,9 @@ interface Props {
   registerGoToLine?: (fn: (line: number) => void) => void;
 }
 
-export function EditorPanel({
+function EditorPanelInner({
   code,
+  docVersion = 0,
   language,
   theme,
   error,
@@ -79,7 +89,12 @@ export function EditorPanel({
   // identity makes the wrapper tear down and re-attach its model listener.
   const changeRef = useRef(onChange);
   changeRef.current = onChange;
-  const handleChange = useCallback((value: string | undefined) => changeRef.current(value ?? ''), []);
+  /** True while the app is writing the buffer, so its own write is not echoed. */
+  const applying = useRef(false);
+  const handleChange = useCallback((value: string | undefined) => {
+    if (applying.current) return;
+    changeRef.current(value ?? '');
+  }, []);
   // Read through a ref so the mouse handler is installed exactly once.
   const toggleRef = useRef(onToggleBreakpoint);
   toggleRef.current = onToggleBreakpoint;
@@ -107,6 +122,41 @@ export function EditorPanel({
   useEffect(() => {
     registerGoToLine?.(goToLine);
   }, [registerGoToLine, goToLine]);
+
+  /**
+   * Put the app's buffer into the model.
+   *
+   * Keyed on `docVersion` deliberately, not on `code`: the version only moves
+   * when the app replaces the text, so a keystroke never reaches this. `code` is
+   * read fresh through the ref when it does run.
+   *
+   * Applied as an edit rather than `setValue` so it joins the undo stack —
+   * revealing a solution stays one Cmd+Z from the attempt it replaced.
+   */
+  const codeRef = useRef(code);
+  codeRef.current = code;
+
+  useEffect(() => {
+    const ed = editorRef.current;
+    const model = ed?.getModel();
+    if (!ed || !model) return;
+
+    const next = codeRef.current;
+    if (model.getValue() === next) return;
+
+    applying.current = true;
+    try {
+      ed.pushUndoStop();
+      model.pushEditOperations(
+        [],
+        [{ range: model.getFullModelRange(), text: next, forceMoveMarkers: true }],
+        () => null,
+      );
+      ed.pushUndoStop();
+    } finally {
+      applying.current = false;
+    }
+  }, [docVersion]);
 
   // Open a new file at its beginning. Monaco keeps the scroll position when a
   // model's contents are replaced, which otherwise drops you into the middle of
@@ -139,6 +189,25 @@ export function EditorPanel({
     ed.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Enter, () =>
       submitRef.current?.(),
     );
+
+    /*
+     * Word wrap on Alt+Z.
+     *
+     * VS Code has this and Monaco does not ship it: the toggle lives in the
+     * workbench, not the editor. Registered as an action rather than a bare
+     * command so it also appears in the command palette and the context menu,
+     * which is where someone who does not know the chord will look.
+     */
+    ed.addAction({
+      id: 'breakstep.toggleWordWrap',
+      label: 'View: Toggle Word Wrap',
+      keybindings: [monaco.KeyMod.Alt | monaco.KeyCode.KeyZ],
+      contextMenuGroupId: 'view',
+      run: (target) => {
+        const wrapped = target.getOption(monaco.editor.EditorOption.wordWrap);
+        target.updateOptions({ wordWrap: wrapped === 'on' ? 'off' : 'on' });
+      },
+    });
 
     debugDecorations.current = ed.createDecorationsCollection([]);
 
@@ -299,9 +368,11 @@ export function EditorPanel({
       smoothScrolling: false,
       cursorBlinking: 'blink',
       cursorSmoothCaretAnimation: 'off',
-      // Sticky scroll asks the language worker for symbols on every scroll.
-      // Off explicitly, so a change to Monaco's default cannot bring it back.
-      stickyScroll: { enabled: false },
+      // Sticky scroll pins the enclosing function to the top of the viewport,
+      // which is worth a lot in a long file. It asks the language worker for
+      // symbols, so it is off on a phone, where the header would also eat a
+      // third of the visible code.
+      stickyScroll: { enabled: !compact && !large, maxLineCount: 3 },
       // Top padding is done in CSS on the wrapper, not here: Monaco does not
       // account for its own `padding.top` when resolving a gutter click, so a
       // 12px gap on a 21px line put every breakpoint one line above the one you
@@ -323,18 +394,50 @@ export function EditorPanel({
       // frame. Removing them alone cut the editor's per-frame JavaScript by
       // about 45%. Bracket colouring stays — it costs a fraction as much and
       // shows nesting just as well.
-      guides: { indentation: false, bracketPairs: false, highlightActiveIndentation: false },
+      /*
+       * Indentation guides are the expensive one — an absolutely-positioned
+       * element per indent level per visible line, rebuilt every scroll frame —
+       * but they are on because VS Code has them and nested code needs them.
+       * Only up to `large`, past which the per-line work stops paying for
+       * itself; `scripts/editor-perf.mjs` is what settles where that line is.
+       */
+      guides: {
+        indentation: !large,
+        bracketPairs: false,
+        highlightActiveIndentation: !large,
+      },
       // Scanning every rendered line for homoglyphs, CSS colours and URLs, none
       // of which appear in the code this app is for.
       unicodeHighlight: { ambiguousCharacters: false, invisibleCharacters: false },
-      colorDecorators: false,
-      links: false,
-      renderWhitespace: 'none',
-      // Editing-session features that each cost a model search per cursor move.
+      /*
+       * Nothing provides code lenses here, so leaving it on would buy a model
+       * scan per change in exchange for nothing to show.
+       */
       codeLens: false,
-      lightbulb: { enabled: 'off' as editor.ShowLightbulbIconMode },
-      occurrencesHighlight: 'off',
-      selectionHighlight: false,
+      lightbulb: { enabled: 'onCode' as editor.ShowLightbulbIconMode },
+      /*
+       * Selecting a word marks every other one, and putting the caret in a
+       * symbol marks its other uses — VS Code's defaults, and the two most
+       * missed things in this editor. Both run off the cursor with a delay
+       * rather than per frame, so neither shows up in the scroll budget.
+       */
+      occurrencesHighlight: 'singleFile',
+      selectionHighlight: true,
+      // Ordinary editing affordances VS Code has on, all cheap.
+      dragAndDrop: true,
+      links: true,
+      colorDecorators: true,
+      matchBrackets: 'always',
+      multiCursorModifier: 'alt',
+      renderWhitespace: 'selection',
+      inlayHints: { enabled: 'on' },
+      formatOnPaste: false,
+      formatOnType: false,
+      find: {
+        seedSearchStringFromSelection: 'always',
+        autoFindInSelection: 'multiline',
+        addExtraSpaceOnTop: false,
+      },
       scrollbar: {
         verticalScrollbarSize: compact ? 14 : 10,
         horizontalScrollbarSize: compact ? 14 : 10,
@@ -358,7 +461,7 @@ export function EditorPanel({
         className={styles.editor}
         language={monacoLanguageFor(language)}
         theme={MONACO_THEMES[theme]}
-        value={code}
+        defaultValue={code}
         onChange={handleChange}
         onMount={handleMount}
         loading={<Skeleton active paragraph={{ rows: 8 }} className={styles.loading} />}
@@ -367,3 +470,11 @@ export function EditorPanel({
     </div>
   );
 }
+
+/**
+ * Memoised, and the reason matters: this panel must not re-render because
+ * something else in the app did. Every callback it takes is read through a ref,
+ * so the only props that ever change identity are the ones that should cause
+ * work — a new document version, a new error line, a new debugger step.
+ */
+export const EditorPanel = memo(EditorPanelInner);
