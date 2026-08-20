@@ -18,21 +18,7 @@
 
 // --- Transport ---------------------------------------------------------------
 
-.controls {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: $space-2 $space-3;
-  border-bottom: 1px solid var(--breakstep-border);
-  background: var(--breakstep-panel-alt);
-  flex-wrap: wrap;
-  flex-shrink: 0;
-}
 
-.spacer {
-  flex: 1;
-  min-width: 0;
-}
 
 .timeline {
   display: flex;
@@ -78,46 +64,9 @@
   gap: 6px;
 }
 
-.headingRow {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: $space-2;
-}
 
-.heading {
-  margin: 0;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--breakstep-text-faint);
-}
 
-.bulk {
-  display: flex;
-  gap: $space-2;
 
-  button {
-    @include mono(10px);
-    background: none;
-    border: 0;
-    padding: 0;
-    color: var(--breakstep-accent-text);
-    cursor: pointer;
-
-    &:hover {
-      text-decoration: underline;
-    }
-  }
-}
-
-.hint {
-  margin: 0;
-  @include mono(10px);
-  color: var(--breakstep-text-faint);
-  line-height: 1.6;
-}
 
 .none {
   margin: 0;
@@ -127,74 +76,13 @@
 
 // --- Position ----------------------------------------------------------------
 
-.position {
-  display: flex;
-  align-items: center;
-  gap: $space-2;
-  width: 100%;
-  text-align: left;
-  padding: 6px $space-2;
-  border-radius: $radius-md;
-  border: 1px solid var(--breakstep-border);
-  background: var(--breakstep-panel-alt);
-  cursor: pointer;
-  font: inherit;
-  color: inherit;
 
-  &:hover {
-    border-color: var(--breakstep-border-strong);
-  }
-}
 
-.positionText {
-  @include mono(11px);
-  color: var(--breakstep-text-dim);
-  @include truncate;
-
-  code {
-    color: var(--breakstep-accent-text);
-  }
-}
-
-.kindTag {
-  @include mono(9px);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  border-radius: $radius-sm;
-  padding: 1px 6px;
-  flex-shrink: 0;
-  background: var(--breakstep-bg-deep);
-  color: var(--breakstep-text-faint);
-  border: 1px solid var(--breakstep-border);
-
-  &[data-kind='entry'] {
-    color: var(--breakstep-mint);
-    border-color: #{rgba(#35d6a0, 0.4)};
-  }
-
-  &[data-kind='exit'] {
-    color: var(--breakstep-violet);
-    border-color: #{rgba(#b183ff, 0.4)};
-  }
-
-  &[data-kind='loop'] {
-    color: var(--breakstep-amber);
-    border-color: #{rgba(#f2a53c, 0.4)};
-  }
-}
 
 // --- Variables ---------------------------------------------------------------
 
 .scope,
 .stack,
-.functions {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
 
 .scopeRow {
   display: grid;
@@ -247,53 +135,9 @@
 
 // --- Function switches -------------------------------------------------------
 
-.functionRow {
-  display: flex;
-  align-items: center;
-  gap: $space-3;
-  padding: 4px $space-2;
-  border-radius: $radius-sm;
 
-  &:hover {
-    background: var(--breakstep-panel-alt);
-  }
-}
 
-.functionName {
-  display: flex;
-  align-items: baseline;
-  gap: $space-2;
-  flex: 1;
-  min-width: 0;
-  background: none;
-  border: 0;
-  padding: 0;
-  text-align: left;
-  cursor: pointer;
-  color: inherit;
-  font: inherit;
 
-  code {
-    @include mono(11px);
-    color: var(--breakstep-text);
-    @include truncate;
-  }
-}
-
-.functionLine {
-  @include mono(9px);
-  color: var(--breakstep-text-faint);
-  white-space: nowrap;
-}
-
-.breakDot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--breakstep-red);
-  flex-shrink: 0;
-  margin-inline: 6px;
-}
 
 // --- Narrow ------------------------------------------------------------------
 
@@ -309,4 +153,232 @@
   .scopeRow {
     grid-template-columns: minmax(52px, 40%) 1fr;
   }
+}
+
+/* --- The session's state, at the top of the panel ------------------------- */
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-2 $space-3;
+  border-bottom: 1px solid var(--breakstep-border);
+  background: var(--breakstep-panel-alt);
+  flex-shrink: 0;
+}
+
+/// Amber while paused, as the whole debugging chrome is; grey once it is over.
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--breakstep-amber);
+  flex-shrink: 0;
+
+  .status[data-outcome='completed'] & {
+    background: var(--breakstep-text-faint);
+  }
+}
+
+.statusText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 0;
+  background: none;
+  border: 0;
+  text-align: left;
+  font-size: 12px;
+  color: var(--breakstep-text);
+  cursor: pointer;
+
+  &:hover .statusHint {
+    color: var(--breakstep-text-dim);
+  }
+}
+
+.statusHint {
+  @include mono(10px);
+  color: var(--breakstep-text-faint);
+}
+
+.everyLine {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  @include mono(10px);
+  color: var(--breakstep-text-faint);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* --- Collapsible sections ------------------------------------------------- */
+
+.section {
+  border-bottom: 1px solid var(--breakstep-border);
+}
+
+.sectionHead {
+  display: flex;
+  align-items: center;
+  padding-right: $space-2;
+}
+
+.sectionToggle {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px $space-2;
+  background: none;
+  border: 0;
+  cursor: pointer;
+
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--breakstep-text-dim);
+
+  &:hover {
+    color: var(--breakstep-text);
+  }
+}
+
+.chevron {
+  display: inline-flex;
+  font-size: 9px;
+  color: var(--breakstep-text-faint);
+}
+
+.sectionTitle {
+  letter-spacing: inherit;
+}
+
+.count {
+  @include mono(9px);
+  padding: 0 5px;
+  border-radius: $radius-pill;
+  background: var(--breakstep-bg-deep);
+  border: 1px solid var(--breakstep-border);
+  color: var(--breakstep-text-faint);
+  letter-spacing: 0;
+}
+
+.sectionActions {
+  display: inline-flex;
+  gap: $space-2;
+}
+
+.bulkButton {
+  @include mono(10px);
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--breakstep-text-faint);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--breakstep-accent-text);
+  }
+}
+
+.sectionBody {
+  padding: 0 $space-3 $space-3;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.subhead {
+  margin: $space-2 0 0;
+  @include mono(9px);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--breakstep-text-faint);
+}
+
+/* --- Watch --------------------------------------------------------------- */
+
+.watchAdd {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.scopeError {
+  @include mono(11px);
+  color: var(--breakstep-amber);
+  @include truncate;
+  max-width: 55%;
+}
+
+.rowRemove {
+  padding: 0 2px;
+  background: none;
+  border: 0;
+  font-size: 9px;
+  color: var(--breakstep-text-faint);
+  cursor: pointer;
+  opacity: 0;
+
+  &:hover {
+    color: var(--breakstep-red);
+  }
+
+  .scopeRow:hover &,
+  .breakRow:hover & {
+    opacity: 1;
+  }
+}
+
+/* --- Breakpoints --------------------------------------------------------- */
+
+.breakList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.breakRow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+
+  input[type='checkbox'] {
+    accent-color: var(--breakstep-red);
+    cursor: pointer;
+  }
+}
+
+.breakWhere {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 0;
+  background: none;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+
+  code {
+    color: var(--breakstep-text);
+  }
+
+  &:hover code {
+    color: var(--breakstep-accent-text);
+  }
+}
+
+.condition {
+  @include mono(10px);
+  color: var(--breakstep-amber);
+  @include truncate;
 }

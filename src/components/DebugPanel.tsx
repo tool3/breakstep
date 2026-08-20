@@ -1,24 +1,26 @@
-import { useMemo } from 'react';
-import { Button, Empty, Slider, Switch, Tooltip } from 'antd';
+import { useMemo, useState } from 'react';
+import { Button, Empty, Input, Slider, Switch, Tooltip } from 'antd';
 import {
-  CaretRightOutlined,
   CloseOutlined,
-  DownloadOutlined,
-  LoginOutlined,
-  LogoutOutlined,
-  PauseOutlined,
-  StepBackwardOutlined,
-  UndoOutlined,
+  DownOutlined,
+  PlusOutlined,
+  RightOutlined,
 } from '@ant-design/icons';
+import { DebugToolbar } from './DebugToolbar';
 import { formatValue, formatFull } from './visualizers/format';
 import type { DebuggerState } from '@/hooks/useDebugger';
 import styles from './DebugPanel.module.scss';
 
 interface Props {
   debug: DebuggerState;
-  /** Jump the editor to a line — used by the call stack and function list. */
+  /** Jump the editor to a line — used by the call stack and the breakpoint list. */
   onGoToLine: (line: number) => void;
   onStop: () => void;
+  /**
+   * Phone-sized. The floating toolbar lives over the editor, which is a
+   * different tab there, so the panel carries its own copy.
+   */
+  compact?: boolean;
 }
 
 /** Order scope entries so the things that change sit at the top. */
@@ -32,11 +34,54 @@ function orderScope(scope: Record<string, unknown>): [string, unknown][] {
   return entries.sort((a, b) => rank(a[1]) - rank(b[1]) || a[0].localeCompare(b[0]));
 }
 
-export function DebugPanel({ debug, onGoToLine, onStop }: Props) {
-  const { step, steps, index, functions } = debug;
+/**
+ * One collapsible section, as the debug sidebar is built everywhere else.
+ *
+ * Open by default and remembered per section while the session lasts, because
+ * which of these you care about depends entirely on what you are chasing.
+ */
+function Section({
+  title,
+  count,
+  actions,
+  children,
+}: {
+  title: string;
+  count?: number | string;
+  actions?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(true);
+
+  return (
+    <section className={styles.section} data-open={open}>
+      <div className={styles.sectionHead}>
+        <button
+          type="button"
+          className={styles.sectionToggle}
+          onClick={() => setOpen((was) => !was)}
+          aria-expanded={open}
+        >
+          <span className={styles.chevron}>{open ? <DownOutlined /> : <RightOutlined />}</span>
+          <span className={styles.sectionTitle}>{title}</span>
+          {count !== undefined && count !== 0 && <span className={styles.count}>{count}</span>}
+        </button>
+        {actions && <span className={styles.sectionActions}>{actions}</span>}
+      </div>
+      {open && <div className={styles.sectionBody}>{children}</div>}
+    </section>
+  );
+}
+
+export function DebugPanel({ debug, onGoToLine, onStop, compact }: Props) {
+  const { step, steps, index, functions, breakpoints, outcome } = debug;
+  const [watchDraft, setWatchDraft] = useState('');
 
   const scope = useMemo(() => (step ? orderScope(step.scope) : []), [step]);
-  const atEnd = index >= steps.length - 1;
+  const lines = useMemo(
+    () => [...breakpoints.values()].sort((a, b) => a.line - b.line),
+    [breakpoints],
+  );
 
   if (!debug.active) {
     return (
@@ -51,91 +96,63 @@ export function DebugPanel({ debug, onGoToLine, onStop }: Props) {
     );
   }
 
+  const completed = outcome === 'completed';
+
   return (
     <div className={styles.panel}>
-      {/* --- Transport ------------------------------------------------- */}
-      <div className={styles.controls}>
-        <Tooltip title="Step back — the recording runs both ways">
-          <Button
-            size="small"
-            icon={<StepBackwardOutlined />}
-            onClick={() => debug.run('stepBack')}
-            disabled={index === 0}
-            aria-label="Step back"
-          />
+      {compact && <DebugToolbar debug={debug} onStop={onStop} variant="inline" />}
+
+      {/* --- Where the session is ------------------------------------- */}
+      <div className={styles.status} data-outcome={outcome}>
+        <span className={styles.statusDot} />
+        <button
+          type="button"
+          className={styles.statusText}
+          onClick={() => step && onGoToLine(step.line)}
+        >
+          {completed ? (
+            <>
+              Ran to completion
+              <span className={styles.statusHint}>
+                {breakpoints.size === 0 && debug.breakFunctions.size === 0
+                  ? 'no breakpoints were set — click the gutter to add one, then Restart'
+                  : 'nothing else was hit — step back through it, or Restart'}
+              </span>
+            </>
+          ) : (
+            <>
+              Paused on line {step?.line ?? '—'}
+              <span className={styles.statusHint}>
+                {step?.kind}
+                {step?.fn ? ` · ${step.fn}` : ''}
+              </span>
+            </>
+          )}
+        </button>
+
+        <Tooltip title="Stop on every recorded step instead of running to a breakpoint">
+          <label className={styles.everyLine}>
+            <Switch
+              size="small"
+              checked={debug.stepEveryLine}
+              onChange={(checked) => debug.setStepEveryLine(checked)}
+              aria-label="Show every line"
+            />
+            every line
+          </label>
         </Tooltip>
 
-        <Tooltip title={debug.playing ? 'Pause' : 'Play until the next breakpoint'}>
-          <Button
-            size="small"
-            type="primary"
-            icon={debug.playing ? <PauseOutlined /> : <CaretRightOutlined />}
-            onClick={() => (debug.playing ? debug.pause() : debug.play())}
-            disabled={atEnd}
-            aria-label={debug.playing ? 'Pause' : 'Play'}
-          />
-        </Tooltip>
-
-        <Tooltip title="Step over — run any call to completion">
-          <Button
-            size="small"
-            icon={<DownloadOutlined rotate={-90} />}
-            onClick={() => debug.run('stepOver')}
-            disabled={atEnd}
-            aria-label="Step over"
-          />
-        </Tooltip>
-
-        <Tooltip title="Step into — one step, entering calls">
-          <Button
-            size="small"
-            icon={<LoginOutlined />}
-            onClick={() => debug.run('stepInto')}
-            disabled={atEnd}
-            aria-label="Step into"
-          />
-        </Tooltip>
-
-        <Tooltip title="Step out — finish this function">
-          <Button
-            size="small"
-            icon={<LogoutOutlined />}
-            onClick={() => debug.run('stepOut')}
-            disabled={atEnd}
-            aria-label="Step out"
-          />
-        </Tooltip>
-
-        <Tooltip title="Continue to the next breakpoint">
-          <Button size="small" onClick={() => debug.run('continue')} disabled={atEnd}>
-            Continue
-          </Button>
-        </Tooltip>
-
-        <Tooltip title="Back to the first step">
-          <Button
-            size="small"
-            icon={<UndoOutlined />}
-            onClick={() => debug.run('restart')}
-            aria-label="Restart"
-          />
-        </Tooltip>
-
-        <span className={styles.spacer} />
-
-        <Tooltip title="Leave the debugger">
-          <Button size="small" type="text" icon={<CloseOutlined />} onClick={onStop} aria-label="Stop debugging" />
-        </Tooltip>
       </div>
 
+      {/* --- The recording, scrubbable ------------------------------- */}
       <div className={styles.timeline}>
         <Slider
           min={0}
           max={Math.max(steps.length - 1, 0)}
           value={index}
           onChange={debug.seek}
-          tooltip={{ formatter: (v) => `line ${steps[v ?? 0]?.line ?? '?'}` }}
-          aria-label="Recorded steps"
+          tooltip={{ open: false }}
+          aria-label="Position in the recording"
         />
         <span className={styles.counter}>
           {index + 1} / {steps.length}
@@ -143,22 +160,8 @@ export function DebugPanel({ debug, onGoToLine, onStop }: Props) {
       </div>
 
       <div className={styles.scroll}>
-        {/* --- Where we are ------------------------------------------- */}
-        <section className={styles.section}>
-          <h3 className={styles.heading}>Position</h3>
-          <button type="button" className={styles.position} onClick={() => step && onGoToLine(step.line)}>
-            <span className={styles.kindTag} data-kind={step?.kind}>
-              {step?.kind}
-            </span>
-            <span className={styles.positionText}>
-              {step?.fn ? <code>{step.fn}</code> : <em>top level</em>} · line {step?.line}
-            </span>
-          </button>
-        </section>
-
-        {/* --- Variables ---------------------------------------------- */}
-        <section className={styles.section}>
-          <h3 className={styles.heading}>Variables</h3>
+        {/* --- Variables ------------------------------------------- */}
+        <Section title="Variables" count={scope.length}>
           {scope.length === 0 ? (
             <p className={styles.none}>Nothing in scope here.</p>
           ) : (
@@ -167,97 +170,167 @@ export function DebugPanel({ debug, onGoToLine, onStop }: Props) {
                 <li key={name} className={styles.scopeRow}>
                   <span className={styles.scopeName}>{name}</span>
                   <span className={styles.scopeValue} title={formatFull(value)}>
-                    {formatValue(value, 40)}
+                    {formatValue(value, 80)}
                   </span>
                 </li>
               ))}
             </ul>
           )}
-        </section>
+        </Section>
 
-        {/* --- Call stack --------------------------------------------- */}
-        <section className={styles.section}>
-          <h3 className={styles.heading}>Call stack</h3>
+        {/* --- Watch ------------------------------------------------ */}
+        <Section title="Watch" count={debug.watch.length}>
+          <form
+            className={styles.watchAdd}
+            onSubmit={(event) => {
+              event.preventDefault();
+              debug.addWatch(watchDraft);
+              setWatchDraft('');
+            }}
+          >
+            <Input
+              size="small"
+              value={watchDraft}
+              onChange={(event) => setWatchDraft(event.target.value)}
+              placeholder="node.next.val"
+              aria-label="Add a watch expression"
+            />
+            <Button
+              size="small"
+              type="text"
+              icon={<PlusOutlined />}
+              htmlType="submit"
+              aria-label="Add watch expression"
+            />
+          </form>
+
+          {debug.watch.length === 0 ? (
+            <p className={styles.none}>
+              Nothing watched. Expressions are answered against the scope recorded at wherever the
+              cursor is, so a path like <code>node.next.val</code> works and a function call does
+              not.
+            </p>
+          ) : (
+            <ul className={styles.scope}>
+              {debug.watch.map((expression) => {
+                const result = debug.evaluate(expression);
+                return (
+                  <li key={expression} className={styles.scopeRow}>
+                    <span className={styles.scopeName}>{expression}</span>
+                    <span
+                      className={result.error ? styles.scopeError : styles.scopeValue}
+                      title={result.error ?? formatFull(result.value)}
+                    >
+                      {result.error ?? formatValue(result.value, 80)}
+                    </span>
+                    <button
+                      type="button"
+                      className={styles.rowRemove}
+                      onClick={() => debug.removeWatch(expression)}
+                      aria-label={`Stop watching ${expression}`}
+                    >
+                      <CloseOutlined />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Section>
+
+        {/* --- Call stack ------------------------------------------ */}
+        <Section title="Call stack" count={step?.stack.length ?? 0}>
           {!step || step.stack.length === 0 ? (
             <p className={styles.none}>Top level — nothing on the stack.</p>
           ) : (
             <ul className={styles.stack}>
               {[...step.stack].reverse().map((frame, i) => (
-                <li key={`${frame.label}-${i}`} className={styles.stackRow}>
+                <li key={`${frame.label}-${i}`} className={styles.stackRow} data-top={i === 0}>
                   <span className={styles.stackDepth}>#{frame.depth}</span>
                   <code>{frame.label}</code>
                 </li>
               ))}
             </ul>
           )}
-        </section>
+        </Section>
 
-        {/* --- Per-function switches ---------------------------------- */}
-        <section className={styles.section}>
-          <div className={styles.headingRow}>
-            <h3 className={styles.heading}>Break on entry</h3>
-            <span className={styles.bulk}>
-              <button type="button" onClick={() => debug.setAllFunctions(true)}>
-                all
+        {/* --- Breakpoints ----------------------------------------- */}
+        <Section
+          title="Breakpoints"
+          count={lines.length + debug.breakFunctions.size}
+          actions={
+            lines.length > 0 && (
+              <button type="button" className={styles.bulkButton} onClick={debug.clearBreakpoints}>
+                clear
               </button>
-              <button type="button" onClick={() => debug.setAllFunctions(false)}>
-                none
-              </button>
-            </span>
-          </div>
+            )
+          }
+        >
+          {lines.length === 0 && functions.length === 0 ? (
+            <p className={styles.none}>Click the gutter beside a line to break there.</p>
+          ) : null}
 
-          <p className={styles.hint}>
-            A function with its switch off is stepped straight through — the picture keeps moving
-            and the debugger does not stop.
-          </p>
-
-          {functions.length === 0 ? (
-            <p className={styles.none}>No named functions in this file.</p>
-          ) : (
-            <ul className={styles.functions}>
-              {functions.map((fn) => (
-                <li key={fn.qualified} className={styles.functionRow}>
-                  <Switch
-                    size="small"
-                    checked={debug.breakFunctions.has(fn.qualified)}
-                    onChange={() => debug.toggleFunction(fn.qualified)}
-                    aria-label={`Break on entry to ${fn.qualified}`}
+          {lines.length > 0 && (
+            <ul className={styles.breakList}>
+              {lines.map((breakpoint) => (
+                <li key={breakpoint.line} className={styles.breakRow}>
+                  <input
+                    type="checkbox"
+                    checked={breakpoint.enabled}
+                    onChange={(event) =>
+                      debug.setBreakpointEnabled(breakpoint.line, event.target.checked)
+                    }
+                    aria-label={`Breakpoint on line ${breakpoint.line} enabled`}
                   />
-                  <button type="button" className={styles.functionName} onClick={() => onGoToLine(fn.line)}>
-                    <code>{fn.qualified}</code>
-                    <span className={styles.functionLine}>line {fn.line}</span>
+                  <button
+                    type="button"
+                    className={styles.breakWhere}
+                    onClick={() => onGoToLine(breakpoint.line)}
+                  >
+                    <code>line {breakpoint.line}</code>
+                    {breakpoint.condition && (
+                      <span className={styles.condition}>when {breakpoint.condition}</span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.rowRemove}
+                    onClick={() => debug.removeBreakpoint(breakpoint.line)}
+                    aria-label={`Remove the breakpoint on line ${breakpoint.line}`}
+                  >
+                    <CloseOutlined />
                   </button>
                 </li>
               ))}
             </ul>
           )}
-        </section>
 
-        {/* --- Line breakpoints --------------------------------------- */}
-        {debug.breakpoints.size > 0 && (
-          <section className={styles.section}>
-            <div className={styles.headingRow}>
-              <h3 className={styles.heading}>Breakpoints</h3>
-              <span className={styles.bulk}>
-                <button type="button" onClick={debug.clearBreakpoints}>
-                  clear
-                </button>
-              </span>
-            </div>
-            <ul className={styles.functions}>
-              {[...debug.breakpoints]
-                .sort((a, b) => a - b)
-                .map((line) => (
-                  <li key={line} className={styles.functionRow}>
-                    <span className={styles.breakDot} />
-                    <button type="button" className={styles.functionName} onClick={() => onGoToLine(line)}>
-                      <code>line {line}</code>
+          {functions.length > 0 && (
+            <>
+              <p className={styles.subhead}>On entry to</p>
+              <ul className={styles.breakList}>
+                {functions.map((fn) => (
+                  <li key={fn.qualified} className={styles.breakRow}>
+                    <input
+                      type="checkbox"
+                      checked={debug.breakFunctions.has(fn.qualified)}
+                      onChange={() => debug.toggleFunction(fn.qualified)}
+                      aria-label={`Break on entry to ${fn.qualified}`}
+                    />
+                    <button
+                      type="button"
+                      className={styles.breakWhere}
+                      onClick={() => onGoToLine(fn.line)}
+                    >
+                      <code>{fn.qualified}</code>
+                      <span className={styles.condition}>line {fn.line}</span>
                     </button>
                   </li>
                 ))}
-            </ul>
-          </section>
-        )}
+              </ul>
+            </>
+          )}
+        </Section>
       </div>
     </div>
   );

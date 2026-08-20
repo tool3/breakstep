@@ -7,7 +7,15 @@
  * controls stay responsive on a phone.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { DebugStep, FunctionInfo, StepCommand } from '@/types/debug';
+import type {
+  DebugOutcome,
+  DebugStep,
+  EvalResult,
+  FunctionInfo,
+  LineBreakpoint,
+  StepCommand,
+} from '@/types/debug';
+import { conditionHolds, evaluateIn } from './debugEval';
 
 export interface DebuggerState {
   /** True once a debug run has been recorded and handed over. */
@@ -19,8 +27,25 @@ export interface DebuggerState {
 
   /** Functions whose entry the debugger should stop at — the per-function switches. */
   breakFunctions: Set<string>;
-  /** Line numbers with a breakpoint, set from the editor gutter. */
-  breakpoints: Set<number>;
+  /** Breakpoints by line, set from the editor gutter. */
+  breakpoints: Map<number, LineBreakpoint>;
+  /**
+   * Whether the session is resting on a breakpoint or ran out of program.
+   *
+   * A recording that hits nothing is not a failure and not the end of the
+   * session: it is a completed run you can still walk backwards through.
+   */
+  outcome: DebugOutcome;
+  /**
+   * Stop on every recorded step instead of running to a breakpoint.
+   *
+   * Off by default, which is what makes this behave like a debugger. On, it is
+   * the guided walk this app started as — worth keeping, because for someone
+   * meeting recursion for the first time every line *is* the lesson.
+   */
+  stepEveryLine: boolean;
+  /** Expressions shown against the current step's scope. */
+  watch: string[];
 
   /** Auto-advancing until the next break. */
   playing: boolean;
@@ -36,7 +61,17 @@ export interface DebuggerState {
   toggleFunction: (qualified: string) => void;
   setAllFunctions: (on: boolean) => void;
   toggleBreakpoint: (line: number) => void;
+  /** Switch a breakpoint off without forgetting where it was. */
+  setBreakpointEnabled: (line: number, enabled: boolean) => void;
+  /** Break there only when this holds. Passing undefined makes it unconditional. */
+  setBreakpointCondition: (line: number, condition?: string) => void;
+  removeBreakpoint: (line: number) => void;
   clearBreakpoints: () => void;
+  setStepEveryLine: (on: boolean) => void;
+  addWatch: (expression: string) => void;
+  removeWatch: (expression: string) => void;
+  /** Answer an expression against the scope recorded at the current step. */
+  evaluate: (expression: string) => EvalResult;
 }
 
 const PLAY_INTERVAL_MS = 220;
@@ -49,7 +84,10 @@ export function useDebugger(): DebuggerState {
   const [playing, setPlaying] = useState(false);
 
   const [breakFunctions, setBreakFunctions] = useState<Set<string>>(new Set());
-  const [breakpoints, setBreakpoints] = useState<Set<number>>(new Set());
+  const [breakpoints, setBreakpoints] = useState<Map<number, LineBreakpoint>>(new Map());
+  const [outcome, setOutcome] = useState<DebugOutcome>('paused');
+  const [stepEveryLine, setStepEveryLine] = useState(false);
+  const [watch, setWatch] = useState<string[]>([]);
 
   const timer = useRef<number | null>(null);
 
@@ -58,13 +96,19 @@ export function useDebugger(): DebuggerState {
   /**
    * Should the debugger stop here?
    *
-   * A function only breaks when its switch is on — that is the whole point of
-   * the switches. With everything off, `continue` runs to the end and the
-   * visualizer simply plays through, which is the default the user sees.
+   * A disabled breakpoint is remembered and ignored; a conditional one is
+   * answered against the scope recorded at that step. A function only breaks
+   * when its switch is on.
    */
   const isBreak = useCallback(
     (candidate: DebugStep): boolean => {
-      if (breakpoints.has(candidate.line)) return true;
+      const breakpoint = breakpoints.get(candidate.line);
+      if (breakpoint?.enabled) {
+        // A condition is answered against the scope recorded *there*, and one
+        // that cannot be answered never stops the run.
+        if (!breakpoint.condition) return true;
+        if (conditionHolds(breakpoint.condition, candidate.scope)) return true;
+      }
       if (candidate.kind !== 'entry' || !candidate.fn) return false;
 
       if (breakFunctions.has(candidate.fn)) return true;
@@ -74,78 +118,157 @@ export function useDebugger(): DebuggerState {
     [breakFunctions, breakpoints],
   );
 
-  const begin = useCallback((next: DebugStep[], fns: FunctionInfo[]) => {
-    setSteps(next);
-    setFunctions(fns);
-    setIndex(0);
-    setActive(next.length > 0);
-    setPlaying(false);
-  }, []);
+  /**
+   * Take a recording and behave like a debugger: run.
+   *
+   * The session does not open paused on line 1 — it opens wherever the program
+   * first hits something you asked it to stop at, which is what F5 does
+   * everywhere else. With nothing set it rests at the end of the recording and
+   * says so, because the whole run is still there to walk backwards through.
+   *
+   * `stepEveryLine` is the exception, and the mode this app used to have as its
+   * only behaviour: park on the first step and let the reader drive.
+   */
+  const begin = useCallback(
+    (next: DebugStep[], fns: FunctionInfo[]) => {
+      setSteps(next);
+      setFunctions(fns);
+      setActive(next.length > 0);
+      setPlaying(false);
+
+      if (next.length === 0) {
+        setIndex(0);
+        setOutcome('completed');
+        return;
+      }
+
+      if (stepEveryLine) {
+        setIndex(0);
+        setOutcome('paused');
+        return;
+      }
+
+      const first = next.findIndex((candidate) => isBreak(candidate));
+      setIndex(first === -1 ? next.length - 1 : first);
+      setOutcome(first === -1 ? 'completed' : 'paused');
+    },
+    [isBreak, stepEveryLine],
+  );
 
   const end = useCallback(() => {
     setActive(false);
     setPlaying(false);
     setSteps([]);
     setIndex(0);
+    setOutcome('paused');
   }, []);
 
   const seek = useCallback(
     (next: number) => {
       setPlaying(false);
       const total = steps.length;
-      setIndex(total === 0 ? 0 : Math.min(Math.max(next, 0), total - 1));
+      if (total === 0) {
+        setIndex(0);
+        return;
+      }
+      setIndex(Math.min(Math.max(next, 0), total - 1));
+      // Landing somewhere by hand is being paused there, whatever came before.
+      setOutcome('paused');
     },
     [steps.length],
   );
 
+  /**
+   * A step command.
+   *
+   * Computed against the current index rather than inside a state updater, so
+   * that settling on a new position and recording *why* the session is resting
+   * there happen together. Every command but `continue` leaves the session
+   * paused — including stepping backwards out of a run that had reached the end,
+   * which is no longer over the moment you move.
+   */
   const run = useCallback(
     (command: StepCommand) => {
       setPlaying(false);
-      setIndex((current) => {
-        const total = steps.length;
-        if (total === 0) return 0;
 
-        const here = steps[current];
-        const clamp = (n: number) => Math.min(Math.max(n, 0), total - 1);
+      const total = steps.length;
+      if (total === 0) return;
 
-        switch (command) {
-          case 'restart':
-            return 0;
+      const here = steps[index];
+      const clamp = (n: number) => Math.min(Math.max(n, 0), total - 1);
 
-          case 'stepBack':
-            return clamp(current - 1);
+      const firstBreak = () => steps.findIndex((candidate) => isBreak(candidate));
 
-          case 'stepInto':
-            return clamp(current + 1);
-
-          case 'stepOver': {
-            // Skip anything deeper than here: a call runs to completion.
-            for (let i = current + 1; i < total; i++) {
-              if (steps[i].depth <= here.depth) return i;
-            }
-            return total - 1;
+      switch (command) {
+        case 'restart': {
+          // Restarting re-runs the recording, which means running to the first
+          // breakpoint again rather than landing back on line 1.
+          if (stepEveryLine) {
+            setIndex(0);
+            setOutcome('paused');
+            return;
           }
-
-          case 'stepOut': {
-            for (let i = current + 1; i < total; i++) {
-              if (steps[i].depth < here.depth) return i;
-            }
-            return total - 1;
-          }
-
-          case 'continue': {
-            for (let i = current + 1; i < total; i++) {
-              if (isBreak(steps[i])) return i;
-            }
-            return total - 1;
-          }
-
-          default:
-            return current;
+          const first = firstBreak();
+          setIndex(first === -1 ? total - 1 : first);
+          setOutcome(first === -1 ? 'completed' : 'paused');
+          return;
         }
-      });
+
+        case 'continue': {
+          for (let i = index + 1; i < total; i++) {
+            if (isBreak(steps[i])) {
+              setIndex(i);
+              setOutcome('paused');
+              return;
+            }
+          }
+          setIndex(total - 1);
+          setOutcome('completed');
+          return;
+        }
+
+        case 'stepBack':
+          setIndex(clamp(index - 1));
+          setOutcome('paused');
+          return;
+
+        case 'stepInto':
+          setIndex(clamp(index + 1));
+          setOutcome('paused');
+          return;
+
+        case 'stepOver': {
+          // Skip anything deeper than here: a call runs to completion.
+          for (let i = index + 1; i < total; i++) {
+            if (steps[i].depth <= here.depth) {
+              setIndex(i);
+              setOutcome('paused');
+              return;
+            }
+          }
+          setIndex(total - 1);
+          setOutcome('completed');
+          return;
+        }
+
+        case 'stepOut': {
+          for (let i = index + 1; i < total; i++) {
+            if (steps[i].depth < here.depth) {
+              setIndex(i);
+              setOutcome('paused');
+              return;
+            }
+          }
+          setIndex(total - 1);
+          setOutcome('completed');
+          return;
+        }
+
+        default:
+          return;
+      }
     },
-    [steps, isBreak],
+    [steps, index, isBreak, stepEveryLine],
   );
 
   const play = useCallback(() => setPlaying(true), []);
@@ -190,14 +313,64 @@ export function useDebugger(): DebuggerState {
 
   const toggleBreakpoint = useCallback((line: number) => {
     setBreakpoints((prev) => {
-      const next = new Set(prev);
+      const next = new Map(prev);
       if (next.has(line)) next.delete(line);
-      else next.add(line);
+      else next.set(line, { line, enabled: true });
       return next;
     });
   }, []);
 
-  const clearBreakpoints = useCallback(() => setBreakpoints(new Set()), []);
+  const setBreakpointEnabled = useCallback((line: number, enabled: boolean) => {
+    setBreakpoints((prev) => {
+      const existing = prev.get(line);
+      if (!existing) return prev;
+      const next = new Map(prev);
+      next.set(line, { ...existing, enabled });
+      return next;
+    });
+  }, []);
+
+  /**
+   * Conditions can be set on a line that has no breakpoint yet — right-clicking
+   * the gutter and typing an expression is how VS Code creates one.
+   */
+  const setBreakpointCondition = useCallback((line: number, condition?: string) => {
+    setBreakpoints((prev) => {
+      const next = new Map(prev);
+      const existing = next.get(line) ?? { line, enabled: true };
+      const trimmed = condition?.trim();
+      next.set(line, { ...existing, condition: trimmed ? trimmed : undefined });
+      return next;
+    });
+  }, []);
+
+  const removeBreakpoint = useCallback((line: number) => {
+    setBreakpoints((prev) => {
+      if (!prev.has(line)) return prev;
+      const next = new Map(prev);
+      next.delete(line);
+      return next;
+    });
+  }, []);
+
+  const clearBreakpoints = useCallback(() => setBreakpoints(new Map()), []);
+
+  const addWatch = useCallback((expression: string) => {
+    const trimmed = expression.trim();
+    if (!trimmed) return;
+    setWatch((prev) => (prev.includes(trimmed) ? prev : [...prev, trimmed]));
+  }, []);
+
+  const removeWatch = useCallback((expression: string) => {
+    setWatch((prev) => prev.filter((item) => item !== expression));
+  }, []);
+
+  /** Watch expressions read the scope of wherever the cursor is now. */
+  const evaluate = useCallback(
+    (expression: string) => evaluateIn(expression, step?.scope ?? null),
+    [step],
+  );
+
 
   /**
    * The picture as of this step. Statement steps carry the frame index of the
@@ -224,6 +397,9 @@ export function useDebugger(): DebuggerState {
       functions,
       breakFunctions,
       breakpoints,
+      outcome,
+      stepEveryLine,
+      watch,
       playing,
       frameIndex,
       begin,
@@ -235,7 +411,14 @@ export function useDebugger(): DebuggerState {
       toggleFunction,
       setAllFunctions,
       toggleBreakpoint,
+      setBreakpointEnabled,
+      setBreakpointCondition,
+      removeBreakpoint,
       clearBreakpoints,
+      setStepEveryLine,
+      addWatch,
+      removeWatch,
+      evaluate,
     }),
     [
       active,
@@ -245,6 +428,9 @@ export function useDebugger(): DebuggerState {
       functions,
       breakFunctions,
       breakpoints,
+      outcome,
+      stepEveryLine,
+      watch,
       playing,
       frameIndex,
       begin,
@@ -256,7 +442,14 @@ export function useDebugger(): DebuggerState {
       toggleFunction,
       setAllFunctions,
       toggleBreakpoint,
+      setBreakpointEnabled,
+      setBreakpointCondition,
+      removeBreakpoint,
       clearBreakpoints,
+      setStepEveryLine,
+      addWatch,
+      removeWatch,
+      evaluate,
     ],
   );
 }

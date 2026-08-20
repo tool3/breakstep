@@ -24,6 +24,8 @@ import { SubmissionsPanel, VerdictDot } from './components/SubmissionsPanel';
 import { ParamsPanel } from './components/ParamsPanel';
 import { ProblemPanel } from './components/ProblemPanel';
 import { DebugPanel } from './components/DebugPanel';
+import { DebugToolbar } from './components/DebugToolbar';
+import { BreakpointMenu, type BreakpointMenuTarget } from './components/BreakpointMenu';
 import { OutputPanel } from './components/OutputPanel';
 import { VisualizerPanel } from './components/VisualizerPanel';
 import { ComplexityPanel } from './components/ComplexityPanel';
@@ -138,6 +140,8 @@ export default function App() {
   const layout = useLayout();
   const antdConfig = useAntdTheme(theme, layout.coarsePointer);
 
+  /** Which line's breakpoint menu is open, and where it was opened. */
+  const [breakpointMenu, setBreakpointMenu] = useState<BreakpointMenuTarget | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [problemsOpen, setProblemsOpen] = useState(false);
   /** Which of the three bottom-left tabs is showing. */
@@ -295,6 +299,49 @@ export default function App() {
     if (status === 'error' && result?.error) reveal('output');
   }, [status, result, reveal]);
 
+  const openBreakpointMenu = useCallback((line: number, x: number, y: number) => {
+    setBreakpointMenu({ line, x, y });
+  }, []);
+
+  const closeBreakpointMenu = useCallback(() => setBreakpointMenu(null), []);
+
+  /**
+   * The debugger's function keys, bound only while a session is open.
+   *
+   * F5 reloads the page everywhere else in a browser, and taking that away from
+   * someone who is not debugging would be a poor trade. Inside a session it is
+   * Continue, exactly as it is in VS Code, and the browser default is suppressed
+   * for as long as the session lasts.
+   */
+  useEffect(() => {
+    if (!debug.active) return;
+
+    const onKey = (event: KeyboardEvent) => {
+      const command = (() => {
+        if (event.key === 'F5') return event.shiftKey ? 'stop' : 'continue';
+        if (event.key === 'F10') return 'stepOver';
+        if (event.key === 'F11') return event.shiftKey ? 'stepOut' : 'stepInto';
+        return null;
+      })();
+      if (!command) return;
+
+      event.preventDefault();
+      if (command === 'stop') {
+        debug.end();
+        return;
+      }
+      // Cmd/Ctrl+Shift+F5 restarts, as it does in VS Code.
+      if (command === 'continue' && (event.metaKey || event.ctrlKey)) {
+        debug.run('restart');
+        return;
+      }
+      debug.run(command);
+    };
+
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [debug]);
+
   // Global shortcuts. Monaco owns Cmd+Enter inside the editor; this covers the
   // rest of the app so Run works no matter where focus is.
   useEffect(() => {
@@ -317,6 +364,9 @@ export default function App() {
 
   const editor = (
     <div className={styles.editorPane}>
+      {/* The transport belongs next to the line it acts on, so it floats here
+          rather than in the panel — the phone gets an inline copy instead. */}
+      {debug.active && !compact && <DebugToolbar debug={debug} onStop={debug.end} />}
       <ModeBadge
         mode={workspace.mode}
         compact={compact}
@@ -336,6 +386,7 @@ export default function App() {
           breakpoints={debug.breakpoints}
           scope={debug.active ? (debug.step?.scope ?? null) : null}
           onToggleBreakpoint={debug.toggleBreakpoint}
+          onGutterContextMenu={openBreakpointMenu}
           onChange={workspace.setCode}
           onRun={handleRun}
           onSubmit={workspace.problem ? handleSubmit : undefined}
@@ -402,7 +453,7 @@ export default function App() {
   );
 
   const params = debug.active ? (
-    <DebugPanel debug={debug} onGoToLine={goToLine} onStop={debug.end} />
+    <DebugPanel debug={debug} onGoToLine={goToLine} onStop={debug.end} compact={compact} />
   ) : (
     <div className={styles.column}>
       <Tabs
@@ -677,6 +728,17 @@ export default function App() {
                 )}
               </span>
             </footer>
+          )}
+
+          {breakpointMenu && (
+            <BreakpointMenu
+              target={breakpointMenu}
+              breakpoint={debug.breakpoints.get(breakpointMenu.line)}
+              onToggleEnabled={debug.setBreakpointEnabled}
+              onSetCondition={debug.setBreakpointCondition}
+              onRemove={debug.removeBreakpoint}
+              onClose={closeBreakpointMenu}
+            />
           )}
 
           <ProblemDrawer

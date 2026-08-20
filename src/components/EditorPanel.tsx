@@ -5,6 +5,7 @@ import { Skeleton } from 'antd';
 import { MONACO_THEMES, monacoLanguageFor, setupMonaco } from '@/editor/monacoSetup';
 import { formatFull, formatValue } from './visualizers/format';
 import type { Language, RunError } from '@/types';
+import type { LineBreakpoint } from '@/types/debug';
 import type { ThemeName } from '@/hooks/useTheme';
 import styles from './EditorPanel.module.scss';
 
@@ -29,8 +30,11 @@ interface Props {
   compact?: boolean;
   /** The line the debugger is paused on, highlighted and scrolled into view. */
   activeLine?: number | null;
-  /** Lines carrying a breakpoint, drawn as red dots in the gutter. */
-  breakpoints?: Set<number>;
+  /**
+   * Breakpoints by line, drawn in the gutter the way VS Code draws them: a
+   * filled dot, a hollow ring when disabled, and a marked dot when conditional.
+   */
+  breakpoints?: Map<number, LineBreakpoint>;
   /**
    * The variables in scope at the paused step. Hovering a name shows what it
    * holds *right now*, which is the question you actually have while stepping —
@@ -39,6 +43,11 @@ interface Props {
   scope?: Record<string, unknown> | null;
   /** Clicking the gutter toggles a breakpoint on that line. */
   onToggleBreakpoint?: (line: number) => void;
+  /**
+   * Right-clicking the gutter, for the menu that edits a condition or disables
+   * a breakpoint without deleting it. Given viewport coordinates to anchor to.
+   */
+  onGutterContextMenu?: (line: number, x: number, y: number) => void;
   onChange: (value: string) => void;
   onRun: () => void;
   /**
@@ -70,6 +79,7 @@ function EditorPanelInner({
   breakpoints,
   scope,
   onToggleBreakpoint,
+  onGutterContextMenu,
   onChange,
   onRun,
   onSubmit,
@@ -98,6 +108,8 @@ function EditorPanelInner({
   // Read through a ref so the mouse handler is installed exactly once.
   const toggleRef = useRef(onToggleBreakpoint);
   toggleRef.current = onToggleBreakpoint;
+  const gutterMenuRef = useRef(onGutterContextMenu);
+  gutterMenuRef.current = onGutterContextMenu;
   // Same for the hover provider: registered once, but it must always read the
   // scope of the step the debugger is on right now.
   const scopeRef = useRef(scope);
@@ -248,14 +260,32 @@ function EditorPanelInner({
       },
     );
 
+    const inGutter = (target: editor.IMouseTarget) =>
+      target.type === monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN ||
+      target.type === monaco.editor.MouseTargetType.GUTTER_LINE_NUMBERS;
+
     // Clicking the gutter toggles a breakpoint, the way every editor does it.
     ed.onMouseDown((event) => {
-      const target = event.target;
-      const isGutter =
-        target.type === monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN ||
-        target.type === monaco.editor.MouseTargetType.GUTTER_LINE_NUMBERS;
-      if (!isGutter || !target.position) return;
-      toggleRef.current?.(target.position.lineNumber);
+      if (event.event.rightButton) return;
+      if (!inGutter(event.target) || !event.target.position) return;
+      toggleRef.current?.(event.target.position.lineNumber);
+    });
+
+    /*
+     * Right-clicking it opens the breakpoint menu instead — where a condition
+     * gets edited and a breakpoint gets disabled rather than deleted. Monaco's
+     * own context menu belongs to the text, so the glyph margin is ours to
+     * claim, and the browser's has to be told to stay out of the way.
+     */
+    ed.onContextMenu((event) => {
+      if (!inGutter(event.target) || !event.target.position) return;
+      event.event.preventDefault();
+      event.event.stopPropagation();
+      gutterMenuRef.current?.(
+        event.target.position.lineNumber,
+        event.event.posx,
+        event.event.posy,
+      );
     });
   };
 
@@ -299,15 +329,27 @@ function EditorPanelInner({
 
     const next: editor.IModelDeltaDecoration[] = [];
 
-    for (const line of breakpoints ?? []) {
+    for (const breakpoint of (breakpoints ?? new Map()).values()) {
+      const glyph = !breakpoint.enabled
+        ? styles.breakpointDisabled
+        : breakpoint.condition
+          ? styles.breakpointConditional
+          : styles.breakpointGlyph;
+
+      const hover = !breakpoint.enabled
+        ? 'Disabled breakpoint — right-click to enable'
+        : breakpoint.condition
+          ? `Conditional breakpoint: \`${breakpoint.condition}\``
+          : 'Breakpoint — click to remove, right-click for a condition';
+
       next.push({
-        range: new monaco.Range(line, 1, line, 1),
+        range: new monaco.Range(breakpoint.line, 1, breakpoint.line, 1),
         options: {
           isWholeLine: false,
-          glyphMarginClassName: styles.breakpointGlyph,
-          glyphMarginHoverMessage: { value: 'Breakpoint — click to remove' },
+          glyphMarginClassName: glyph,
+          glyphMarginHoverMessage: { value: hover },
           overviewRuler: {
-            color: '#f4585d',
+            color: breakpoint.enabled ? '#f4585d' : '#6b7280',
             position: monaco.editor.OverviewRulerLane.Left,
           },
         },
@@ -321,8 +363,9 @@ function EditorPanelInner({
           isWholeLine: true,
           className: styles.activeLine,
           glyphMarginClassName: styles.activeGlyph,
+          // The paused line is worth finding from the scrollbar at a glance.
           overviewRuler: {
-            color: '#f2a53c',
+            color: '#ffb800',
             position: monaco.editor.OverviewRulerLane.Full,
           },
         },

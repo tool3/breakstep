@@ -34,23 +34,72 @@
 // --- Debugger decorations ---------------------------------------------------
 // Monaco applies these by class name, so they must not be nested.
 
+/**
+ * Breakpoints, in VS Code's three states.
+ *
+ * Monaco sizes these elements itself — full line height, its own width, set
+ * inline — so `border-radius: 50%` on a box came out an ellipse. Painting the
+ * dot with a gradient instead makes it perfectly round and centred in whatever
+ * box it lands in, at any font size or line height.
+ */
 .breakpointGlyph {
-  // Monaco sizes this element itself — full line height, its own width — and
-  // sets that inline, so a `border-radius: 50%` box came out an ellipse. The
-  // dot is painted instead, which makes it perfectly round and centred
-  // whatever box it lands in, at any font size or line height.
   background: radial-gradient(circle at center, var(--breakstep-red) 0 4.5px, transparent 4.5px);
   cursor: pointer;
 }
 
+/// Disabled: remembered, ignored. A hollow grey ring, as VS Code draws it.
+.breakpointDisabled {
+  background: radial-gradient(
+    circle at center,
+    transparent 0 2.5px,
+    var(--breakstep-text-faint) 2.5px 4.5px,
+    transparent 4.5px
+  );
+  cursor: pointer;
+}
+
+/// Conditional: the same dot with its middle punched out, so "this one has a
+/// question attached" reads at a glance without a second colour.
+.breakpointConditional {
+  background: radial-gradient(
+    circle at center,
+    var(--breakstep-red) 0 4.5px,
+    transparent 4.5px
+  );
+  cursor: pointer;
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, var(--breakstep-bg) 0 1.6px, transparent 1.6px);
+  }
+}
+
+/**
+ * The paused line.
+ *
+ * VS Code's amber band across the whole line plus a filled arrow in the gutter
+ * pointing at it — the arrow is what tells you *this* is where execution is,
+ * rather than just another highlighted row.
+ */
 .activeLine {
-  background: #{rgba(#f2a53c, 0.14)};
-  border-left: 2px solid var(--breakstep-amber);
+  background: #{rgba(#ffb800, 0.13)};
 }
 
 .activeGlyph {
-  background: var(--breakstep-amber);
-  width: 4px !important;
-  margin-left: 4px;
-  border-radius: 2px;
+  cursor: default;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 3px;
+    transform: translateY(-50%);
+    border-style: solid;
+    border-width: 5px 0 5px 8px;
+    border-color: transparent transparent transparent var(--breakstep-amber);
+  }
 }
+

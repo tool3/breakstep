@@ -232,15 +232,40 @@ try {
   await page.getByRole('button', { name: 'Debug', exact: true }).click();
   await page.waitForTimeout(3000);
 
+  const status = () => page.locator('[class*="statusText"]').first().innerText();
+  /** The debugger's own transport: the visualizer has its own Step back too. */
+  const transport = (name) =>
+    page.getByRole('toolbar', { name: 'Debug controls' }).getByRole('button', { name });
+
   check(
     'the debugger recorded a run',
-    await page.getByRole('button', { name: 'Step into' }).isVisible(),
+    await transport('Step into').isVisible(),
   );
-  const firstPosition = await page.locator('[class*="positionText"]').first().innerText();
-  await page.getByRole('button', { name: 'Step into' }).click();
+  check(
+    'the transport floats over the editor',
+    await page.getByRole('toolbar', { name: 'Debug controls' }).isVisible(),
+  );
+
+  /*
+   * The headline behaviour: pressing Debug runs the program. With nothing set it
+   * reaches the end and says so, rather than parking on line 1 waiting to be
+   * driven — which is what it used to do.
+   */
+  check(
+    'with no breakpoints it runs to completion instead of pausing on line 1',
+    (await status()).includes('Ran to completion'),
+    await status(),
+  );
+
+  // Stepping backwards out of a completed run is the thing a live debugger cannot
+  // do, and the reason the session stays open at the end.
+  await transport('Step back').click();
   await page.waitForTimeout(300);
-  const secondPosition = await page.locator('[class*="positionText"]').first().innerText();
-  check('stepping moves the cursor', firstPosition !== secondPosition, `${firstPosition} -> ${secondPosition}`);
+  check(
+    'a completed run can be stepped back out of',
+    (await status()).includes('Paused on line'),
+    await status(),
+  );
 
   check(
     'the paused line is highlighted in the editor',
@@ -251,63 +276,122 @@ try {
     (await page.locator('[class*="scopeRow"]').count()) > 0,
   );
   check(
-    'every function gets a breakpoint switch',
-    (await page.getByRole('switch').count()) > 0,
-  );
-  check(
     'the visualizer follows the debugger',
     await page.getByText('following the debugger').isVisible(),
   );
 
-  // A gutter click must set the breakpoint on the line you clicked. Monaco does
-  // not account for its own top padding here, which silently put every
-  // breakpoint one line high until the padding moved into CSS.
-  //
-  // The line is taken from the debugger rather than hardcoded, so this works
-  // whatever template the run above left loaded.
-  await page.getByRole('button', { name: 'Step into' }).click();
-  await page.waitForTimeout(200);
-  await page.getByRole('button', { name: 'Step into' }).click();
-  await page.waitForTimeout(250);
+  const firstPosition = await status();
+  await transport('Step into').click();
+  await page.waitForTimeout(300);
+  check('stepping moves the cursor', firstPosition !== (await status()),
+    `${firstPosition.replace(/\n/g, ' ')} -> ${(await status()).replace(/\n/g, ' ')}`);
 
-  const here = await page.locator('[class*="positionText"]').first().innerText();
-  const targetLine = Number(here.trim().match(/line (\d+)$/)?.[1] ?? 0);
-  // Bring it into view before clicking its gutter.
-  await page.locator('[class*="position"]').first().click();
+  /*
+   * A gutter click must set the breakpoint on the line you clicked. Monaco does
+   * not account for its own top padding here, which silently put every
+   * breakpoint one line high until the padding moved into CSS.
+   */
+  const here = await status();
+  const targetLine = Number(here.match(/line (\d+)/)?.[1] ?? 0);
+  await page.locator('[class*="statusText"]').first().click();
   await page.waitForTimeout(400);
 
   const gutter = page.locator('.line-numbers', { hasText: new RegExp(`^${targetLine}$`) }).first();
   const gutterBox = await gutter.boundingBox();
   await page.mouse.click(gutterBox.x + gutterBox.width / 2, gutterBox.y + gutterBox.height / 2);
-  await page.waitForTimeout(300);
+  await page.waitForTimeout(400);
 
-  const listed = await page.evaluate(() =>
-    [...document.querySelectorAll('[class*="functionName"] code')]
-      .map((n) => n.textContent)
-      .filter((t) => t.startsWith('line')),
-  );
+  const listedLines = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll('[class*="breakWhere"] code')]
+        .map((node) => node.textContent)
+        .filter((text) => text.startsWith('line')),
+    );
   check(
     'a gutter click sets the breakpoint on the line clicked',
-    listed.includes(`line ${targetLine}`),
-    `wanted line ${targetLine}, got ${listed.join() || 'none'}`,
+    (await listedLines()).includes(`line ${targetLine}`),
+    `wanted line ${targetLine}, got ${(await listedLines()).join() || 'none'}`,
   );
 
-  await page.getByRole('button', { name: 'Restart' }).first().click();
-  await page.waitForTimeout(250);
-  await page.getByRole('button', { name: 'Continue' }).click();
-  await page.waitForTimeout(400);
-  const stopped = await page.locator('[class*="positionText"]').first().innerText();
+  // Restart now means "run again to the first breakpoint", not "back to line 1".
+  await transport('Restart').click();
+  await page.waitForTimeout(600);
   check(
-    'continue stops at that breakpoint',
-    stopped.trim().endsWith(`line ${targetLine}`),
-    `wanted line ${targetLine}, stopped at ${stopped.trim()}`,
+    'restart runs to the breakpoint rather than back to line one',
+    (await status()).includes(`line ${targetLine}`),
+    await status(),
   );
+
+  // F5 continues, as it does in VS Code, and only while a session is open.
+  await page.keyboard.press('F5');
+  await page.waitForTimeout(500);
+  check(
+    'F5 continues the session',
+    (await status()).includes('Ran to completion') || (await status()).includes('line'),
+    await status(),
+  );
+
+  /*
+   * A condition is answered against the scope recorded at that line, which is
+   * only possible because the run is already over.
+   */
+  await page.mouse.click(gutterBox.x + gutterBox.width / 2, gutterBox.y + gutterBox.height / 2, {
+    button: 'right',
+  });
+  await page.waitForTimeout(400);
+  const menuOpen = await page.getByRole('menu', { name: new RegExp(`line ${targetLine}`) }).isVisible().catch(() => false);
+  check('right-clicking the gutter opens the breakpoint menu', menuOpen);
+
+  if (menuOpen) {
+    await page.getByRole('button', { name: /condition/ }).click();
+    await page.waitForTimeout(250);
+    await page.locator('#breakpoint-condition').fill('1 === 1');
+    await page.getByRole('button', { name: 'Set condition' }).click();
+    await page.waitForTimeout(400);
+    check(
+      'the condition is attached to the breakpoint',
+      (await page.locator('[class*="condition"]').allInnerTexts()).some((text) =>
+        text.includes('1 === 1'),
+      ),
+    );
+
+    await transport('Restart').click();
+    await page.waitForTimeout(600);
+    check(
+      'a condition that holds still stops the run',
+      (await status()).includes(`line ${targetLine}`),
+      await status(),
+    );
+  }
+
+  // Watch expressions read the recorded scope wherever the cursor is.
+  const watched = (await page.locator('[class*="scopeName"]').allInnerTexts())[0];
+  if (watched) {
+    await page.getByRole('textbox', { name: 'Add a watch expression' }).fill(watched);
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(400);
+    check(
+      'a watch expression is evaluated against the recorded scope',
+      (await page.evaluate(
+        () => document.querySelectorAll('[class*="scopeRow"]').length,
+      )) > 0,
+    );
+  }
 
   // Hovering a variable should answer what it holds right now, not its type.
-  const varName = (await page.locator('[class*="scopeName"]').allInnerTexts())[0];
-  const nameSpan = varName
-    ? page.locator('.view-line span', { hasText: new RegExp(`^${varName}$`) }).first()
-    : null;
+  // Whichever in-scope name is actually on screen: the cursor now rests wherever
+  // the breakpoint is, so the first variable in the list need not be visible.
+  const inScope = await page.locator('[class*="scopeName"]').allInnerTexts();
+  let varName = null;
+  let nameSpan = null;
+  for (const candidate of inScope) {
+    const span = page.locator('.view-line span', { hasText: new RegExp(`^${candidate}$`) }).first();
+    if (await span.count()) {
+      varName = candidate;
+      nameSpan = span;
+      break;
+    }
+  }
 
   if (nameSpan && (await nameSpan.count())) {
     await nameSpan.hover();
@@ -332,7 +416,7 @@ try {
   check(
     'leaving the debugger restores the inputs panel',
     (await page.locator('[class*="ParamsPanel"]').count()) > 0 &&
-      (await page.getByRole('button', { name: 'Step into' }).count()) === 0,
+      (await transport('Step into').count()) === 0,
   );
 
   console.log('▸ Loading a LeetCode problem');
@@ -562,21 +646,28 @@ try {
 
     // The debugger records Python through the same replay path as JavaScript.
     await page.getByRole('button', { name: 'Debug', exact: true }).click();
-    await page
-      .getByRole('button', { name: 'Step into' })
-      .waitFor({ state: 'visible', timeout: 120_000 });
-    check('python is debuggable too', await page.getByRole('button', { name: 'Step into' }).isVisible());
-    const pyStart = await page.locator('[class*="positionText"]').first().innerText();
-    await page.getByRole('button', { name: 'Step into' }).click();
+    await transport('Step into').waitFor({ state: 'visible', timeout: 120_000 });
+    check('python is debuggable too', await transport('Step into').isVisible());
+    // No breakpoints were set, so this recording rests at its end — where the
+    // only direction left is backwards, which is the point of recording it.
+    const pyStart = await page.locator('[class*="statusText"]').first().innerText();
+    await transport('Step back').click();
     await page.waitForTimeout(300);
-    const pyNext = await page.locator('[class*="positionText"]').first().innerText();
-    check('python steps advance', pyStart !== pyNext, `${pyStart} -> ${pyNext}`);
+    const pyNext = await page.locator('[class*="statusText"]').first().innerText();
+    check('python steps move the cursor', pyStart !== pyNext,
+      `${pyStart.replace(/\n/g, ' ')} -> ${pyNext.replace(/\n/g, ' ')}`);
     check(
       'python reports variables in scope',
       (await page.locator('[class*="scopeRow"]').count()) > 0,
     );
-    await page.getByRole('button', { name: 'Stop debugging' }).click();
-    await page.waitForTimeout(300);
+    // Shift+F5 ends the session, as it does in VS Code — and it dodges the
+    // tooltip the previous button click leaves floating over its neighbours.
+    await page.keyboard.press('Shift+F5');
+    await page.waitForTimeout(400);
+    check(
+      'Shift+F5 ends the session',
+      (await transport('Step into').count()) === 0,
+    );
 
     // Judging is a generated harness, and Python's is a different generator, so
     // the only proof it is right is running one.

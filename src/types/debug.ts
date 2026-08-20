@@ -66,3 +66,33 @@ export type StepCommand =
   | 'stepOut'
   | 'stepBack'
   | 'restart';
+
+/**
+ * A breakpoint on a line, modelled the way VS Code models one.
+ *
+ * `enabled` is separate from existence so a breakpoint can be switched off
+ * without losing where it was — and `condition` is evaluated at *replay* time
+ * against the scope recorded at that step, which is why it can be added, edited
+ * or removed after the run is already over.
+ */
+export interface LineBreakpoint {
+  line: number;
+  enabled: boolean;
+  /** Break only when this expression is truthy in the scope recorded there. */
+  condition?: string;
+}
+
+/**
+ * How a session came to rest: stopped somewhere, or ran out of program.
+ *
+ * A recorded run that hits no breakpoint still leaves the whole recording
+ * behind, so `completed` is a state you can step *backwards* out of rather than
+ * a session that has to end.
+ */
+export type DebugOutcome = 'paused' | 'completed';
+
+/** The result of evaluating a watch expression or a breakpoint condition. */
+export interface EvalResult {
+  value?: unknown;
+  error?: string;
+}

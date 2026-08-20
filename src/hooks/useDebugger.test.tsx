@@ -34,8 +34,24 @@ const FUNCTIONS: FunctionInfo[] = [
   { name: 'inner', qualified: 'Helper.inner', line: 4 },
 ];
 
+/**
+ * A session that starts on the first step.
+ *
+ * The default no longer does that — pressing Debug runs to the first breakpoint,
+ * the way F5 does everywhere — so the tests that walk from the top ask for the
+ * every-line mode, which is exactly what that mode is for.
+ */
 function setup() {
   const hook = renderHook(() => useDebugger());
+  act(() => hook.result.current.setStepEveryLine(true));
+  act(() => hook.result.current.begin(make(), FUNCTIONS));
+  return hook;
+}
+
+/** A session started the way a user starts one: no breakpoints, no pauses. */
+function setupRunning(prepare?: (state: ReturnType<typeof useDebugger>) => void) {
+  const hook = renderHook(() => useDebugger());
+  if (prepare) act(() => prepare(hook.result.current));
   act(() => hook.result.current.begin(make(), FUNCTIONS));
   return hook;
 }
@@ -46,6 +62,7 @@ describe('useDebugger', () => {
     expect(result.current.active).toBe(false);
     expect(result.current.step).toBeNull();
 
+    act(() => result.current.setStepEveryLine(true));
     act(() => result.current.begin(make(), FUNCTIONS));
     expect(result.current.active).toBe(true);
     expect(result.current.step?.line).toBe(1);
@@ -105,6 +122,12 @@ describe('useDebugger', () => {
     expect(result.current.index).toBe(8);
   });
 
+  it('stops at a function whose switch was on before the session began', () => {
+    const { result } = setupRunning((state) => state.toggleFunction('outer'));
+    expect(result.current.step?.fn).toBe('outer');
+    expect(result.current.outcome).toBe('paused');
+  });
+
   it('stops at a function whose switch is on', () => {
     const { result } = setup();
     act(() => result.current.toggleFunction('outer'));
@@ -155,7 +178,7 @@ describe('useDebugger', () => {
     expect(result.current.frameIndex).toBe(4);
   });
 
-  it('restarts to the first step', () => {
+  it('restarts to the first step in every-line mode', () => {
     const { result } = setup();
     act(() => result.current.seek(7));
     act(() => result.current.run('restart'));
@@ -178,3 +201,153 @@ describe('useDebugger', () => {
     expect(result.current.playing).toBe(false);
   });
 });
+
+/**
+ * The default behaviour, which is the whole point of the debugger being a
+ * debugger: pressing Debug runs the program. It does not stop on line 1 and wait
+ * to be driven.
+ */
+describe('starting a session behaves like F5', () => {
+  it('runs to the first breakpoint rather than the first line', () => {
+    const { result } = setupRunning((state) => state.toggleBreakpoint(6));
+    expect(result.current.step?.line).toBe(6);
+    expect(result.current.outcome).toBe('paused');
+  });
+
+  it('runs to the end when nothing is set, and stays open there', () => {
+    const { result } = setupRunning();
+    expect(result.current.outcome).toBe('completed');
+    expect(result.current.index).toBe(8);
+    // The recording is intact, so the way out of a completed run is backwards.
+    expect(result.current.active).toBe(true);
+    act(() => result.current.run('stepBack'));
+    expect(result.current.index).toBe(7);
+  });
+
+  it('parks on the first step when asked to show every line', () => {
+    const { result } = setupRunning((state) => state.setStepEveryLine(true));
+    expect(result.current.index).toBe(0);
+    expect(result.current.outcome).toBe('paused');
+  });
+
+  it('restarts by running to the first breakpoint again', () => {
+    const { result } = setupRunning((state) => state.toggleBreakpoint(6));
+    act(() => result.current.seek(8));
+    act(() => result.current.run('restart'));
+    expect(result.current.step?.line).toBe(6);
+  });
+
+  it('says it completed once continue finds nothing more', () => {
+    const { result } = setupRunning((state) => state.toggleBreakpoint(2));
+    expect(result.current.outcome).toBe('paused');
+    act(() => result.current.run('continue'));
+    // Line 2 is hit twice — entry and exit — so the second continue is the end.
+    act(() => result.current.run('continue'));
+    expect(result.current.outcome).toBe('completed');
+    expect(result.current.index).toBe(8);
+  });
+});
+
+describe('conditional and disabled breakpoints', () => {
+  it('stops only where the condition holds', () => {
+    // Every step records `i` as its own id, so this can only be true from 4 on.
+    const { result } = setupRunning((state) => {
+      state.toggleBreakpoint(4);
+      state.setBreakpointCondition(4, 'i > 3');
+    });
+
+    // Line 4 is reached at index 3 (i = 3) and index 5 (i = 5); only the second
+    // satisfies the condition.
+    expect(result.current.index).toBe(5);
+  });
+
+  it('treats a condition it cannot answer as no stop at all', () => {
+    const { result } = setupRunning((state) => {
+      state.toggleBreakpoint(4);
+      state.setBreakpointCondition(4, 'nothingHere.deep');
+    });
+    expect(result.current.outcome).toBe('completed');
+  });
+
+  it('ignores a disabled breakpoint but remembers it', () => {
+    const { result } = setupRunning((state) => {
+      state.toggleBreakpoint(6);
+      state.setBreakpointEnabled(6, false);
+    });
+
+    expect(result.current.outcome).toBe('completed');
+    expect(result.current.breakpoints.get(6)).toEqual({ line: 6, enabled: false });
+
+    act(() => result.current.setBreakpointEnabled(6, true));
+    act(() => result.current.run('restart'));
+    expect(result.current.step?.line).toBe(6);
+  });
+
+  it('creates a breakpoint when a condition is set on a bare line', () => {
+    const { result } = setupRunning();
+    act(() => result.current.setBreakpointCondition(3, 'i >= 0'));
+    expect(result.current.breakpoints.get(3)).toEqual({
+      line: 3,
+      enabled: true,
+      condition: 'i >= 0',
+    });
+  });
+
+  it('drops the condition when it is cleared, leaving the breakpoint', () => {
+    const { result } = setupRunning((state) => state.setBreakpointCondition(3, 'i > 1'));
+    act(() => result.current.setBreakpointCondition(3, '   '));
+    expect(result.current.breakpoints.get(3)).toEqual({ line: 3, enabled: true });
+  });
+});
+
+describe('watch expressions', () => {
+  it('answers against the scope of wherever the cursor is', () => {
+    const { result } = setup();
+    act(() => result.current.addWatch('i * 2'));
+    act(() => result.current.seek(4));
+
+    expect(result.current.watch).toEqual(['i * 2']);
+    expect(result.current.evaluate('i * 2')).toEqual({ value: 8 });
+  });
+
+  it('reports what it cannot answer instead of throwing', () => {
+    const { result } = setup();
+    expect(result.current.evaluate('missing.value').error).toBeTruthy();
+    expect(result.current.evaluate('=== nonsense').error).toBeTruthy();
+  });
+
+  it('does not add the same expression twice, and removes it', () => {
+    const { result } = setup();
+    act(() => result.current.addWatch('i'));
+    act(() => result.current.addWatch('i'));
+    act(() => result.current.addWatch('   '));
+    expect(result.current.watch).toEqual(['i']);
+
+    act(() => result.current.removeWatch('i'));
+    expect(result.current.watch).toEqual([]);
+  });
+});
+
+describe('what the session says it is doing', () => {
+  it('is paused again the moment you step out of a completed run', () => {
+    const { result } = setupRunning();
+    expect(result.current.outcome).toBe('completed');
+
+    act(() => result.current.run('stepBack'));
+    expect(result.current.outcome).toBe('paused');
+  });
+
+  it('is paused after scrubbing the timeline', () => {
+    const { result } = setupRunning();
+    act(() => result.current.seek(3));
+    expect(result.current.outcome).toBe('paused');
+  });
+
+  it('completes when stepping over runs off the end of the recording', () => {
+    const { result } = setupRunning((state) => state.toggleBreakpoint(9));
+    expect(result.current.step?.line).toBe(9);
+    act(() => result.current.run('stepOver'));
+    expect(result.current.outcome).toBe('completed');
+  });
+});
+

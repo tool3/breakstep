@@ -75,14 +75,37 @@ switches auto-tracing off, so the two never fight.
 Parameters panel edits *those literals in the editor*. Move a slider and the code
 changes. Nothing is substituted behind your back.
 
-**Debug** — press **Debug** instead of Run and the whole execution is recorded,
-then replayed under your control: step in, step over, step out, continue, and
-*step backwards*, which no live debugger can do. The paused line is highlighted
-in the editor, the variables in scope and the call stack are listed beside it,
-and the visualizer follows the cursor — so the picture and the line that produced
-it are always the same moment. Every function gets its own switch: leave it off
-and the debugger walks straight through, turn it on and `continue` stops there.
-Clicking the gutter sets an ordinary line breakpoint.
+**Debug** — press **Debug** and the program *runs*, stopping where you told it
+to and nowhere else. The icons are VS Code's own: Monaco already bundles the
+codicon font, so the toolbar draws the real glyphs by codepoint rather than
+approximating them with a generic icon set. That is the whole contract, and it is the one your fingers
+already know: click the gutter to set a breakpoint, `F5` to continue, `F10` over,
+`F11` into, `⇧F11` out, `⇧F5` to stop. The transport floats over the editor where
+VS Code puts it, the paused line gets the amber band and the arrow in the gutter,
+and the sidebar is **Variables**, **Watch**, **Call Stack** and **Breakpoints**
+as collapsible sections. The function keys are bound only while a session is
+open, so `F5` still reloads the page the rest of the time.
+
+Three things go further than a live debugger can, because the run is recorded
+rather than attached to:
+
+- **Step backwards.** The recording runs both ways, so overshooting costs a
+  keystroke rather than a restart. With no breakpoints set the session runs to
+  the end and *stays there* — a completed run is something to walk back through,
+  not something to throw away.
+- **Conditions written after the fact.** A breakpoint's condition is evaluated
+  against the scope recorded at that line, so you can add `lo > 4` to a run that
+  already finished, hit Restart, and land on the iteration you meant. Right-click
+  the gutter to write one; conditions can be edited or dropped without losing the
+  breakpoint, and one that cannot be answered never stops the run.
+- **Watch expressions over a timeline.** They are answered at whatever step the
+  cursor is on, so scrubbing the recording animates them.
+
+The visualizer follows the cursor throughout, so the picture and the line that
+produced it are always the same moment. And the guided walk this app started as
+is still there, one switch away: **every line** stops on every recorded step
+instead of running to a breakpoint — for someone meeting recursion for the first
+time, every line *is* the lesson.
 
 **Solve** — paste any LeetCode URL. Breakstep recognises all 4,023 published
 problems offline and answers in one of three tiers, saying plainly which one you
@@ -363,6 +386,16 @@ than a budgeted slice of a keystroke inside the input handler. Reintroducing the
 old behaviour was tried once to check both alarms actually ring: the unit tests
 fail and the perf run exits non-zero, reporting 18.9 ms where it budgets 3.
 
+**A recorded run makes some debugger features easier, not harder.** Breakpoint
+conditions are the clearest case. A live debugger has to evaluate a condition
+inside the paused process, at the moment execution arrives — which is why
+conditions are set before you run and cost something on every hit. Here the
+scope at every step is already in memory, so a condition is a pure function of
+data that exists: it is compiled once, tested against twenty thousand recorded
+scopes for free, and can be written, edited or removed long after the program
+finished. The same evaluator answers watch expressions. What it gives up is the
+thing a recording can never do — you cannot change a variable and continue.
+
 **Operation counts, not wall-clock.** Both runtimes rewrite user code to bump a
 counter at every loop iteration and function entry. The resulting number is
 machine-independent — immune to JIT warmup, GC pauses and whatever else your
@@ -613,7 +646,7 @@ posture, not a legal opinion.
 | `engine/*.test.ts`     | shape detection, sandbox, instrumentation, TS stripping, Python bridge |
 | `analysis/*.test.ts`   | static heuristics for both languages, curve fitting                |
 | `components/*.test.tsx`| every visualizer, both layout engines, all panels                  |
-| `hooks/*.test.tsx`     | workspace state machine, persistence, theming, submission history   |
+| `hooks/*.test.tsx`     | workspace state machine, persistence, theming, submission history, **the debugger: running to the first breakpoint, conditions, disabled breakpoints, watch expressions, and what the session says it is doing** |
 | `submissions/*.test.ts`| **every written problem's own solution is judged Accepted, and its stub is not**; the store contract, independent of `localStorage` |
 | `templates/*.test.ts`  | **both faces of every template run, draw, bind their parameters, and measure the complexity they document** |
 | `leetcode/*.test.ts`   | **every catalogue solution runs and reproduces its stated output**; the generator scaffolds 98% of the vendored problems, and a filled-in stub reproduces LeetCode's published answers |
