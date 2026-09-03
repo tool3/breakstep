@@ -17,16 +17,6 @@ interface Props {
   onClose: () => void;
 }
 
-/**
- * The gutter's right-click menu, and the condition editor behind it.
- *
- * This is the one debugger affordance that cannot be a keyboard shortcut or a
- * list row: adding a condition is something you do *at a line*, so it has to
- * open where you clicked. Conditions are cheap here for a reason worth stating —
- * the run is already recorded, so a condition is answered against the scope
- * captured at that step and can be written, edited or removed long after the
- * program finished.
- */
 export function BreakpointMenu({
   target,
   breakpoint,
@@ -40,7 +30,6 @@ export function BreakpointMenu({
   const box = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLInputElement>(null);
 
-  // Dismiss the way every context menu does: a click elsewhere, or Escape.
   useEffect(() => {
     const onDown = (event: MouseEvent) => {
       if (!box.current?.contains(event.target as Node)) onClose();
@@ -69,8 +58,6 @@ export function BreakpointMenu({
     <div
       ref={box}
       className={styles.menu}
-      // Kept inside the viewport: a right-click near the bottom would otherwise
-      // open a menu you cannot reach the end of.
       style={{ left: target.x, top: Math.min(target.y, window.innerHeight - 150) }}
       role="menu"
       aria-label={`Breakpoint on line ${target.line}`}

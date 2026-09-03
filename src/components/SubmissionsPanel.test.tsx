@@ -82,7 +82,6 @@ describe('SubmissionsPanel', () => {
 
     expect(screen.getByRole('heading', { name: 'Accepted' })).toBeInTheDocument();
     expect(screen.getByText('3/3 cases')).toBeInTheDocument();
-    // The metric and the history row both carry it, which is the point.
     expect(screen.getAllByText('0.42 ms').length).toBeGreaterThan(0);
     expect(screen.getByText('214')).toBeInTheDocument();
     expect(screen.getAllByText('O(n)').length).toBeGreaterThan(0);
@@ -143,7 +142,6 @@ describe('SubmissionsPanel', () => {
       submission({ id: 'old', verdict: 'accepted', passed: 3, total: 3 }),
     ]);
 
-    // The newest is the one on show.
     expect(screen.getByRole('heading', { name: 'Wrong answer' })).toBeInTheDocument();
 
     await user.click(screen.getAllByRole('button', { name: /Accepted/ })[0]);
@@ -185,7 +183,6 @@ describe('formatting', () => {
     const now = Date.parse('2026-08-18T12:00:00.000Z');
     expect(formatWhen('2026-08-18T11:59:50.000Z', now)).toBe('just now');
     expect(formatWhen('2026-08-18T11:30:00.000Z', now)).toMatch(/30/);
-    // Old enough that a relative phrase stops helping.
     expect(formatWhen('2026-08-01T12:00:00.000Z', now)).toMatch(/Aug/);
   });
 });

@@ -146,8 +146,6 @@ describe('generateStarter', () => {
   });
 
   it('produces the published answers once the stub is filled in', async () => {
-    // The whole point of the generated driver: swap in a real body and the
-    // examples should agree with what LeetCode says they are.
     const solved = generate(twoSum).typescript.replace(
       '  // TODO\n  return [];',
       `  const seen = new Map<number, number>();

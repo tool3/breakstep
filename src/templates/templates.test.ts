@@ -1,14 +1,3 @@
-/**
- * Contract tests for the shipped templates.
- *
- * These are the tests that matter most for the product. A template has two
- * faces now — the plain code a student reads first, and the instrumented
- * version behind the toggle — and *both* must run, draw something, and agree
- * with the complexity they document. A broken template is a broken lesson.
- *
- * The Python variants cannot execute here (they need Pyodide in a worker), so
- * they are checked structurally and through the static analyzer instead.
- */
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_TEMPLATE_ID,
@@ -29,7 +18,6 @@ import type { Language, Template } from '@/types';
 
 const RUN_OPTS = { opLimit: 8_000_000, frameLimit: 500, autoTrace: true };
 
-/** Compile a template the way the app does, for a given mode. */
 function compile(template: Template, language: Language, mode: 'clean' | 'instrumented') {
   const source = templateSource(template, language, mode);
   const assembled = assembleRunnable(template, language, mode, source);
@@ -95,8 +83,6 @@ describe('template catalogue', () => {
 describe.each(TEMPLATES.map((t) => [t.id, t] as [string, Template]))('template: %s', (_id, template) => {
   const params = defaultParams(template);
 
-  // --- The plain-code face --------------------------------------------------
-
   it('clean source contains no breakstep API at all', () => {
     for (const language of ['typescript', 'python'] as const) {
       const source = templateSource(template, language, 'clean');
@@ -137,8 +123,6 @@ describe.each(TEMPLATES.map((t) => [t.id, t] as [string, Template]))('template: 
     }
   });
 
-  // --- The instrumented face ------------------------------------------------
-
   it('instrumented source runs and captures its own frames', async () => {
     const result = await runInSandbox(
       compile(template, 'typescript', 'instrumented'),
@@ -147,7 +131,6 @@ describe.each(TEMPLATES.map((t) => [t.id, t] as [string, Template]))('template: 
     );
 
     expect(result.error, `${template.id}: ${result.error?.message}`).toBeUndefined();
-    // Explicit instrumentation must switch auto-tracing off.
     expect(result.traced).toBe(false);
     expect(result.frames.length).toBeGreaterThan(0);
     expect(result.bench).toBeDefined();
@@ -159,8 +142,6 @@ describe.each(TEMPLATES.map((t) => [t.id, t] as [string, Template]))('template: 
       expect(source).toMatch(/\bbreakstep\.(show|bench|param)/);
     }
   });
-
-  // --- Parameters -----------------------------------------------------------
 
   it('every parameter binds to a constant in the clean source', () => {
     for (const language of ['typescript', 'python'] as const) {
@@ -202,13 +183,10 @@ describe.each(TEMPLATES.map((t) => [t.id, t] as [string, Template]))('template: 
     }
   });
 
-  // --- Python & analysis ----------------------------------------------------
-
   it('ships a Python variant of both faces', () => {
     expect(template.code.python.length).toBeGreaterThan(50);
     expect(template.instrumented.python).toMatch(/breakstep\.bench\(/);
     expect(templateBench(template, 'python')).toMatch(/breakstep\.bench\(/);
-    // Python uses `kind=`, never the reserved word `as=`.
     expect(template.instrumented.python).not.toMatch(/\bas\s*=/);
   });
 
@@ -223,10 +201,6 @@ describe.each(TEMPLATES.map((t) => [t.id, t] as [string, Template]))('template: 
   });
 });
 
-/**
- * The headline claim of the app: the measured curve matches the documented one.
- * Checked for the clean variant, which is what a user sees first.
- */
 describe('empirical complexity matches the documented expectation', () => {
   const expectations = TEMPLATES.filter((t) => t.expected);
 
@@ -251,12 +225,6 @@ describe('empirical complexity matches the documented expectation', () => {
     30_000,
   );
 
-  /**
-   * The sorting template's whole point is the contrast between the two
-   * algorithms, so both branches of its parameter are measured. Switching the
-   * parameter rewrites the constant in the source, so this also exercises the
-   * binding path end to end.
-   */
   it.each([
     ['merge', 'O(n log n)'],
     ['bubble', 'O(n^2)'],

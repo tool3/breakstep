@@ -1,18 +1,8 @@
-/**
- * `codicon` is the family Monaco declares its `@font-face` under, and that
- * declaration is global to the page once the editor chunk has loaded — which it
- * has, because the debugger cannot exist without the editor.
- *
- * `font-display: block` on Monaco's side means the glyph never flashes as a
- * fallback character while the font arrives.
- */
 .icon {
   font-family: codicon, monospace;
   font-size: 16px;
   line-height: 1;
   display: inline-block;
-  // Codicons are drawn on a square canvas and need no font smoothing tweaks,
-  // but they do need to stop inheriting italics or ligatures from anywhere.
   font-style: normal;
   font-weight: normal;
   font-variant: normal;

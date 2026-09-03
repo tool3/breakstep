@@ -30,18 +30,8 @@ const LEGEND: { state: string; label: string; color: string; bg: string }[] = [
   { state: 'error', label: 'error', color: 'var(--breakstep-red)', bg: 'var(--breakstep-red-soft)' },
 ];
 
-/** How many frames to scan before assuming the legend has settled. */
 const LEGEND_SCAN_LIMIT = 80;
 
-/**
- * Which states this run actually uses.
- *
- * Auto-traced code only ever marks the current position, so listing four
- * colours under it described something the run could not produce. Templates
- * that drive the visualizer by hand do use the others, and then they are worth
- * a key. The walk is generic rather than per view kind, so a new view gets this
- * for free.
- */
 function statesUsed(frames: Frame[]): Set<string> {
   const found = new Set<string>();
 
@@ -66,25 +56,12 @@ function statesUsed(frames: Frame[]): Set<string> {
 interface Props {
   frames: Frame[];
   status: RunStatus;
-  /** Phone-sized: the transport wraps and the legend collapses. */
   compact?: boolean;
-  /**
-   * The frame the debugger is sitting on. While this is set the stage follows
-   * the debug cursor instead of playing on its own — that is the interlock
-   * between stepping through code and watching the structure change.
-   */
   pinnedFrame?: number | null;
-  /** True while the debugger owns the transport. */
   following?: boolean;
   onRun: () => void;
 }
 
-/**
- * The visualization stage plus its transport controls.
- *
- * Playback is driven by a timeout chain rather than an interval so a slow
- * render can never queue up a backlog of ticks it then burns through at once.
- */
 export function VisualizerPanel({ frames, status, compact, pinnedFrame, following, onRun }: Props) {
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -96,8 +73,6 @@ export function VisualizerPanel({ frames, status, compact, pinnedFrame, followin
   const clampedIndex = Math.min(index, Math.max(total - 1, 0));
   const frame: Frame | undefined = frames[clampedIndex];
 
-  // A new run resets the transport and auto-plays, so the visualization is the
-  // thing you see rather than something you have to go and start.
   useEffect(() => {
     if (status === 'running' || status === 'preparing') {
       wasRunning.current = true;
@@ -108,13 +83,10 @@ export function VisualizerPanel({ frames, status, compact, pinnedFrame, followin
     if (wasRunning.current && status === 'done') {
       wasRunning.current = false;
       setIndex(0);
-      // The debugger drives the stage itself; auto-playing would fight it.
       setPlaying(!following && total > 1);
     }
   }, [status, total, following]);
 
-  // Follow the debug cursor. Scrubbing by hand still works — the next debug
-  // step simply takes the stage back.
   useEffect(() => {
     if (pinnedFrame === null || pinnedFrame === undefined) return;
     setPlaying(false);
@@ -152,7 +124,6 @@ export function VisualizerPanel({ frames, status, compact, pinnedFrame, followin
     setPlaying(total > 1);
   }, [total]);
 
-  // Keyboard transport, active whenever the panel is not being typed into.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;

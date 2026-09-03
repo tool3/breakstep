@@ -78,9 +78,6 @@ describe('VisualizerPanel', () => {
   });
 
   it('keys only the colours the run actually uses', () => {
-    // These frames only ever mark the current position, which is all
-    // auto-traced code can produce. Listing four colours under them described
-    // something that could not happen.
     render(<VisualizerPanel frames={frames} status="done" onRun={vi.fn()} />);
     expect(screen.getByText('current')).toBeInTheDocument();
     expect(screen.queryByText('match / done')).not.toBeInTheDocument();
@@ -99,7 +96,6 @@ describe('VisualizerPanel', () => {
     expect(screen.getByText('comparing')).toBeInTheDocument();
     expect(screen.getByText('match / done')).toBeInTheDocument();
     expect(screen.getByText('visited')).toBeInTheDocument();
-    // And not the one nothing used.
     expect(screen.queryByText('current')).not.toBeInTheDocument();
   });
 
@@ -211,8 +207,6 @@ describe('ParamsPanel', () => {
       />,
     );
 
-    // The field is fully controlled, so drive it with one change event rather
-    // than per-keystroke typing (which React would immediately revert).
     fireEvent.change(screen.getByDisplayValue('1'), { target: { value: '4, 5, 6' } });
     expect(onChange).toHaveBeenCalledWith('nums', [4, 5, 6]);
   });
@@ -373,7 +367,6 @@ describe('ComplexityPanel', () => {
     expect(
       screen.getByText(/measured O\(n\) — better than the O\(n²\) the source allows/),
     ).toBeInTheDocument();
-    // Beating the static worst case is good news, so it must not be a warning.
     expect(document.querySelector('.ant-alert-success')).not.toBeNull();
     expect(document.querySelector('.ant-alert-warning')).toBeNull();
   });
@@ -430,9 +423,7 @@ describe('ComplexityPanel', () => {
       />,
     );
     const rows = within(screen.getByRole('table')).getAllByRole('row');
-    // One header row plus one row per sample.
     expect(rows).toHaveLength(5);
-    // Doubling n doubles the operation count, so every growth factor is 2.00x.
     expect(within(rows[4]).getAllByRole('cell').map((c) => c.textContent)).toEqual([
       '128',
       '256',
@@ -542,7 +533,6 @@ describe('TemplatePicker', () => {
 
   it('marks the current template', () => {
     render(<TemplatePicker open currentId="trie" onSelect={vi.fn()} onClose={vi.fn()} />);
-    // Two templates start with "Trie"; the structure comes first.
     expect(screen.getAllByRole('button', { name: /^Trie/ })[0]).toHaveAttribute(
       'aria-current',
       'true',
@@ -614,7 +604,6 @@ describe('SplitPane', () => {
 describe('responsive rendering', () => {
   it('shortens the visualizer header on a phone', () => {
     render(<VisualizerPanel frames={frames} status="done" compact onRun={vi.fn()} />);
-    // Speed control is dropped; the transport that matters stays.
     expect(screen.queryByLabelText('Playback speed')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Next step' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
@@ -622,7 +611,6 @@ describe('responsive rendering', () => {
 
   it('keeps the speed control on a wide screen', () => {
     render(<VisualizerPanel frames={frames} status="done" onRun={vi.fn()} />);
-    // antd Select renders both a combobox and a hidden input under the label.
     expect(screen.getAllByLabelText('Playback speed').length).toBeGreaterThan(0);
   });
 
@@ -689,8 +677,6 @@ describe('ComplexityPanel — nothing to measure', () => {
     );
 
     expect(screen.getByText('Nothing to measure yet')).toBeInTheDocument();
-    // The example refers to the reader's own function, and says what each half
-    // of the harness is for.
     expect(screen.getByText(/run: \(data\) => twoSumSorted\(data\)/)).toBeInTheDocument();
     expect(screen.getByText(/Build an input of size n/)).toBeInTheDocument();
   });
@@ -759,8 +745,6 @@ describe('Header — progressive disclosure', () => {
   it('offers Submit only when there is a problem to be judged against', async () => {
     const user = userEvent.setup();
     render(<Header {...headerProps} layout="desktop" canSubmit={false} />);
-    // A template has no right answer, so a permanently disabled button would
-    // be clutter on every screen but one.
     expect(screen.queryByRole('button', { name: 'Submit' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Run' })).toHaveClass('ant-btn-primary');
 
@@ -768,7 +752,6 @@ describe('Header — progressive disclosure', () => {
     render(<Header {...headerProps} layout="desktop" canSubmit />);
     const submit = screen.getByRole('button', { name: 'Submit' });
     expect(submit).toHaveClass('ant-btn-primary');
-    // Submit takes the primary weight; Run keeps working, quieter.
     expect(screen.getByRole('button', { name: 'Run' })).not.toHaveClass('ant-btn-primary');
 
     await user.click(submit);
@@ -782,8 +765,6 @@ describe('Header — progressive disclosure', () => {
 
   it('will not offer instrumentation a template does not have', () => {
     render(<Header {...headerProps} layout="desktop" hasInstrumented={false} />);
-    // A LeetCode problem is plain code either way; the toggle used to change
-    // the badge and nothing else.
     expect(screen.getByRole('button', { name: 'Show instrumentation' })).toBeDisabled();
   });
 
@@ -799,12 +780,10 @@ describe('Header — progressive disclosure', () => {
   it('moves the secondary controls into a menu on a phone', () => {
     render(<Header {...headerProps} layout="compact" />);
 
-    // Run and the template picker always stay on the bar.
     expect(screen.getByRole('button', { name: 'Run' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Template: Stack/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'More options' })).toBeInTheDocument();
 
-    // The rest have moved, not vanished.
     expect(screen.queryByRole('button', { name: 'Analyze' })).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Language')).not.toBeInTheDocument();
   });

@@ -4,13 +4,6 @@ import { layoutTree, scalable, trieToTreeNode } from './layout';
 import { nodeStateClass } from './Cell';
 import styles from './viz.module.scss';
 
-/**
- * Prefix trees.
- *
- * Each edge carries one character, and a double ring marks a node where a
- * complete word ends — the distinction between "car" being stored and merely
- * being a prefix of "card" is the whole point of the structure.
- */
 export const TrieViz = memo(function TrieViz({ view }: { view: TrieView }) {
   const tree = useMemo(() => trieToTreeNode(view.root), [view.root]);
   const layout = useMemo(() => layoutTree(tree, false), [tree]);

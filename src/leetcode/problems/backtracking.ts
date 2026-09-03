@@ -1,7 +1,5 @@
 import type { LeetProblem } from '../types';
 
-// --- 78 · Subsets ------------------------------------------------------------
-
 const subsetsDriver = {
   typescript: `
 // --- examples ---------------------------------------------------------------
@@ -112,8 +110,6 @@ ${subsetsDriver.python}`,
     'count for [1,2,3,4] -> 16',
   ],
 };
-
-// --- 46 · Permutations -------------------------------------------------------
 
 const permutationsDriver = {
   typescript: `
@@ -235,8 +231,6 @@ ${permutationsDriver.python}`,
     'example 3 -> [[1]]',
   ],
 };
-
-// --- 39 · Combination Sum ----------------------------------------------------
 
 const combinationDriver = {
   typescript: `
@@ -364,9 +358,6 @@ ${combinationDriver.python}`,
     'example 3 -> []',
   ],
 };
-
-
-// --- 79 · Word Search --------------------------------------------------------
 
 const wordSearchDriver = {
   typescript: `
@@ -515,8 +506,6 @@ ${wordSearchDriver.python}`,
   },
   expectedOutput: ['example 1 -> true', 'example 2 -> true', 'example 3 -> false'],
 };
-
-// --- 17 · Letter Combinations of a Phone Number ------------------------------
 
 const lettersDriver = {
   typescript: `

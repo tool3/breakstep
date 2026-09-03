@@ -1,20 +1,22 @@
 import { Button, InputNumber, Select, Slider, Switch, Tooltip, Input } from 'antd';
 import { InfoCircleOutlined, UndoOutlined } from '@ant-design/icons';
-import type { EditorMode, ParamSpec, ParamValues, Template } from '@/types';
+import type { EditorMode, Language, ParamSpec, ParamValues, Template } from '@/types';
 import { bindingName } from '@/engine/paramBinding';
+import { templateEntry } from '@/templates';
+import { callsAtTopLevel } from '@/leetcode/entryCall';
 import styles from './ParamsPanel.module.scss';
 
 interface Props {
   template: Template;
   values: ParamValues;
   mode: EditorMode;
-  /** Parameters whose backing constant still exists in the source. */
+  language?: Language;
+  code?: string;
   bound?: Set<string>;
   onChange: (name: string, value: unknown) => void;
   onReset: () => void;
 }
 
-/** Parse "1, 2, 3" into numbers, ignoring anything that isn't one. */
 export function parseNumberArray(text: string): number[] {
   return text
     .split(/[,\s]+/)
@@ -31,12 +33,23 @@ export function parseStringArray(text: string): string[] {
     .filter(Boolean);
 }
 
-/**
- * The knobs. Values reach user code through `breakstep.param(name)`, so changing one
- * and pressing Run re-runs the same algorithm against different data — which is
- * the fastest way to see a BST degenerate or a sort's best case disappear.
- */
-export function ParamsPanel({ template, values, mode, bound, onChange, onReset }: Props) {
+export function ParamsPanel({
+  template,
+  values,
+  mode,
+  language = 'typescript',
+  code,
+  bound,
+  onChange,
+  onReset,
+}: Props) {
+  const entry = templateEntry(template, language);
+  const invocation = entry
+    ? {
+        expression: entry.expression,
+        appended: code !== undefined && !callsAtTopLevel(code, entry.name, language),
+      }
+    : null;
   if (template.params.length === 0) {
     return (
       <div className={styles.panel}>
@@ -55,6 +68,15 @@ export function ParamsPanel({ template, values, mode, bound, onChange, onReset }
           </Button>
         </Tooltip>
       </div>
+
+      {invocation && (
+        <p className={styles.invocation}>
+          {invocation.appended ? 'Run calls' : 'Your code calls'} <code>{invocation.expression}</code>
+          {invocation.appended
+            ? ' with these values.'
+            : ' — these values reach it through that call.'}
+        </p>
+      )}
 
       <div className={styles.fields}>
         {template.params.map((param) => (

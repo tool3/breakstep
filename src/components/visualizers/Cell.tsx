@@ -3,7 +3,6 @@ import type { CellState } from '@/types/viz';
 import { formatFull, formatValue } from './format';
 import styles from './viz.module.scss';
 
-/** One `CellState` → one class, shared by every HTML-based visualizer. */
 export const STATE_CLASS: Record<CellState, string> = {
   default: '',
   active: styles.stateActive,
@@ -15,7 +14,6 @@ export const STATE_CLASS: Record<CellState, string> = {
   error: styles.stateError,
 };
 
-/** SVG equivalent, for the tree/graph/trie visualizers. */
 export const NODE_STATE_CLASS: Record<CellState, string> = {
   default: '',
   active: styles.nodeActive,
@@ -43,11 +41,6 @@ interface CellProps {
   small?: boolean;
 }
 
-/**
- * A space in a string strip is a cell that looks empty, which reads as a hole in
- * the data rather than as a character. Whitespace gets a visible stand-in — only
- * here, so logs and parameter fields keep the real characters.
- */
 const WHITESPACE_MARK: Record<string, string> = {
   ' ': '·',
   '\t': '⇥',
@@ -70,8 +63,6 @@ export const Cell = memo(function Cell({ value, state, index, note, small }: Cel
         ]
           .filter(Boolean)
           .join(' ')}
-        // The truncated display is unreadable for long values; the title is the
-        // escape hatch, and it doubles as the accessible name.
         title={display === full ? undefined : full}
         role="gridcell"
         aria-label={`${index !== undefined ? `index ${index}: ` : ''}${

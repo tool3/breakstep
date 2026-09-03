@@ -3,9 +3,6 @@
   min-height: 0;
   position: relative;
   background: var(--breakstep-bg);
-  // The breathing room above the first line. It lives here rather than in
-  // Monaco's `padding` option so the editor's own geometry stays exact — see
-  // the note in EditorPanel.tsx.
   padding-top: 12px;
 }
 
@@ -17,8 +14,6 @@
   padding: $space-5;
 }
 
-// Applied by Monaco through a decoration, so it must survive CSS-module
-// hashing — `:global` is not needed because the class name is passed in.
 .errorLine {
   background: #{rgba(#f2555a, 0.1)};
   border-left: 2px solid var(--breakstep-red);
@@ -31,23 +26,11 @@
   border-radius: 2px;
 }
 
-// --- Debugger decorations ---------------------------------------------------
-// Monaco applies these by class name, so they must not be nested.
-
-/**
- * Breakpoints, in VS Code's three states.
- *
- * Monaco sizes these elements itself — full line height, its own width, set
- * inline — so `border-radius: 50%` on a box came out an ellipse. Painting the
- * dot with a gradient instead makes it perfectly round and centred in whatever
- * box it lands in, at any font size or line height.
- */
 .breakpointGlyph {
   background: radial-gradient(circle at center, var(--breakstep-red) 0 4.5px, transparent 4.5px);
   cursor: pointer;
 }
 
-/// Disabled: remembered, ignored. A hollow grey ring, as VS Code draws it.
 .breakpointDisabled {
   background: radial-gradient(
     circle at center,
@@ -58,8 +41,6 @@
   cursor: pointer;
 }
 
-/// Conditional: the same dot with its middle punched out, so "this one has a
-/// question attached" reads at a glance without a second colour.
 .breakpointConditional {
   background: radial-gradient(
     circle at center,
@@ -77,13 +58,6 @@
   }
 }
 
-/**
- * The paused line.
- *
- * VS Code's amber band across the whole line plus a filled arrow in the gutter
- * pointing at it — the arrow is what tells you *this* is where execution is,
- * rather than just another highlighted row.
- */
 .activeLine {
   background: #{rgba(#ffb800, 0.13)};
 }

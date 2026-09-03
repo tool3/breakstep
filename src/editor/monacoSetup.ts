@@ -1,21 +1,5 @@
-/**
- * Monaco bootstrap: bundled (not CDN) workers, Breakstep-matched themes, and the
- * `breakstep` ambient types so the API autocompletes inside the editor.
- *
- * Bundling Monaco rather than loading it from a CDN keeps the app working
- * offline and behind corporate proxies, and it is why `vite.config.ts` splits
- * Monaco into its own chunk.
- */
-// Importing the `monaco-editor` barrel pulls in every language Monaco ships
-// (~3.3 MB). Breakstep needs three, so the editor core and those three grammars are
-// imported explicitly instead — roughly a quarter of the bytes.
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 
-// `editor.all.js` would register every contrib Monaco has, including the diff
-// editor and the inline-edit machinery this app has no UI for. What is left is
-// everything a single-file editor can actually do — which is very nearly all of
-// VS Code's editing surface, because that is what people expect their fingers
-// to find.
 import 'monaco-editor/esm/vs/editor/contrib/anchorSelect/browser/anchorSelect.js';
 import 'monaco-editor/esm/vs/editor/contrib/bracketMatching/browser/bracketMatching.js';
 import 'monaco-editor/esm/vs/editor/contrib/caretOperations/browser/caretOperations.js';
@@ -55,9 +39,6 @@ import 'monaco-editor/esm/vs/editor/contrib/wordHighlighter/browser/wordHighligh
 import 'monaco-editor/esm/vs/editor/contrib/wordOperations/browser/wordOperations.js';
 import 'monaco-editor/esm/vs/editor/contrib/wordPartOperations/browser/wordPartOperations.js';
 
-// The quick-access family: the command palette, go to line, and go to symbol.
-// These are standalone-editor pieces rather than contribs — in VS Code proper
-// the workbench provides them.
 import 'monaco-editor/esm/vs/editor/standalone/browser/quickAccess/standaloneCommandsQuickAccess.js';
 import 'monaco-editor/esm/vs/editor/standalone/browser/quickAccess/standaloneGotoLineQuickAccess.js';
 import 'monaco-editor/esm/vs/editor/standalone/browser/quickAccess/standaloneGotoSymbolQuickAccess.js';
@@ -94,8 +75,6 @@ export function setupMonaco(): typeof monaco {
 
   window.MonacoEnvironment = {
     getWorker(_workerId: string, label: string) {
-      // Python has no language service here — its highlighting is grammar-only,
-      // and correctness feedback comes from actually running the code.
       return label === 'typescript' || label === 'javascript'
         ? new tsWorker()
         : new editorWorker();
@@ -115,10 +94,7 @@ export function setupMonaco(): typeof monaco {
       { token: 'identifier', foreground: 'e3e5ea' },
       { token: 'delimiter', foreground: '868d99' },
       { token: 'function', foreground: '93b3ff' },
-      // `trie.size` — a cooler, quieter blue-grey than the near-white objects
-      // it hangs off, so the two read as different kinds of name.
       { token: MEMBER_TOKEN, foreground: 'a9c1de' },
-      // A call is a call whether it is `insert(…)` or `trie.insert(…)`.
       { token: MEMBER_CALL_TOKEN, foreground: '93b3ff' },
     ],
     colors: {
@@ -144,15 +120,6 @@ export function setupMonaco(): typeof monaco {
     },
   });
 
-  /*
-   * Graphite's editor.
-   *
-   * The token colours are the Dark+ family — green comments, salmon strings,
-   * teal types — rather than this app's accent palette. That is deliberate: it
-   * is what almost every editor and every judge site looks like, so code reads
-   * the way people are used to reading it, and the chrome is the only thing
-   * that says Breakstep.
-   */
   monaco.editor.defineTheme(MONACO_THEMES.graphite, {
     base: 'vs-dark',
     inherit: true,
@@ -169,9 +136,7 @@ export function setupMonaco(): typeof monaco {
       { token: 'delimiter', foreground: 'd4d4d4' },
       { token: 'function', foreground: 'dcdcaa' },
       { token: 'variable.predefined', foreground: '4fc1ff' },
-      // `trie.size` — the object stays blue, the name read off it does not.
       { token: MEMBER_TOKEN, foreground: 'd8dde6' },
-      // `trie.insert(…)` — a call reads as a call, the way it does everywhere.
       { token: MEMBER_CALL_TOKEN, foreground: 'dcdcaa' },
     ],
     colors: {
@@ -206,8 +171,6 @@ export function setupMonaco(): typeof monaco {
       { token: 'string', foreground: '0f7d5a' },
       { token: 'number', foreground: 'b06d0f' },
       { token: 'type', foreground: '2558c4' },
-      // Objects keep the body text colour; a member is a deep navy, a call the
-      // olive-brown that light editors have used for callables for years.
       { token: MEMBER_TOKEN, foreground: '12307d' },
       { token: MEMBER_CALL_TOKEN, foreground: '7a5c1e' },
     ],
@@ -224,15 +187,12 @@ export function setupMonaco(): typeof monaco {
   const ts = monaco.languages.typescript;
 
   const compilerOptions: monaco.languages.typescript.CompilerOptions = {
-    // Monaco bundles an older TS whose ScriptTarget enum stops at ES2020.
     target: ts.ScriptTarget.ESNext,
     lib: ['es2022', 'dom'],
     allowNonTsExtensions: true,
     moduleResolution: ts.ModuleResolutionKind.NodeJs,
     strict: true,
     noEmit: true,
-    // User code runs inside a function wrapper, so top-level statements and
-    // repeated identifiers across template switches must not be errors.
     allowUmdGlobalAccess: true,
   };
 
@@ -242,8 +202,6 @@ export function setupMonaco(): typeof monaco {
   ts.typescriptDefaults.addExtraLib(BREAKSTEP_API_DTS, 'ts:breakstep-runtime.d.ts');
   ts.javascriptDefaults.addExtraLib(BREAKSTEP_API_DTS, 'ts:breakstep-runtime.d.ts');
 
-  // 2304 "cannot find name" would fire for injected globals in JS mode, and
-  // 1375 complains about top-level await outside a module.
   ts.javascriptDefaults.setDiagnosticsOptions({
     noSemanticValidation: true,
     noSyntaxValidation: false,

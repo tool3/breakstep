@@ -1,8 +1,3 @@
-/**
- * The structure templates rely on Breakstep reading their class name to pick a
- * renderer — a `Stack` and a `Queue` are both an array underneath, and only the
- * name says which way up to draw it. This holds that contract.
- */
 import { describe, expect, it } from 'vitest';
 import { runInSandbox } from '@/engine/sandbox';
 import { assembleRunnable, defaultParams, getTemplate, templateSource } from './index';

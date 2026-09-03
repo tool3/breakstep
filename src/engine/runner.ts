@@ -1,10 +1,3 @@
-/**
- * Main-thread client for the execution workers.
- *
- * Owns worker lifecycle, request correlation and the hard timeout. The timeout
- * matters: the in-code operation guard stops runaway loops, but it cannot stop
- * a `while (true) await sleep(1)`. Terminating the worker always can.
- */
 import {
   BENCH_TIMEOUT_MS,
   DEFAULT_BENCH_SIZES,
@@ -26,7 +19,6 @@ import type {
 } from '@/types';
 import type { Frame } from '@/types/viz';
 
-/** Python is 10–50× slower under Pyodide, so it sweeps a smaller range. */
 export const PYTHON_BENCH_SIZES = [8, 16, 32, 64, 128, 256, 512];
 
 export interface RunOptions {
@@ -36,9 +28,7 @@ export interface RunOptions {
   timeoutMs?: number;
   opLimit?: number;
   frameLimit?: number;
-  /** Let plain textbook code visualize itself. Defaults to on. */
   autoTrace?: boolean;
-  /** Record the run so the debugger can walk it afterwards. */
   debug?: boolean;
   onProgress?: (update: { frames?: Frame[]; logs?: LogEntry[]; detail?: string }) => void;
 }
@@ -73,7 +63,6 @@ export function createEngine(): EngineHandle {
     delete workers[kind];
   };
 
-  /** Send one request and resolve when the worker reports a terminal message. */
   function dispatch<T>(
     kind: WorkerKind,
     request: WorkerRequest,
@@ -180,7 +169,6 @@ export function createEngine(): EngineHandle {
             options.onProgress?.({ frames: [...frames.values()] });
           } else if (msg.type === 'log') {
             for (const entry of msg.entries) {
-              // The worker replays its buffer at the end; keep each line once.
               const key = `${entry.at}|${entry.level}|${entry.text}`;
               if (seenLogs.has(key)) continue;
               seenLogs.add(key);

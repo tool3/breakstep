@@ -1,10 +1,4 @@
-// How far the current cell lifts. Containers reserve this much above them,
-// so the lift is never clipped by a tight row inside a scrolling stage.
 $lift: 3px;
-
-// Shared vocabulary for every visualizer: one cell, one state palette, one
-// set of connector styles. Adding a structure should never mean inventing a
-// new colour language.
 
 .canvas {
   display: flex;
@@ -22,8 +16,6 @@ $lift: 3px;
   gap: 6px;
   flex-wrap: wrap;
   justify-content: center;
-  // The active cell lifts by 2px. Without room reserved for it, a row sitting
-  // tight against the top of a scrolling stage has its lift clipped.
   padding-top: $lift;
 }
 
@@ -82,14 +74,10 @@ $lift: 3px;
   @include truncate;
 }
 
-// --- States ---------------------------------------------------------------
-// Every visualizer maps a `CellState` onto exactly these classes.
-
 .stateActive {
   background: var(--breakstep-accent-soft);
   border-color: var(--breakstep-accent);
   color: var(--breakstep-accent-text);
-  // Every container that holds cells reserves `$lift` above itself for this.
   transform: translateY(-$lift);
 }
 
@@ -129,8 +117,6 @@ $lift: 3px;
   color: var(--breakstep-red);
 }
 
-// --- Pointers -------------------------------------------------------------
-
 .pointers {
   display: flex;
   gap: 6px;
@@ -157,19 +143,12 @@ $lift: 3px;
   line-height: 1;
 }
 
-// --- Connectors -----------------------------------------------------------
-
 .arrow {
   color: var(--breakstep-text-faint);
   @include mono(14px);
   user-select: none;
 }
 
-/**
- * The body of a rail item. Exactly a cell's height, with its content centred,
- * so a connector or an end caption lines up with the cells beside it whatever
- * else the column contains.
- */
 .railBody {
   height: 44px;
   display: grid;
@@ -242,7 +221,6 @@ $lift: 3px;
   stroke-linejoin: round;
 }
 
-// SVG node fills reuse the same palette as the HTML cells.
 .nodeActive {
   fill: var(--breakstep-accent-soft);
   stroke: var(--breakstep-accent);
@@ -277,8 +255,6 @@ $lift: 3px;
   stroke: var(--breakstep-mint);
   stroke-width: 1.4;
 }
-
-// --- Structure chrome -----------------------------------------------------
 
 .caption {
   @include mono(11px);
@@ -434,7 +410,6 @@ $lift: 3px;
   border: 1px solid var(--breakstep-border-strong);
 }
 
-/** The stand-in glyph for whitespace is a marker, not content. */
 .whitespace {
   color: var(--breakstep-text-faint);
 }

@@ -125,7 +125,6 @@ describe('benchInSandbox', () => {
 
   it('excludes input generation from the operation count', async () => {
     const { samples } = await benchInSandbox(linear, {}, [100, 200, 400], 1_000_000);
-    // ~1 op per element plus the wrapper call, not 2× for generation as well.
     expect(samples[0].operations).toBeLessThan(150);
   });
 

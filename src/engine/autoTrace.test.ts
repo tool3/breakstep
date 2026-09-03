@@ -105,7 +105,6 @@ describe('autoInstrument — safety', () => {
   it('preserves the line count so error lines stay accurate', () => {
     const source = `const a = 1;\nfor (let i = 0; i < 2; i++) {\n  a;\n}\n`;
     const { code } = autoInstrument(source);
-    // Only the appended final-state hook adds a line.
     expect(code.split('\n').length).toBeLessThanOrEqual(source.split('\n').length + 1);
   });
 
@@ -125,7 +124,6 @@ describe('autoTrace — what it captures', () => {
       console.log(total);
     `);
     expect(result.traced).toBe(true);
-    // Four iterations, plus a final-state frame.
     expect(result.frames.length).toBeGreaterThanOrEqual(4);
     expect((result.frames[0].view as ArrayView).items.map((c) => c.value)).toEqual([5, 3, 8, 1]);
   });
@@ -179,12 +177,10 @@ describe('autoTrace — what it captures', () => {
     );
     expect(listFrames.length).toBeGreaterThan(0);
 
-    // The build loop grows the list one node at a time; by the end it is whole.
     const complete = listFrames.filter((f) => f.view.nodes.length === 4);
     expect(complete.length).toBeGreaterThan(0);
     expect(complete[0].view.nodes.map((n) => n.value)).toEqual([1, 2, 3, 4]);
 
-    // During traversal `curr` walks the list, lighting up one node per step.
     const walked = complete
       .map((f) => f.view.nodes.findIndex((n) => n.state === 'active'))
       .filter((i) => i >= 0);
@@ -319,8 +315,6 @@ describe('viewSize', () => {
 
 describe('pickSubject — weighting', () => {
   it('prefers a small tree over a larger unrelated input array', () => {
-    // The exact situation in the BST template: `insert(root, value)` is running
-    // while a nine-element `values` array sits in the module scope.
     const root = { value: 50, left: { value: 30, left: null, right: null }, right: null };
     const snapshot = { root, value: 40, values: [50, 30, 70, 20, 40, 60, 80, 35, 65] };
     expect(pickSubject(snapshot)?.name).toBe('root');
@@ -391,7 +385,6 @@ describe('pickSubject — staleness', () => {
   });
 
   it('does not demote a linked list just because a cursor is walking it', () => {
-    // `head` never changes during a traversal; it is still the picture.
     const head = { val: 1, next: { val: 2, next: { val: 3, next: null } } };
     const curr = head.next!;
     const history = new Map([
@@ -408,7 +401,6 @@ describe('pickSubject — staleness', () => {
       left: subtree,
       right: { value: 70, left: null, right: null },
     };
-    // `node` is the parameter (innermost); `root` is the module-level tree.
     expect(pickSubject({ node: subtree, value: 40, root })?.name).toBe('root');
   });
 });
@@ -419,9 +411,7 @@ describe('pickSubject — containment', () => {
     const subtree = { value: 30, left: leaf, right: null };
     const root = { value: 50, left: subtree, right: { value: 70, left: null, right: null } };
 
-    // Both the parameter and the module-level tree are in scope.
     expect(pickSubject({ node: subtree, root })?.name).toBe('root');
-    // Even with the subtree sticky from the previous frame.
     expect(pickSubject({ node: subtree, root }, { lastName: 'node' })?.name).toBe('root');
   });
 
@@ -433,8 +423,6 @@ describe('pickSubject — containment', () => {
   });
 
   it('leaves disjoint structures competing on merit', () => {
-    // Mid-reversal: `prev` and `curr` are separate chains, and the growing one
-    // is the interesting half.
     const prev = { val: 2, next: { val: 1, next: null } };
     const curr = { val: 3, next: null };
     expect(pickSubject({ curr, prev })?.name).toBe('prev');
@@ -448,7 +436,6 @@ describe('pickSubject — containment', () => {
 
 describe('autoInstrument — forward references', () => {
   it('sees a structure declared below the function that builds it', async () => {
-    // The ordinary shape of a CS-class file: helpers first, data last.
     const result = await run(`
       class TreeNode {
         constructor(value) { this.value = value; this.left = null; this.right = null; }
@@ -474,7 +461,6 @@ describe('autoInstrument — forward references', () => {
     );
     expect(treeFrames.length).toBeGreaterThan(0);
 
-    // The whole five-node tree, not the subtree each recursion descends into.
     expect(Math.max(...treeFrames.map((f) => count(f.view.root)))).toBe(5);
   });
 
@@ -516,7 +502,6 @@ describe('autoTrace — recursion picture', () => {
 
     const stackFrames = result.frames.filter((f) => f.view.kind === 'callstack');
     expect(stackFrames.length).toBeGreaterThan(0);
-    // The stack is the majority of what a pure enumeration has to show.
     expect(stackFrames.length).toBeGreaterThan(result.frames.length / 2);
   });
 

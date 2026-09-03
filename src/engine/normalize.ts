@@ -1,12 +1,3 @@
-/**
- * Shape detection: turns arbitrary user values into a normalized `VizView`.
- *
- * The whole point of Breakstep is that you write ordinary code — a plain `{val, next}`
- * chain, a `Map`, a class with a `root` — and it just draws. This module is the
- * only place that guesses. It is pure and synchronous so it can be unit tested
- * without a worker, and it is cycle-safe because student linked lists have
- * cycles on purpose.
- */
 import type {
   ArrayView,
   CallStackEntry,
@@ -30,13 +21,8 @@ import type {
   VizView,
 } from '@/types/viz';
 
-/**
- * Shortest string worth drawing as a strip of characters rather than a value.
- * One character has no positions to point at.
- */
 export const MIN_STRING_CELLS = 2;
 
-/** Hard ceilings so a runaway structure can't lock up the renderer. */
 export const LIMITS = {
   nodes: 500,
   arrayItems: 400,
@@ -46,16 +32,7 @@ export const LIMITS = {
 
 const VALUE_KEYS = ['value', 'val', 'data', 'key', 'item', 'label'] as const;
 
-/**
- * Class names that tell us how to draw an instance.
- *
- * A hand-written `class Stack` and `class Queue` are both an array underneath;
- * only the name says which way up to draw it. Reading the constructor is the
- * one piece of information the data itself cannot carry.
- */
 const CLASS_HINTS: { pattern: RegExp; variant?: ArrayView['variant']; heapType?: 'min' | 'max' }[] = [
-  // Order matters: a PriorityQueue is a heap, not a queue, and would otherwise
-  // be caught by the `queue$` rule below.
   { pattern: /maxheap|max_heap|maxpriority/i, heapType: 'max' },
   { pattern: /minheap|min_heap|priority/i, heapType: 'min' },
   { pattern: /(^|[^a-z])stack$/i, variant: 'stack' },
@@ -63,7 +40,6 @@ const CLASS_HINTS: { pattern: RegExp; variant?: ArrayView['variant']; heapType?:
   { pattern: /queue$/i, variant: 'queue' },
 ];
 
-/** The constructor name of a class instance, if it has a useful one. */
 export function className(value: unknown): string {
   if (value === null || typeof value !== 'object') return '';
   const name = (value as { constructor?: { name?: string } }).constructor?.name;
@@ -90,23 +66,17 @@ function has(obj: Record<string, unknown>, key: string): boolean {
   return key in obj && obj[key] !== undefined;
 }
 
-/** Pull the display value out of a node-like object, falling back to the object. */
 export function nodeValue(obj: unknown): unknown {
   if (!isPlainRecord(obj)) return obj;
   for (const k of VALUE_KEYS) {
     if (has(obj, k)) return obj[k];
   }
-  // No recognizable value key: show the non-structural fields only.
   const structural = new Set(['next', 'prev', 'left', 'right', 'children', 'parent']);
   const rest = Object.entries(obj).filter(([k]) => !structural.has(k));
   if (rest.length === 0) return '•';
   if (rest.length === 1) return rest[0][1];
   return Object.fromEntries(rest);
 }
-
-// ---------------------------------------------------------------------------
-// Highlight resolution
-// ---------------------------------------------------------------------------
 
 type StateLookup = (key: string | number) => CellState | undefined;
 
@@ -120,12 +90,6 @@ function buildStateLookup(highlight: ShowOptions['highlight']): StateLookup {
   return (k) => map.get(String(k));
 }
 
-/**
- * Identity lookup for `options.focus`.
- *
- * Auto-tracing knows a variable holds *some* node but not where it sits in the
- * structure, so matching has to be by object identity rather than by index.
- */
 function buildFocusLookup(opts: ShowOptions): (raw: unknown) => CellState | undefined {
   if (!opts.focus?.length) return () => undefined;
   const set = new Set<unknown>(opts.focus.filter((f) => f !== null && typeof f === 'object'));
@@ -141,10 +105,6 @@ function toPointers(p: ShowOptions['pointers']): Pointer[] | undefined {
     .map(([name, index]) => ({ name, index: Number(index) }));
   return out.length ? out : undefined;
 }
-
-// ---------------------------------------------------------------------------
-// Structure predicates
-// ---------------------------------------------------------------------------
 
 export function looksLikeLinkedListNode(v: unknown): boolean {
   return isPlainRecord(v) && 'next' in v;
@@ -177,16 +137,12 @@ export function looksLikeGraph(v: unknown): boolean {
   return false;
 }
 
-/** `{a: ['b','c'], b: ['c']}` or a Map of the same shape. */
 export function looksLikeAdjacency(v: unknown): boolean {
   const entries = toEntries(v);
   if (!entries || entries.length === 0) return false;
-  // `Map<string, Set<string>>` is the better adjacency structure — O(1) edge
-  // tests — so accept Sets alongside arrays.
   const lists = entries.filter(([, val]) => Array.isArray(val) || val instanceof Set);
   if (lists.length !== entries.length) return false;
   const keys = new Set(entries.map(([k]) => String(k)));
-  // At least one neighbour must reference another key, else it's just a map of lists.
   return lists.some(([, val]) =>
     [...(val as Iterable<unknown>)].some((n) => keys.has(String(edgeTarget(n)))),
   );
@@ -213,22 +169,14 @@ function toEntries(v: unknown): [unknown, unknown][] | null {
   return null;
 }
 
-/** Unwrap `new LinkedList()` / `new BST()` style containers to their payload. */
 const OFFSET_KEYS = ['head', 'start', 'offset', 'front'] as const;
 const STORAGE_KEYS = ['items', 'store', 'data', 'buffer', 'list', 'elements'] as const;
 
 export function unwrapContainer(v: unknown): unknown {
   if (!isPlainRecord(v)) return v;
-  // Already a recognizable node — don't unwrap.
   if (looksLikeLinkedListNode(v) || looksLikeBinaryTreeNode(v) || looksLikeTrieNode(v)) return v;
   if (looksLikeGraph(v)) return v;
 
-  /*
-   * The O(1) queue idiom: `{ items: [...], head: 2 }`. Only the live window
-   * should be drawn — the consumed prefix is an implementation detail, and a
-   * queue that correctly avoids `shift()` should not be punished with a
-   * misleading picture.
-   */
   const offsetKey = OFFSET_KEYS.find((k) => typeof v[k] === 'number');
   const storageKey = STORAGE_KEYS.find((k) => Array.isArray(v[k]));
   if (offsetKey && storageKey) {
@@ -240,7 +188,6 @@ export function unwrapContainer(v: unknown): unknown {
     if (has(v, key)) {
       const inner = v[key];
       if (inner !== null && (typeof inner === 'object' || Array.isArray(inner))) return inner;
-      // `root: null` on an empty tree is still a tree — keep it.
       if (inner === null && (key === 'root' || key === 'head')) return null;
     }
   }
@@ -248,10 +195,6 @@ export function unwrapContainer(v: unknown): unknown {
   if (adj && looksLikeAdjacency(adj)) return adj;
   return v;
 }
-
-// ---------------------------------------------------------------------------
-// Builders
-// ---------------------------------------------------------------------------
 
 function buildArray(
   input: unknown[],
@@ -282,7 +225,6 @@ function buildMatrix(input: unknown[][], opts: ShowOptions): MatrixView {
     for (let c = 0; c < input[r].length && budget > 0; c++, budget--) {
       row.push({
         value: input[r][c],
-        // Accept both "r,c" and flat-index highlight keys.
         state: stateAt(`${r},${c}`) ?? stateAt(r * input[r].length + c),
       });
     }
@@ -314,7 +256,6 @@ function buildLinkedList(headRaw: unknown, opts: ShowOptions): LinkedListView {
     cursor = cursor.next;
   }
 
-  // Second pass wires `next` now that every node has an index.
   cursor = headRaw;
   for (let i = 0; i < nodes.length; i++) {
     const rec = cursor as Record<string, unknown>;
@@ -386,7 +327,6 @@ function trieChildEntries(node: Record<string, unknown>): [string, unknown][] {
   const raw = node.children ?? node.child ?? node.next ?? node.map;
   if (raw instanceof Map) return [...raw.entries()].map(([k, v]) => [String(k), v]);
   if (Array.isArray(raw)) {
-    // Dense 26-slot array keyed by letter offset.
     return raw
       .map((v, i) => [String.fromCharCode(97 + i), v] as [string, unknown])
       .filter(([, v]) => v != null);
@@ -466,7 +406,6 @@ function buildGraph(raw: unknown, opts: ShowOptions): GraphView {
     return { kind: 'graph', nodes, edges, directed: opts.directed ?? Boolean(raw.directed) };
   }
 
-  // Adjacency list/map.
   const entries = toEntries(raw) ?? [];
   for (const [k] of entries) addNode(k);
   for (const [k, neighbours] of entries) {
@@ -482,7 +421,6 @@ function buildGraph(raw: unknown, opts: ShowOptions): GraphView {
     }
   }
 
-  // Undirected graphs list each edge twice; collapse unless told otherwise.
   const directed = opts.directed ?? !isMutuallyLinked(edges);
   const deduped = directed ? edges : dedupeUndirected(edges);
   return { kind: 'graph', nodes, edges: deduped, directed };
@@ -529,11 +467,6 @@ function inferHeapType(items: Cell[]): 'min' | 'max' {
   return minViolations <= maxViolations ? 'min' : 'max';
 }
 
-/**
- * Call stacks are force-only (`{as: 'callstack'}`): an array of `{label, depth}`
- * is too generic to auto-detect without stealing values that should render as
- * an ordinary array.
- */
 function buildCallStack(input: unknown[], opts: ShowOptions): CallStackView {
   const stateAt = buildStateLookup(opts.highlight);
   const entries: CallStackEntry[] = input.slice(0, LIMITS.nodes).map((item, i) => {
@@ -570,18 +503,12 @@ function buildHashMap(raw: unknown, opts: ShowOptions): HashMapView {
 
 const BUCKET_KEYS = ['buckets', 'table', 'slots', 'bins'] as const;
 
-/**
- * A hand-written hash map exposes its real bucket array. Drawing *that* — with
- * its actual collisions — beats re-hashing the entries into invented buckets,
- * so a student can see their own hash function spreading keys well or badly.
- */
 export function looksLikeBucketTable(v: unknown): boolean {
   if (!isPlainRecord(v)) return false;
   const key = BUCKET_KEYS.find((k) => Array.isArray(v[k]));
   if (!key) return false;
   const rows = v[key] as unknown[];
   if (rows.length < 2) return false;
-  // Every slot is a chain (array), an entry object, or empty.
   return rows.every((row) => row === null || row === undefined || Array.isArray(row) || isPlainRecord(row));
 }
 
@@ -595,7 +522,6 @@ function buildBucketTable(raw: Record<string, unknown>, opts: ShowOptions): Hash
     return {
       index,
       entries: chain.slice(0, 16).map((item) => {
-        // `[key, value]` tuples, `{key, value}` objects, or a linked chain node.
         const [k, value] = Array.isArray(item)
           ? [item[0], item[1]]
           : isPlainRecord(item)
@@ -609,18 +535,12 @@ function buildBucketTable(raw: Record<string, unknown>, opts: ShowOptions): Hash
   return { kind: 'hashmap', buckets, synthetic: false };
 }
 
-/** Deterministic djb2 — stable across runs so buckets don't jump between frames. */
 export function stringHash(s: string): number {
   let h = 5381;
   for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
   return h >>> 0;
 }
 
-// ---------------------------------------------------------------------------
-// Entry point
-// ---------------------------------------------------------------------------
-
-/** Convert any user value into a renderable view, honouring an explicit `as`. */
 export function normalize(value: unknown, opts: ShowOptions = {}): VizView {
   const forced = opts.as;
 
@@ -629,7 +549,6 @@ export function normalize(value: unknown, opts: ShowOptions = {}): VizView {
     if (view) return view;
   }
 
-  // A class instance can say how it wants to be drawn before its shape is read.
   const hint = classHint(value);
   if (hint?.heapType && !opts.as) {
     const inner = unwrapContainer(value);
@@ -654,7 +573,6 @@ export function normalize(value: unknown, opts: ShowOptions = {}): VizView {
   }
 
   if (target === null || target === undefined) {
-    // An explicitly-null head/root is a legitimately empty structure.
     if (isPlainRecord(value) && (has(value, 'head') || has(value, 'root'))) {
       return has(value, 'head')
         ? { kind: 'linkedList', nodes: [] }
@@ -663,16 +581,6 @@ export function normalize(value: unknown, opts: ShowOptions = {}): VizView {
     return { kind: 'raw', value };
   }
 
-  /*
-   * A string is a sequence, and string algorithms are about positions in it —
-   * two converging pointers, a window's edges, the character being compared. So
-   * a multi-character string draws as a strip of characters, which gets it
-   * pointers, highlights and a visited trail for free.
-   *
-   * A single character stays a scalar: there is no structure to point at, and
-   * it is almost always a value being read rather than the thing being worked
-   * on.
-   */
   if (typeof target === 'string' && target.length >= MIN_STRING_CELLS) {
     return buildArray([...target], opts, 'array');
   }

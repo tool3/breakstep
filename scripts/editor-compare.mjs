@@ -1,16 +1,3 @@
-/**
- * Open Breakstep and a bare Monaco editor side by side, and leave them open.
- *
- * Frame-time numbers only prove that the main thread was free; they cannot tell
- * you whether scrolling *felt* right, and synthetic wheel events are nothing
- * like a trackpad. So this one is for hands and eyes: two windows, the same
- * Monaco, the same font, the same file. Scroll both, hard.
- *
- *   both rough  →  it is Monaco or this machine, not Breakstep
- *   only the app rough  →  it is ours, and there is something to bisect
- *
- * Usage: npm run editor:compare      (Ctrl-C when you are done)
- */
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
 
@@ -40,7 +27,6 @@ console.log(`
   Ctrl-C to stop.
 `);
 
-// Hold the process open until interrupted.
 await new Promise((resolve) => {
   process.on('SIGINT', resolve);
   process.on('SIGTERM', resolve);

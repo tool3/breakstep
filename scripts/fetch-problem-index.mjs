@@ -1,15 +1,3 @@
-/**
- * Refresh the offline LeetCode problem index.
- *
- * This is a maintenance script, not part of the build: it is run by hand, and
- * its output is committed. The app itself never calls leetcode.com — that is
- * the whole point. What gets vendored is public catalogue metadata (number,
- * title, slug, difficulty, topic tags), which is what lets Breakstep recognise
- * any pasted link and recommend a technique. Problem statements and solutions
- * are LeetCode's content and are deliberately *not* fetched or stored.
- *
- * Usage: node scripts/fetch-problem-index.mjs
- */
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -54,15 +42,12 @@ for (let skip = 0; skip < total; skip += PAGE) {
   total = chunk.total;
   all.push(...chunk.questions);
   process.stdout.write(`\r  ${all.length} / ${total}`);
-  // Deliberately unhurried: this runs once in a while, by a person.
   await new Promise((r) => setTimeout(r, 250));
 }
 process.stdout.write('\n');
 
 all.sort((a, b) => Number(a.questionFrontendId) - Number(b.questionFrontendId));
 
-// Topic slugs repeat across thousands of problems, so they are interned and
-// referenced by index. That alone roughly halves the file.
 const topics = [];
 const topicIndex = new Map();
 const internTopic = (slug) => {
@@ -73,11 +58,6 @@ const internTopic = (slug) => {
   return topicIndex.get(slug);
 };
 
-/**
- * One row per problem: [number, slug, title, difficulty, paidOnly, ...topics].
- * The title is dropped when it is just the slug title-cased, which is the
- * common case — the app can reconstruct it.
- */
 const titleFromSlug = (slug) =>
   slug
     .split('-')

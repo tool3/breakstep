@@ -13,33 +13,21 @@ import styles from './DebugPanel.module.scss';
 
 interface Props {
   debug: DebuggerState;
-  /** Jump the editor to a line — used by the call stack and the breakpoint list. */
   onGoToLine: (line: number) => void;
   onStop: () => void;
-  /**
-   * Phone-sized. The floating toolbar lives over the editor, which is a
-   * different tab there, so the panel carries its own copy.
-   */
   compact?: boolean;
 }
 
-/** Order scope entries so the things that change sit at the top. */
 function orderScope(scope: Record<string, unknown>): [string, unknown][] {
   const entries = Object.entries(scope).filter(([name]) => name !== 'this');
   const rank = (value: unknown) => {
-    if (value === null || typeof value !== 'object') return 0; // scalars first
+    if (value === null || typeof value !== 'object') return 0;
     if (Array.isArray(value)) return 1;
     return 2;
   };
   return entries.sort((a, b) => rank(a[1]) - rank(b[1]) || a[0].localeCompare(b[0]));
 }
 
-/**
- * One collapsible section, as the debug sidebar is built everywhere else.
- *
- * Open by default and remembered per section while the session lasts, because
- * which of these you care about depends entirely on what you are chasing.
- */
 function Section({
   title,
   count,
@@ -102,7 +90,7 @@ export function DebugPanel({ debug, onGoToLine, onStop, compact }: Props) {
     <div className={styles.panel}>
       {compact && <DebugToolbar debug={debug} onStop={onStop} variant="inline" />}
 
-      {/* --- Where the session is ------------------------------------- */}
+      {}
       <div className={styles.status} data-outcome={outcome}>
         <span className={styles.statusDot} />
         <button

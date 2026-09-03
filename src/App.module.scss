@@ -32,8 +32,6 @@
   flex-direction: column;
   height: 100%;
   min-height: 0;
-  // The debug toolbar floats over the editor, so this is what it floats against.
-  // Without it the bar resolved against the app shell and landed on the header.
   position: relative;
 }
 
@@ -41,7 +39,6 @@
   padding: $space-5;
 }
 
-/** Compact layout shows one pane at a time, chosen from the bottom bar. */
 .compactPane {
   flex: 1;
   min-height: 0;
@@ -51,16 +48,12 @@
   overflow: hidden;
 }
 
-// --- Tabs -------------------------------------------------------------------
-
 .tabs {
   height: 100%;
   min-height: 0;
   display: flex;
   flex-direction: column;
 
-  // antd renders its own wrappers; these need to flex so the panel body can
-  // own the scrolling rather than the page.
   :global(.ant-tabs-nav) {
     margin: 0;
     padding: 0 $space-3;
@@ -80,9 +73,6 @@
     min-height: 0;
   }
 
-  // Only the ACTIVE pane becomes a flex column. Styling every pane would
-  // override antd's `display: none` on the hidden ones and stack all three
-  // panels on top of each other.
   :global(.ant-tabs-tabpane-active) {
     height: 100%;
     min-height: 0;
@@ -124,14 +114,11 @@
   line-height: 1;
 }
 
-// --- Bottom bar (compact only) ----------------------------------------------
-
 .bottomBar {
   display: flex;
   flex-shrink: 0;
   border-top: 1px solid var(--breakstep-border);
   background: var(--breakstep-panel);
-  // Clear the iOS home indicator without leaving a gap on other devices.
   padding-bottom: env(safe-area-inset-bottom);
 }
 
@@ -151,7 +138,6 @@
   color: var(--breakstep-text-faint);
   cursor: pointer;
   font: inherit;
-  // Stop iOS firing a 300ms delay or flashing a grey overlay.
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 
@@ -163,7 +149,6 @@
 .bottomTabActive {
   color: var(--breakstep-accent-text);
 
-  // A top rule reads as "selected" without needing a filled background.
   &::before {
     content: '';
     position: absolute;
@@ -205,7 +190,6 @@
   background: var(--breakstep-red);
 }
 
-// A phone in landscape has ~390px of height; the bar has to shrink.
 @media (max-height: 460px) {
   .bottomTab {
     min-height: 40px;
@@ -216,8 +200,6 @@
     display: none;
   }
 }
-
-// --- Footer -----------------------------------------------------------------
 
 .footer {
   display: flex;

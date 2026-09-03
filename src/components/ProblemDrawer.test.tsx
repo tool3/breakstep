@@ -5,8 +5,6 @@ import { ProblemDrawer } from './ProblemDrawer';
 import { getProblem } from '@/leetcode/catalogue';
 
 function setup(overrides: Partial<Parameters<typeof ProblemDrawer>[0]> = {}) {
-  // Typed as mocks rather than as the prop signatures, so assertions can read
-  // what they were called with.
   const props = {
     open: true,
     currentSlug: null as string | null,
@@ -18,7 +16,6 @@ function setup(overrides: Partial<Parameters<typeof ProblemDrawer>[0]> = {}) {
   return props;
 }
 
-/** Paste a URL and press Find. */
 async function find(user: ReturnType<typeof userEvent.setup>, url: string) {
   await user.type(screen.getByLabelText('LeetCode problem URL'), url);
   await user.click(screen.getByRole('button', { name: 'Find' }));
@@ -50,7 +47,6 @@ describe('ProblemDrawer', () => {
 
     expect(props.onLoad).toHaveBeenCalledTimes(1);
     expect(props.onLoad.mock.calls[0][0].slug).toBe('merge-intervals');
-    // The problem panel takes over from here, so the finder gets out of the way.
     expect(props.onClose).toHaveBeenCalled();
   });
 
@@ -79,14 +75,11 @@ describe('ProblemDrawer', () => {
   it('says so, and stops, when it cannot build a runnable version', async () => {
     const user = userEvent.setup();
     const props = setup();
-    // Premium: LeetCode publishes nothing about it to build from.
     await find(user, 'https://leetcode.com/problems/meeting-rooms-ii/');
 
     expect(await screen.findByText(/cannot open it/)).toBeInTheDocument();
-    // The real title, number and difficulty still come from the index.
     expect(screen.getByRole('heading', { name: 'Meeting Rooms II' })).toBeInTheDocument();
     expect(screen.getByText('Premium')).toBeInTheDocument();
-    // A technique to try, and somewhere to read it — but nothing was opened.
     expect(screen.getByText('Recommended technique')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Read it on LeetCode/ })).toHaveAttribute(
       'href',
@@ -145,7 +138,6 @@ describe('problems already solved', () => {
     expect(within(row).getByLabelText('solved')).toBeInTheDocument();
     expect(screen.getByText('1 solved')).toBeInTheDocument();
 
-    // A problem nobody has solved carries no mark at all.
     const other = screen.getByRole('button', { name: /Container With Most Water/ });
     expect(within(other).queryByLabelText('solved')).not.toBeInTheDocument();
   });

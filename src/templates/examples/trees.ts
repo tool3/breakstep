@@ -16,8 +16,6 @@ export const binarySearchTree: Template = {
     },
     {
       name: 'search',
-      // The clean source names this constant `searchFor`, so `search` stays
-      // free for the function of the same name.
       binds: 'searchFor',
       label: 'Value to search for',
       type: 'number',
@@ -405,8 +403,6 @@ export const trie: Template = {
   category: 'Worked examples',
   blurb: 'Lookups cost the length of the word — the dictionary size is irrelevant.',
   tags: ['trie', 'string', 'prefix'],
-  // The benchmark builds a dictionary of n words and then looks one up, so the
-  // measured curve is the O(n) build. A single lookup is O(m) — word length.
   expected: { time: 'O(n)', space: 'O(n)' },
   params: [
     {

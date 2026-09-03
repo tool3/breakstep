@@ -4,13 +4,6 @@ import { stateClass } from './Cell';
 import { formatFull, formatValue } from './format';
 import styles from './viz.module.scss';
 
-/**
- * Hash maps, drawn as buckets rather than a flat key/value list.
- *
- * A plain `{a: 1, b: 2}` dump teaches nothing; showing entries landing in
- * buckets — and occasionally colliding into the same one — is what explains
- * why lookup is "O(1) on average" and not simply "O(1)".
- */
 export const HashMapViz = memo(function HashMapViz({ view }: { view: HashMapView }) {
   const { buckets } = view;
   const total = buckets.reduce((sum, b) => sum + b.entries.length, 0);

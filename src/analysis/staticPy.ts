@@ -1,16 +1,3 @@
-/**
- * Static complexity estimation for Python.
- *
- * There is no in-browser Python AST parser we want to ship (that would mean
- * booting Pyodide just to analyze a file), but Python's significant indentation
- * makes block nesting recoverable straight from the text — which is exactly the
- * signal a loop-depth analysis needs. Comprehensions are handled separately
- * since they nest without indenting.
- *
- * It mirrors the JS analyzer's structure deliberately: scopes, call composition
- * and per-path recursion counting, so the two languages report the same verdict
- * for the same algorithm.
- */
 import type { ComplexityClass, StaticComplexity } from '@/types';
 import { compareComplexity, maxComplexity, polyClass, solveRecurrence } from './staticJs';
 
@@ -20,7 +7,6 @@ interface Line {
   no: number;
 }
 
-/** Blank out comments and string bodies so keywords inside them don't count. */
 export function stripPythonNoise(source: string): string {
   let out = source.replace(
     /'''[\s\S]*?'''|"""[\s\S]*?"""/g,
@@ -48,7 +34,6 @@ function toLines(source: string): Line[] {
 const LOOP_RE = /^(?:async\s+)?(?:for|while)\b/;
 const DEF_RE = /^(?:async\s+)?def\s+([A-Za-z_]\w*)\s*\(/;
 
-/** `for i in range(26)` / `for c in "abc"` — bounded by a literal. */
 function isConstantBoundLoop(code: string): boolean {
   const m = code.match(/for\s+.+?\s+in\s+range\(\s*(\d+)\s*[),]/);
   if (m) return Number(m[1]) <= 64;
@@ -67,11 +52,6 @@ function isLogLoop(code: string, body: string): boolean {
   return false;
 }
 
-/**
- * Comprehensions and generator expressions nest loops on a single line, so the
- * indentation signal misses them entirely. Count `for … in` clauses instead,
- * after removing a `for`/`while` statement header so the two don't double-count.
- */
 export function comprehensionDepth(code: string): number {
   const withoutHeader = code.replace(/^\s*(?:async\s+)?(?:for|while)\b[^:]*:/, '');
   if (!/[[{(]/.test(withoutHeader)) return 0;
@@ -79,7 +59,6 @@ export function comprehensionDepth(code: string): number {
   return clauses ? clauses.length : 0;
 }
 
-/** Index of the first line after the block headed by `headerIdx`. */
 function blockEnd(lines: Line[], headerIdx: number, limit: number): number {
   const indent = lines[headerIdx].indent;
   let i = headerIdx + 1;
@@ -99,7 +78,6 @@ interface Scope {
 
 const CALL_RE = /\b([A-Za-z_]\w*)\s*\(/g;
 
-/** Names that are builtins or library calls, not user functions worth costing. */
 const IGNORED_CALLS = new Set([
   'range', 'len', 'print', 'int', 'str', 'float', 'bool', 'list', 'dict', 'set',
   'tuple', 'enumerate', 'zip', 'min', 'max', 'sum', 'abs', 'round', 'sorted',
@@ -108,10 +86,6 @@ const IGNORED_CALLS = new Set([
   'log', 'param', 'bench', 'super', 'iter', 'next', 'chr', 'ord', 'divmod',
 ]);
 
-/**
- * Scan one indentation region as a scope: loop depth, calls with their depth,
- * and self-recursion, without descending into nested `def` blocks.
- */
 function scanScope(lines: Line[], from: number, to: number, self: string | null): Omit<Scope, 'name'> {
   let ownLoopDepth = 0;
   let hasLogLoop = false;
@@ -126,7 +100,6 @@ function scanScope(lines: Line[], from: number, to: number, self: string | null)
     const line = lines[i];
     while (openLoops.length && line.indent <= openLoops[openLoops.length - 1]) openLoops.pop();
 
-    // A nested `def` is its own scope — skip its whole block.
     if (DEF_RE.test(line.code)) {
       i = blockEnd(lines, i, to) - 1;
       continue;
@@ -136,7 +109,6 @@ function scanScope(lines: Line[], from: number, to: number, self: string | null)
     const depthHere = openLoops.length + comp;
     ownLoopDepth = Math.max(ownLoopDepth, depthHere);
 
-    // Calls on this line, attributed to the loop depth they sit at.
     CALL_RE.lastIndex = 0;
     let m: RegExpExecArray | null;
     let selfCount = 0;
@@ -156,7 +128,6 @@ function scanScope(lines: Line[], from: number, to: number, self: string | null)
         halving = true;
       }
       if (openLoops.length > 0 || comp > 0) {
-        // Recursion from inside a loop: branching is data-dependent.
         selfCallLines.push({ count: Math.max(selfCount, 2), isReturn: false });
       }
     }
@@ -184,14 +155,6 @@ function scanScope(lines: Line[], from: number, to: number, self: string | null)
   };
 }
 
-/**
- * Worst-case self-calls along one execution path.
- *
- * When every self-call sits on a `return` line, the calls are mutually
- * exclusive — that is `return bs(lo, mid)` vs `return bs(mid, hi)`, one call
- * per run, O(log n). Anything else is assumed to run in sequence, which is
- * `explore(i + 1)` twice in a backtracking body.
- */
 function pathSelfCalls(sites: { count: number; isReturn: boolean }[]): number {
   if (sites.length === 0) return 0;
   if (sites.every((s) => s.isReturn)) return Math.max(...sites.map((s) => s.count));
@@ -222,7 +185,6 @@ function collectScopes(lines: Line[]): Collected {
   const functions = new Map<string, Scope>();
   const recursiveInLoop = new Set<string>();
 
-  // Every `def` at any depth becomes a scope.
   for (let i = 0; i < lines.length; i++) {
     const m = lines[i].code.match(DEF_RE);
     if (!m) continue;
@@ -231,7 +193,6 @@ function collectScopes(lines: Line[]): Collected {
     if (!functions.has(name)) {
       functions.set(name, { name, ...scanScope(lines, i + 1, end, name) });
       if (recursesInsideLoop(lines, i + 1, end, name)) recursiveInLoop.add(name);
-      // `@lru_cache` / `@cache` above the def counts as memoization.
       if (i > 0 && /@(?:functools\.)?(?:lru_)?cache/.test(lines[i - 1].code)) {
         functions.get(name)!.memoized = true;
       }

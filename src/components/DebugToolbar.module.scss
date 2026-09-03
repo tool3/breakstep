@@ -1,15 +1,5 @@
-/**
- * The floating debug bar.
- *
- * Overlays the top of the editor rather than taking a row of its own, which is
- * what keeps the code from jumping down by 40px the moment a session starts.
- * Centred horizontally, like VS Code's, and translucent so the line underneath
- * is still legible through it.
- */
 .bar {
   position: absolute;
-  // Clear of the mode badge that sits on the editor's first row, so the bar
-  // floats over the code — where VS Code puts it — rather than over the label.
   top: 32px;
   left: 50%;
   transform: translateX(-50%);
@@ -26,7 +16,6 @@
   box-shadow: var(--breakstep-shadow);
   backdrop-filter: blur(6px);
 
-  // The buttons are icon-only and want to be square and small.
   :global(.ant-btn) {
     min-width: 26px;
     height: 26px;
@@ -40,7 +29,6 @@
   }
 }
 
-/// Continue is the one you press most, so it carries the accent.
 .primary:global(.ant-btn) {
   color: var(--breakstep-mint);
 
@@ -75,10 +63,6 @@
   }
 }
 
-/**
- * Inline: the same bar, in the flow of the panel rather than over the editor.
- * On a phone the editor is a different tab, so this is the only copy on screen.
- */
 .inline {
   position: static;
   transform: none;

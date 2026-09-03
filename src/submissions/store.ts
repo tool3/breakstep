@@ -1,15 +1,3 @@
-/**
- * The submission store, backed by `localStorage`.
- *
- * One key holds the whole list, newest first. That is the right shape for the
- * amount of data involved — a few hundred records — and it keeps the promise of
- * the interface honest: `list`, `save` and `clear` are the three calls a service
- * would implement, and nothing above this file knows which one it is talking to.
- *
- * Retention is capped, because `localStorage` is a five-megabyte budget shared
- * with the editor buffers: the newest attempts per problem are kept and the rest
- * fall off the end.
- */
 import { readStored, writeStored } from '@/hooks/useLocalStorage';
 import type {
   Submission,
@@ -18,18 +6,15 @@ import type {
   SubmissionStore,
 } from './types';
 
-/** Bumped when `Submission` changes shape; older records are discarded. */
 export const SUBMISSION_SCHEMA = 1;
 
 const KEY = 'submissions';
 
-/** The only owner there is until there are accounts. */
 export const LOCAL_OWNER = 'local';
 
 export const MAX_PER_PROBLEM = 25;
 export const MAX_TOTAL = 300;
 
-/** Long enough for any solution, short enough that the quota survives. */
 export const MAX_CODE_CHARS = 20_000;
 
 interface Envelope {
@@ -53,12 +38,6 @@ function write(items: Submission[]): void {
   writeStored<Envelope>(KEY, { version: SUBMISSION_SCHEMA, items });
 }
 
-/**
- * Trim to the retention caps.
- *
- * Per-problem first, so a session spent hammering one problem cannot evict the
- * record of every other problem you have solved.
- */
 export function applyCaps(items: Submission[]): Submission[] {
   const perProblem = new Map<string, number>();
   const kept: Submission[] = [];
@@ -116,17 +95,10 @@ export function createLocalSubmissionStore(): SubmissionStore {
 
 let store: SubmissionStore = createLocalSubmissionStore();
 
-/** The store the app reads and writes. */
 export function submissionStore(): SubmissionStore {
   return store;
 }
 
-/**
- * Point the app at a different store.
- *
- * This is the seam: a service-backed implementation of `SubmissionStore` is
- * installed here at startup and every panel keeps working unchanged.
- */
 export function setSubmissionStore(next: SubmissionStore): void {
   store = next;
 }

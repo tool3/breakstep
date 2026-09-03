@@ -4,12 +4,6 @@ import { stateClass } from './Cell';
 import { formatValue } from './format';
 import styles from './viz.module.scss';
 
-/**
- * Grids and DP tables.
- *
- * Cells shrink as the table grows so a 40×40 DP table still fits without
- * scrolling — beyond that the pattern of colours matters more than the numbers.
- */
 export const MatrixViz = memo(function MatrixViz({ view }: { view: MatrixView }) {
   const { rows } = view;
   const cols = Math.max(0, ...rows.map((r) => r.length));

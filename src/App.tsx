@@ -43,27 +43,14 @@ import { useLayout } from './hooks/useLayout';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import styles from './App.module.scss';
 
-/** Panels the right-hand side (or the phone tab bar) can show. */
 type PanelKey = 'visualize' | 'output' | 'complexity';
-/** On a phone the editor and parameters join the same tab strip. */
 type CompactKey = 'code' | 'params' | PanelKey;
-/** The tabs under the editor: what you are solving, how it went, what it runs on. */
 type BottomKey = 'problem' | 'submissions' | 'params';
 
-// Monaco is by far the largest dependency. Splitting it out means the shell,
-// the visualizers and the analysis panels paint before it arrives.
 const EditorPanel = lazy(() =>
   import('./components/EditorPanel').then((m) => ({ default: m.EditorPanel })),
 );
 
-/**
- * antd tokens mapped onto the Breakstep palette so the two never drift apart.
- *
- * Taken from the active theme rather than from a light/dark boolean: antd
- * renders into portals — dropdowns, tooltips, drawers — and with one hardcoded
- * dark palette those surfaces belonged to whichever theme the numbers were
- * copied from, not the one on screen.
- */
 function useAntdTheme(theme: ThemeName, coarsePointer: boolean) {
   return useMemo(() => {
     const { dark, antd } = themeDefinition(theme);
@@ -85,7 +72,6 @@ function useAntdTheme(theme: ThemeName, coarsePointer: boolean) {
         colorTextTertiary: antd.textTertiary,
         borderRadius: 6,
         fontSize: 13,
-        // Touch devices get taller controls everywhere antd renders one.
         controlHeight: coarsePointer ? 38 : 30,
         controlHeightSM: coarsePointer ? 32 : 24,
         fontFamily:
@@ -99,9 +85,6 @@ function useAntdTheme(theme: ThemeName, coarsePointer: boolean) {
           railSize: coarsePointer ? 5 : 3,
           handleSize: coarsePointer ? 14 : 10,
           handleSizeHover: coarsePointer ? 16 : 12,
-          // antd derives the track from a *tint* of the primary, which on a
-          // dark panel comes out grey-blue and looks like a disabled control.
-          // The accent is the accent.
           trackBg: antd.primary,
           trackHoverBg: antd.primary,
           handleColor: antd.primary,
@@ -115,11 +98,6 @@ function useAntdTheme(theme: ThemeName, coarsePointer: boolean) {
   }, [theme, coarsePointer]);
 }
 
-/**
- * The phone tab strip. While debugging, the Inputs slot becomes the debugger —
- * the parameters are fixed for the recording anyway, and the controls need the
- * room far more than the sliders do.
- */
 function compactTabs(debugging: boolean): { key: CompactKey; label: string; icon: ReactNode }[] {
   return [
     { key: 'code', label: 'Code', icon: <CodeOutlined /> },
@@ -140,11 +118,9 @@ export default function App() {
   const layout = useLayout();
   const antdConfig = useAntdTheme(theme, layout.coarsePointer);
 
-  /** Which line's breakpoint menu is open, and where it was opened. */
   const [breakpointMenu, setBreakpointMenu] = useState<BreakpointMenuTarget | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [problemsOpen, setProblemsOpen] = useState(false);
-  /** Which of the three bottom-left tabs is showing. */
   const [bottomTab, setBottomTab] = useState<BottomKey>('params');
 
   const openProblems = useCallback(() => setProblemsOpen(true), []);
@@ -165,7 +141,6 @@ export default function App() {
 
   const goToLine = useCallback(
     (line: number) => {
-      // The editor may not be on screen on a phone; bring it back first.
       if (compact) setCompactTab('code');
       goToLineRef.current?.(line);
     },
@@ -174,7 +149,6 @@ export default function App() {
 
   const { run, debugRun, analyze, status, result, flushCode, currentCode } = workspace;
 
-  /** Show a panel, wherever that panel currently lives. */
   const reveal = useCallback(
     (key: PanelKey) => {
       setPanel(key);
@@ -183,15 +157,6 @@ export default function App() {
     [compact],
   );
 
-  /*
-   * Every explicit action flushes the pending publish first.
-   *
-   * Typing is deliberately debounced, so `workspace.code` can be up to a moment
-   * behind what is on screen. The runners read the live buffer and are never
-   * wrong, but anything derived from the published one — the function list the
-   * debugger offers breakpoints for, the entry name the Analyze tab shows — would
-   * be. Pressing a button means "use what I can see", so flush and mean it.
-   */
   const handleRun = useCallback(() => {
     flushCode();
     debug.end();
@@ -199,35 +164,18 @@ export default function App() {
     reveal('visualize');
   }, [flushCode, run, reveal, debug]);
 
-  /**
-   * Record a run, then hand it to the debugger.
-   *
-   * The run itself is an ordinary run — same code, same parameters, same
-   * frames — so the picture the debugger walks is exactly the picture Run
-   * would have produced.
-   */
   const handleDebug = useCallback(() => {
     flushCode();
     debug.end();
     reveal('visualize');
     void debugRun().then((steps) => {
-      // The live buffer, not the published one: this runs after an await, and
-      // the closure still holds whatever `code` was before the flush.
       debug.begin(steps, listFunctions(currentCode(), workspace.language));
       if (compact) setCompactTab('params');
     });
   }, [debugRun, debug, reveal, compact, flushCode, currentCode, workspace.language]);
 
-  /**
-   * Judge the buffer and record the attempt.
-   *
-   * The verdict is the point, so the panel showing it comes forward — and the
-   * frames on screen are left exactly as they were, because a submission is not
-   * a run and should not wipe the picture you were reading.
-   */
   const handleSubmit = useCallback(async () => {
     flushCode();
-    // A debug session owns this whole pane, so the verdict would land behind it.
     debug.end();
     setBottomTab('submissions');
     if (compact) setCompactTab('params');
@@ -236,7 +184,6 @@ export default function App() {
     if (draft) await submissions.record(draft);
   }, [workspace, submissions, debug, compact, flushCode]);
 
-  /** Put a past attempt back in the editor, in the language it was written in. */
   const handleRestore = useCallback(
     (submission: Submission) => {
       debug.end();
@@ -252,7 +199,6 @@ export default function App() {
     reveal('complexity');
   }, [flushCode, analyze, reveal]);
 
-  /** Load a problem's starter code and get out of the way. */
   const handleLoadProblem = useCallback(
     (problem: LeetProblem) => {
       debug.end();
@@ -263,7 +209,6 @@ export default function App() {
     [workspace, debug, compact],
   );
 
-  /** The reveal: the editor becomes the worked solution, ready to run. */
   const handleRevealSolution = useCallback(
     (problem: LeetProblem) => {
       debug.end();
@@ -274,7 +219,6 @@ export default function App() {
     [workspace, debug, compact],
   );
 
-  /** Jump from a recommendation to the template that teaches the technique. */
   const handleOpenTemplate = useCallback(
     (templateId: string) => {
       debug.end();
@@ -285,16 +229,10 @@ export default function App() {
     [workspace, debug, compact],
   );
 
-  /*
-   * A problem that has just been opened is what you want to read, so show it.
-   * Leaving a problem behind for an ordinary template sends you back to the
-   * parameters, since the Problem tab is disabled with nothing in it.
-   */
   useEffect(() => {
     setBottomTab(workspace.problemSlug ? 'problem' : 'params');
   }, [workspace.problemSlug]);
 
-  // An error is worth interrupting for — surface the log without being asked.
   useEffect(() => {
     if (status === 'error' && result?.error) reveal('output');
   }, [status, result, reveal]);
@@ -305,14 +243,6 @@ export default function App() {
 
   const closeBreakpointMenu = useCallback(() => setBreakpointMenu(null), []);
 
-  /**
-   * The debugger's function keys, bound only while a session is open.
-   *
-   * F5 reloads the page everywhere else in a browser, and taking that away from
-   * someone who is not debugging would be a poor trade. Inside a session it is
-   * Continue, exactly as it is in VS Code, and the browser default is suppressed
-   * for as long as the session lasts.
-   */
   useEffect(() => {
     if (!debug.active) return;
 
@@ -330,7 +260,6 @@ export default function App() {
         debug.end();
         return;
       }
-      // Cmd/Ctrl+Shift+F5 restarts, as it does in VS Code.
       if (command === 'continue' && (event.metaKey || event.ctrlKey)) {
         debug.run('restart');
         return;
@@ -342,13 +271,10 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, [debug]);
 
-  // Global shortcuts. Monaco owns Cmd+Enter inside the editor; this covers the
-  // rest of the app so Run works no matter where focus is.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault();
-        // Shift makes it a submission: the same gesture, one step further on.
         if (e.shiftKey) void handleSubmit();
         else handleRun();
       } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
@@ -360,12 +286,9 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, [handleRun, handleSubmit]);
 
-  // --- The pieces, arranged differently per layout ---------------------------
-
   const editor = (
     <div className={styles.editorPane}>
-      {/* The transport belongs next to the line it acts on, so it floats here
-          rather than in the panel — the phone gets an inline copy instead. */}
+      {}
       {debug.active && !compact && <DebugToolbar debug={debug} onStop={debug.end} />}
       <ModeBadge
         mode={workspace.mode}
@@ -402,17 +325,14 @@ export default function App() {
       template={template}
       values={workspace.params}
       mode={workspace.mode}
+      language={workspace.language}
+      code={workspace.code}
       bound={workspace.boundParams}
       onChange={workspace.setParam}
       onReset={workspace.resetParams}
     />
   );
 
-  /**
-   * A function from the current file, for the benchmark example the Analyze tab
-   * shows when nothing registered one. Falls back to `solve` when the file has
-   * no named function to point at.
-   */
   const benchFn = useMemo(
     () => listFunctions(workspace.code, workspace.language)[0]?.name,
     [workspace.code, workspace.language],
@@ -432,12 +352,6 @@ export default function App() {
     />
   );
 
-  /**
-   * Below the editor: the problem, and the parameters.
-   *
-   * A debug session takes the whole pane — the transport, the variables and the
-   * call stack need the room, and neither tab is any use while paused.
-   */
   const submissionsPanel = (
     <SubmissionsPanel
       problem={workspace.problem}
@@ -463,8 +377,6 @@ export default function App() {
         items={[
           {
             key: 'problem',
-            // Nothing to show until a problem is open, and saying so is better
-            // than an empty tab that looks broken.
             disabled: workspace.problem === null,
             label: (
               <span className={styles.tabLabel}>
@@ -477,8 +389,6 @@ export default function App() {
           },
           {
             key: 'submissions',
-            // A problem is what makes a submission mean anything, so this is
-            // greyed out with the Problem tab rather than on its own.
             disabled: workspace.problem === null,
             label: (
               <span className={styles.tabLabel}>

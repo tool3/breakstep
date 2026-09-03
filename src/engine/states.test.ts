@@ -4,7 +4,6 @@ import type { Frame } from '@/types/viz';
 
 const OPTS = { opLimit: 2_000_000, frameLimit: 60, autoTrace: true };
 
-/** Every cell state the run produced, the way the colour key collects them. */
 function statesOf(frames: Frame[]): string[] {
   const found = new Set<string>();
 
@@ -41,7 +40,6 @@ console.log(lo, hi);`,
       OPTS,
     );
 
-    // The cursor that moved is current; the one it is measured against is not.
     expect(statesOf(result.frames)).toEqual(['active', 'compare']);
   });
 
@@ -57,8 +55,6 @@ console.log(best);`,
       OPTS,
     );
 
-    // `best` is a number that happens to be a valid index, so it is drawn as a
-    // pointer — but nothing is being compared, and it must not say otherwise.
     expect(statesOf(result.frames)).toEqual(['active', 'visited']);
   });
 
@@ -83,9 +79,6 @@ console.log(nums.join(','));`,
   });
 
   it('does not let a repeated sweep paint everything as visited', async () => {
-    // A cursor jumping backwards starts a new pass. Without that reset, the
-    // second sweep of a nested loop would leave every cell marked visited and
-    // the colour would stop meaning anything.
     const result = await runInSandbox(
       `const nums = [5, 3, 8, 1, 9, 2, 7];
 for (let i = 0; i < nums.length; i++) {

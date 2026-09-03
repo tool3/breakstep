@@ -1,27 +1,9 @@
-/**
- * Two-way binding between the Parameters panel and literals in the source.
- *
- * In clean mode the code contains no Breakstep API at all — inputs are ordinary
- * top-level constants:
- *
- *     const values = [1, 2, 3, 4, 5];
- *
- * Rather than substituting values behind the user's back at run time, moving a
- * slider *rewrites that literal in the editor*. What you read is exactly what
- * runs, and the panel becomes a structured editor for the constants rather than
- * a hidden layer of magic.
- */
 import MagicString from 'magic-string';
 import type { Language, ParamSpec, ParamValues } from '@/types';
 
-/** The identifier a spec binds to; defaults to the parameter's own name. */
 export function bindingName(spec: ParamSpec): string {
   return spec.binds ?? spec.name;
 }
-
-// ---------------------------------------------------------------------------
-// Serializing a value back into source
-// ---------------------------------------------------------------------------
 
 export function toLiteral(value: unknown, language: Language): string {
   const python = language === 'python';
@@ -36,27 +18,16 @@ export function toLiteral(value: unknown, language: Language): string {
   return python ? 'None' : 'null';
 }
 
-/** Single quotes in both languages, with the obvious escapes. */
 function quote(text: string): string {
   return `'${text.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n')}'`;
 }
 
-// ---------------------------------------------------------------------------
-// Locating a binding in the source
-// ---------------------------------------------------------------------------
-
 interface Binding {
-  /** Range of the initializer expression, i.e. what gets replaced. */
   start: number;
   end: number;
   text: string;
 }
 
-/**
- * Where an initializer ends: the first `;`, line break or trailing comment at
- * bracket depth zero. Scanning rather than parsing keeps this working on
- * TypeScript source (which acorn rejects) and on multi-line array literals.
- */
 function scanInitializer(source: string, from: number): number {
   let depth = 0;
   let quote: string | null = null;
@@ -87,10 +58,7 @@ function scanInitializer(source: string, from: number): number {
   return source.length;
 }
 
-/** Find a top-level `const NAME = <literal>` and return the initializer range. */
 export function findJsBinding(source: string, name: string): Binding | null {
-  // Column zero only: an indented declaration lives inside a function or block,
-  // not among the module's inputs.
   const pattern = new RegExp(
     `^(?:export[ \\t]+)?(?:const|let|var)[ \\t]+${escapeRegex(name)}[ \\t]*(?::[^=\\n]*)?=[ \\t]*`,
     'm',
@@ -106,12 +74,6 @@ export function findJsBinding(source: string, name: string): Binding | null {
   return { start, end: start + text.length, text };
 }
 
-/**
- * Find a module-level `NAME = <literal>` in Python.
- *
- * Column zero is the whole test: an assignment at any indentation belongs to a
- * function or a class, not to the module's inputs.
- */
 export function findPythonBinding(source: string, name: string): Binding | null {
   const pattern = new RegExp(`^${escapeRegex(name)}[ \\t]*=[ \\t]*`, 'm');
   const match = pattern.exec(source);
@@ -133,11 +95,6 @@ export function findBinding(source: string, name: string, language: Language): B
   return language === 'python' ? findPythonBinding(source, name) : findJsBinding(source, name);
 }
 
-// ---------------------------------------------------------------------------
-// Reading and writing
-// ---------------------------------------------------------------------------
-
-/** Parse a source literal back into a value the Parameters panel can show. */
 export function parseLiteral(text: string, spec: ParamSpec): unknown {
   const trimmed = text.trim();
 
@@ -176,7 +133,6 @@ function unquote(text: string): string | null {
   return null;
 }
 
-/** Split `[a, b, c]` at the top level only — nested brackets stay intact. */
 function splitArray(text: string): string[] | null {
   if (!text.startsWith('[') || !text.endsWith(']')) return null;
   const inner = text.slice(1, -1).trim();
@@ -212,10 +168,6 @@ function splitArray(text: string): string[] | null {
   return parts;
 }
 
-/**
- * Initialize the Parameters panel from the literals actually in the source.
- * Anything not found keeps the template default.
- */
 export function readParamsFromSource(
   source: string,
   specs: ParamSpec[],
@@ -231,11 +183,9 @@ export function readParamsFromSource(
 
 export interface WriteResult {
   code: string;
-  /** False when the binding is gone — the user renamed or deleted the constant. */
   bound: boolean;
 }
 
-/** Rewrite the literal a parameter binds to, leaving the rest of the file alone. */
 export function writeParamToSource(
   source: string,
   spec: ParamSpec,
@@ -253,7 +203,6 @@ export function writeParamToSource(
   return { code: s.toString(), bound: true };
 }
 
-/** Which parameters currently have a matching constant in the source. */
 export function boundParams(
   source: string,
   specs: ParamSpec[],

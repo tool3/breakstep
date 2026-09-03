@@ -2,11 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { buildEmpiricalReport, fitComplexity, GROWTH_MODELS, project, scoreModel } from './fit';
 import type { BenchmarkSample, ComplexityClass } from '@/types';
 
-/** Synthesize a clean sweep for a known curve, with an optional noise factor. */
 function sweep(fn: (n: number) => number, sizes = [16, 32, 64, 128, 256, 512], noise = 0): BenchmarkSample[] {
   return sizes.map((n, i) => ({
     n,
-    // Deterministic "noise" so the test never flakes.
     operations: Math.round(fn(n) * (1 + (noise ? ((i % 3) - 1) * noise : 0))),
     ms: 0,
   }));
@@ -39,7 +37,6 @@ describe('fitComplexity', () => {
   });
 
   it('prefers the simpler class when two fit equally well', () => {
-    // Perfectly linear data — O(n log n) can also be coaxed to fit loosely.
     const result = fitComplexity(sweep((n) => n));
     expect(result.best).toBe('O(n)');
   });
@@ -67,7 +64,6 @@ describe('fitComplexity', () => {
   it('ranks every modelled class', () => {
     const { ranking } = fitComplexity(sweep((n) => n));
     expect(ranking).toHaveLength(GROWTH_MODELS.length);
-    // Ranking is ordered best-first.
     expect(ranking[0].r2).toBeGreaterThanOrEqual(ranking.at(-1)!.r2);
   });
 });

@@ -1,11 +1,4 @@
 /// <reference lib="webworker" />
-/**
- * Python execution worker, backed by Pyodide.
- *
- * Pyodide is ~10 MB, so it is loaded from the CDN on first use and never as part
- * of the app bundle — open Breakstep in TypeScript mode and you never pay for it. The
- * worker boots lazily on the first Python run and stays warm afterwards.
- */
 import { PYTHON_BOOTSTRAP, revivePython } from './pythonRuntime';
 import { normalize } from './normalize';
 import { createAutoTracer } from './autoTrace';
@@ -49,7 +42,6 @@ async function boot(id: number): Promise<PyodideApi> {
   return booting;
 }
 
-/** Call a Python function with JSON-encoded args and parse the JSON result. */
 function callPython(py: PyodideApi, fn: string, args: unknown[]): unknown {
   const payload = JSON.stringify(args).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
   const expr = `${fn}(*json.loads('${payload}'))`;
@@ -64,7 +56,6 @@ interface PyFrame {
   options: unknown;
 }
 
-/** One auto-trace record, as emitted by the Python runtime. */
 interface PyTrace {
   k: 'step' | 'enter' | 'exit';
   line?: number;
@@ -96,12 +87,6 @@ function toFrames(pyFrames: PyFrame[]): Frame[] {
   });
 }
 
-/**
- * Replay Python's trace records through the *JavaScript* auto-tracer.
- *
- * Subject selection, pointer detection and captions all live in one place, so
- * the same algorithm written in either language produces the same picture.
- */
 function replayTraces(
   traces: PyTrace[],
   frameLimit: number,
@@ -167,7 +152,6 @@ ctx.onmessage = async (event: MessageEvent<WorkerRequest>) => {
 
   try {
     if (msg.type === 'run') {
-      // Auto-tracing steps aside when the source drives the visualizer itself.
       const autoTrace = Boolean(msg.autoTrace) && !hasManualInstrumentation(msg.code);
 
       const debug = Boolean(msg.debug);
@@ -183,8 +167,6 @@ ctx.onmessage = async (event: MessageEvent<WorkerRequest>) => {
 
       const explicit = toFrames(result.frames ?? []);
       const replayed = replayTraces(result.traces ?? [], msg.frameLimit, debug);
-      // Explicit `breakstep.show` calls own the picture when there are any; the
-      // recording still drives the debugger either way.
       const frames = explicit.length > 0 ? explicit : replayed.frames;
 
       ctx.postMessage({ type: 'log', id: msg.id, entries: result.logs ?? [] });

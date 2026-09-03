@@ -1,18 +1,7 @@
-/**
- * Empirical complexity fitting.
- *
- * Given operation counts at increasing input sizes, decide which growth curve
- * the data actually follows. We deliberately avoid plain least-squares R² on raw
- * counts: at n = 2000 an O(n^3) model can "explain" O(n^2) data simply because
- * the largest sample dominates the sum of squares. Instead we score each model
- * on how *constant* the ratio y / f(n) stays across the whole sweep, which is
- * scale-invariant, then break near-ties in favour of the simpler curve.
- */
 import type { BenchmarkSample, ComplexityClass, EmpiricalComplexity, FitScore } from '@/types';
 
 export interface GrowthModel {
   cls: ComplexityClass;
-  /** Ordering used to break ties — lower is simpler. */
   rank: number;
   fn: (n: number) => number;
 }
@@ -43,10 +32,6 @@ function median(xs: number[]): number {
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
-/**
- * Score a single model against the samples.
- * Returns fit quality in 0..1 where 1 means the ratio y/f(n) is perfectly flat.
- */
 export function scoreModel(model: GrowthModel, samples: BenchmarkSample[]): FitScore {
   const usable = samples.filter((s) => Number.isFinite(s.operations) && s.n > 0);
   if (usable.length < 2) return { cls: model.cls, r2: 0, coefficient: 0 };
@@ -54,12 +39,10 @@ export function scoreModel(model: GrowthModel, samples: BenchmarkSample[]): FitS
   const ratios = usable.map((s) => s.operations / model.fn(s.n));
   const coefficient = median(ratios.filter((r) => Number.isFinite(r)));
   if (!Number.isFinite(coefficient) || coefficient <= 0) {
-    // Every count was zero — only O(1) can claim that honestly.
     const allZero = usable.every((s) => s.operations === 0);
     return { cls: model.cls, r2: allZero && model.cls === 'O(1)' ? 1 : 0, coefficient: 0 };
   }
 
-  // Mean relative error of the fitted curve against the observations.
   let errorSum = 0;
   for (const s of usable) {
     const predicted = coefficient * model.fn(s.n);
@@ -75,7 +58,6 @@ function clamp01(x: number): number {
   return Math.min(1, Math.max(0, x));
 }
 
-/** Near-ties resolve to the simpler curve — Occam's razor for growth rates. */
 export const TIE_TOLERANCE = 0.02;
 
 export interface FitOutcome {
@@ -103,7 +85,6 @@ export function fitComplexity(samples: BenchmarkSample[]): FitOutcome {
   const winner = contenders[0];
   const runnerUp = ranking.find((r) => r.cls !== winner.score.cls);
 
-  // Confidence blends absolute fit quality with the margin over the next class.
   const margin = runnerUp ? Math.abs(winner.score.r2 - runnerUp.r2) : 0.5;
   const confidence = clamp01(winner.score.r2 * 0.75 + Math.min(margin * 4, 1) * 0.25);
 
@@ -122,10 +103,6 @@ export function buildEmpiricalReport(samples: BenchmarkSample[], error?: string)
   return { samples, ranking, best, confidence };
 }
 
-/**
- * Predicted operation count at an arbitrary n, using the fitted coefficient.
- * Drives the "what happens at n = 1,000,000" projection in the UI.
- */
 export function project(fit: FitScore, n: number): number {
   const model = GROWTH_MODELS.find((m) => m.cls === fit.cls);
   if (!model) return NaN;

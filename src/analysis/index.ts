@@ -8,7 +8,6 @@ export { analyzeJs } from './staticJs';
 export { analyzePython } from './staticPy';
 export { compareComplexity, maxComplexity } from './staticJs';
 
-/** Run the right static analyzer for the language, stripping TS types first. */
 export function analyzeStatic(source: string, language: Language): StaticComplexity {
   if (language === 'python') return analyzePython(source);
   if (language === 'typescript') {

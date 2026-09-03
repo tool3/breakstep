@@ -65,7 +65,6 @@ describe('instrument', () => {
   it('rewrites a concise arrow body without breaking it', () => {
     const { code } = instrument(`const double = (x) => x * 2;`);
     expect(code).toContain(`(${OP_FN}(),`);
-    // The rewritten arrow must still evaluate to the original expression.
     const fn = new Function(OP_FN, `${code}; return double(4);`);
     expect(fn(() => {})).toBe(8);
   });
@@ -147,7 +146,6 @@ describe('revivePython', () => {
   });
 
   it('restores a real cycle so a cyclic Python list renders as a cycle', () => {
-    // a -> b -> a, as `_encode` would emit it.
     const encoded = {
       __id__: 0,
       t: 'obj',
@@ -169,7 +167,6 @@ describe('revivePython', () => {
     expect(second.val).toBe(2);
     expect(second.next).toBe(revived);
 
-    // And the normalizer must see it as a cycle rather than recursing forever.
     const view = normalize(revived) as LinkedListView;
     expect(view.kind).toBe('linkedList');
     expect(view.cyclic).toBe(true);

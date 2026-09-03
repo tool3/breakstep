@@ -3,7 +3,6 @@ import { act, renderHook } from '@testing-library/react';
 import { useDebugger } from './useDebugger';
 import type { DebugStep, FunctionInfo, StepKind } from '@/types/debug';
 
-/** A tiny recording: top level calls `outer`, which calls `inner`. */
 function make(): DebugStep[] {
   const at = (id: number, line: number, kind: StepKind, depth: number, fn?: string): DebugStep => ({
     id,
@@ -34,13 +33,6 @@ const FUNCTIONS: FunctionInfo[] = [
   { name: 'inner', qualified: 'Helper.inner', line: 4 },
 ];
 
-/**
- * A session that starts on the first step.
- *
- * The default no longer does that — pressing Debug runs to the first breakpoint,
- * the way F5 does everywhere — so the tests that walk from the top ask for the
- * every-line mode, which is exactly what that mode is for.
- */
 function setup() {
   const hook = renderHook(() => useDebugger());
   act(() => hook.result.current.setStepEveryLine(true));
@@ -48,7 +40,6 @@ function setup() {
   return hook;
 }
 
-/** A session started the way a user starts one: no breakpoints, no pauses. */
 function setupRunning(prepare?: (state: ReturnType<typeof useDebugger>) => void) {
   const hook = renderHook(() => useDebugger());
   if (prepare) act(() => prepare(hook.result.current));
@@ -84,16 +75,15 @@ describe('useDebugger', () => {
 
   it('runs a call to completion when stepping over', () => {
     const { result } = setup();
-    act(() => result.current.seek(2)); // inside outer, before the inner call
+    act(() => result.current.seek(2));
     act(() => result.current.run('stepOver'));
-    // Everything belonging to `inner` is skipped.
     expect(result.current.step?.line).toBe(6);
     expect(result.current.step?.depth).toBe(1);
   });
 
   it('finishes the current function when stepping out', () => {
     const { result } = setup();
-    act(() => result.current.seek(4)); // deep inside inner
+    act(() => result.current.seek(4));
     act(() => result.current.run('stepOut'));
     expect(result.current.step?.depth).toBeLessThan(2);
   });
@@ -138,7 +128,6 @@ describe('useDebugger', () => {
 
   it('matches a method switch against the bare name the run recorded', () => {
     const { result } = setup();
-    // The list says `Helper.inner`; the recording only ever saw `inner`.
     act(() => result.current.toggleFunction('Helper.inner'));
     act(() => result.current.run('continue'));
     expect(result.current.step?.fn).toBe('inner');
@@ -202,11 +191,6 @@ describe('useDebugger', () => {
   });
 });
 
-/**
- * The default behaviour, which is the whole point of the debugger being a
- * debugger: pressing Debug runs the program. It does not stop on line 1 and wait
- * to be driven.
- */
 describe('starting a session behaves like F5', () => {
   it('runs to the first breakpoint rather than the first line', () => {
     const { result } = setupRunning((state) => state.toggleBreakpoint(6));
@@ -218,7 +202,6 @@ describe('starting a session behaves like F5', () => {
     const { result } = setupRunning();
     expect(result.current.outcome).toBe('completed');
     expect(result.current.index).toBe(8);
-    // The recording is intact, so the way out of a completed run is backwards.
     expect(result.current.active).toBe(true);
     act(() => result.current.run('stepBack'));
     expect(result.current.index).toBe(7);
@@ -241,7 +224,6 @@ describe('starting a session behaves like F5', () => {
     const { result } = setupRunning((state) => state.toggleBreakpoint(2));
     expect(result.current.outcome).toBe('paused');
     act(() => result.current.run('continue'));
-    // Line 2 is hit twice — entry and exit — so the second continue is the end.
     act(() => result.current.run('continue'));
     expect(result.current.outcome).toBe('completed');
     expect(result.current.index).toBe(8);
@@ -250,14 +232,11 @@ describe('starting a session behaves like F5', () => {
 
 describe('conditional and disabled breakpoints', () => {
   it('stops only where the condition holds', () => {
-    // Every step records `i` as its own id, so this can only be true from 4 on.
     const { result } = setupRunning((state) => {
       state.toggleBreakpoint(4);
       state.setBreakpointCondition(4, 'i > 3');
     });
 
-    // Line 4 is reached at index 3 (i = 3) and index 5 (i = 5); only the second
-    // satisfies the condition.
     expect(result.current.index).toBe(5);
   });
 

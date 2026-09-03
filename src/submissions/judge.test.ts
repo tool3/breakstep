@@ -1,14 +1,3 @@
-/**
- * The judge has to be right about every problem, or the verdict is worse than
- * no verdict at all.
- *
- * The load-bearing test is the first one: every written problem's own solution,
- * run through the generated harness and graded against the cases LeetCode
- * publishes. It covers the parts most likely to break quietly — a renamed
- * function, a tree rebuilt wrongly, an in-place problem judged on its return
- * value instead of its argument — because any of those turn an accepted answer
- * into a wrong one, which is the failure a learner would trust and be misled by.
- */
 import { describe, expect, it } from 'vitest';
 import {
   buildJudgePlan,
@@ -31,7 +20,6 @@ import type { RunResult } from '@/types';
 
 const OPTS = { opLimit: 20_000_000, frameLimit: 10, autoTrace: false };
 
-/** Run a source the way a submission runs it, and shape the result like the app's. */
 async function runTs(source: string): Promise<RunResult> {
   const compiled = toRunnableJs(source, 'typescript');
   expect(compiled.ok, `${compiled.error} (line ${compiled.line})`).toBe(true);
@@ -39,7 +27,6 @@ async function runTs(source: string): Promise<RunResult> {
   return { ...res, status: res.error ? 'error' : 'done' } as RunResult;
 }
 
-/** Submit a source against a problem and get the verdict back. */
 async function submit(problem: LeetProblem, source: string, override?: ProblemDetail) {
   const detail = override ?? (await loadDetail(problem.slug, problem.number));
   const plan = buildJudgePlan(problem, detail, 'typescript', source);
@@ -54,7 +41,6 @@ describe('judging a written problem', () => {
     async (_slug, problem) => {
       const { plan, judgement } = await submit(problem, problem.typescript.solution);
 
-      // Judged by calling the function, not by reading the console.
       expect(plan.kind).toBe('cases');
       expect(judgement.error).toBeUndefined();
       expect(
@@ -76,15 +62,12 @@ describe('judging a written problem', () => {
 
     expect(judgement.verdict).toBe('wrong-answer');
     expect(judgement.passed).toBe(0);
-    // The failing case says what was asked and what came back, in that order.
     expect(judgement.cases[0].label).toBe('numbers = [2,7,11,15], target = 9');
     expect(judgement.cases[0].expected).toBe('[1,2]');
     expect(judgement.cases[0].got).toBe('[]');
   });
 
   it('judges an in-place problem on the argument it mutated', async () => {
-    // `sortColors` returns nothing: LeetCode publishes the sorted array as the
-    // answer, so the harness has to read the argument back after the call.
     const problem = getProblem('sort-colors')!;
     const detail = await loadDetail(problem.slug, problem.number);
     expect(detail?.returns).toBe('void');
@@ -106,7 +89,6 @@ describe('judging a written problem', () => {
       'function isPalindrome(s: string): boolean { throw new Error("nope"); }',
     );
 
-    // Every case threw, but the run itself finished, so the cases carry it.
     expect(judgement.verdict).toBe('wrong-answer');
     expect(judgement.cases.every((c) => c.error === 'nope')).toBe(true);
   });
@@ -122,9 +104,6 @@ describe('judging a written problem', () => {
 
 describe('when the published interface is not the signature', () => {
   it('judges Clone Graph on its output, and says that is what it did', async () => {
-    // LeetCode declares `cloneGraph(edges: integer[][]) -> boolean`, which is its
-    // judge's shim: the function you write takes a node. Every call throws, so
-    // the verdict comes from the output the file itself produced.
     const problem = getProblem('clone-graph')!;
     const { judgement } = await submit(problem, problem.typescript.solution);
 
@@ -144,7 +123,6 @@ describe('when the published interface is not the signature', () => {
   });
 
   it('calls the function the file actually defines', async () => {
-    // Written out here as `searchRotated`; LeetCode calls it `search`.
     const problem = getProblem('search-in-rotated-sorted-array')!;
     const { plan, judgement } = await submit(problem, problem.typescript.solution);
 
@@ -229,7 +207,6 @@ describe('the harness itself', () => {
       result.logs.filter((l) => !l.text.includes(JUDGE_SENTINEL)),
     );
 
-    // What is left is exactly what the file itself printed.
     expect(withoutJudgeLine(result.logs).map((l) => l.text)).toEqual(problem.expectedOutput);
   });
 
@@ -247,7 +224,6 @@ describe('the harness itself', () => {
     expect(plan.kind).toBe('cases');
     if (plan.kind !== 'cases') return;
 
-    // Snake case for the call, its own tree builder, and one def per case.
     expect(plan.harness).toContain('max_depth(__a0)');
     expect(plan.harness).toContain('__bs_to_tree(');
     expect(plan.harness).toContain('def __bs_case_0():');
@@ -267,8 +243,6 @@ describe('the harness itself', () => {
   });
 
   it('will not grade Python against a TypeScript driver expectation', () => {
-    // The two languages print values differently, so the stored expectation is
-    // not something a Python run can be held to.
     const problem = getProblem('two-sum-ii-input-array-is-sorted')!;
     expect(buildJudgePlan(problem, null, 'python', problem.python.solution).kind).toBe('none');
   });

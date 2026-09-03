@@ -30,25 +30,18 @@ interface Props {
   status: RunStatus;
   analyzing: boolean;
   isDirty: boolean;
-  /** False when there is no `breakstep.*` variant of this template to show. */
   hasInstrumented: boolean;
   theme: ThemeName;
   layout: LayoutMode;
   onOpenTemplates: () => void;
-  /** Open the LeetCode problem drawer. */
   onOpenProblems: () => void;
   onLanguage: (language: Language) => void;
   onMode: (mode: EditorMode) => void;
   onRun: () => void;
-  /** Judge the buffer against the problem's published examples and record it. */
   onSubmit: () => void;
-  /** False when no problem is open, so there is nothing to be judged against. */
   canSubmit: boolean;
-  /** True while a submission is being judged. */
   judging: boolean;
-  /** Record a run and hand it to the debugger. */
   onDebug: () => void;
-  /** True while a recording is loaded and the debugger owns the panel. */
   debugging: boolean;
   onAnalyze: () => void;
   onCancel: () => void;
@@ -112,10 +105,6 @@ export function Header({
       ? 'Hide the breakstep.* API and go back to plain code'
       : 'Show the breakstep.* API calls that drive the visualizer';
 
-  /**
-   * Everything that does not fit on a phone lives here. Nothing is dropped —
-   * the controls move rather than disappear, so no device loses a feature.
-   */
   const overflowItems: MenuProps['items'] = [
     {
       key: 'language',
@@ -306,8 +295,6 @@ export function Header({
                 icon={analyzing ? <LoadingOutlined /> : <ExperimentOutlined />}
                 onClick={onAnalyze}
                 disabled={busy || analyzing}
-                // antd icons carry their own aria-label, which would otherwise
-                // be prepended to every button's accessible name.
                 aria-label="Analyze"
               >
                 <span className={styles.analyzeLabel}>Analyze</span>
@@ -323,9 +310,6 @@ export function Header({
         ) : (
           <Tooltip title={compact ? 'Run' : `Run (${runShortcut})`}>
             <Button
-              // Submit takes the primary weight when it is there to take it:
-              // with a problem open, submitting is the action being worked
-              // towards. Without one, Run is still the point of the app.
               type={canSubmit && !compact ? 'default' : 'primary'}
               icon={<CaretRightOutlined />}
               onClick={onRun}
@@ -366,7 +350,6 @@ export function Header({
   );
 }
 
-/** Small badge above the editor explaining the current mode. */
 export function ModeBadge({
   mode,
   compact,
@@ -374,7 +357,6 @@ export function ModeBadge({
 }: {
   mode: EditorMode;
   compact?: boolean;
-  /** With no variant to show, the badge must not claim there is one. */
   hasInstrumented?: boolean;
 }) {
   const clean = mode === 'clean' || !hasInstrumented;

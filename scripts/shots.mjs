@@ -1,7 +1,3 @@
-/**
- * Capture screenshots of each panel for visual review.
- * Usage: node scripts/shots.mjs [templateId ...]
- */
 import { chromium } from 'playwright';
 import { preview } from 'vite';
 import { mkdirSync } from 'node:fs';
@@ -20,7 +16,6 @@ const page = await browser.newPage({ viewport: { width: 1600, height: 950 } });
 page.on('pageerror', (e) => console.log('PAGEERROR:', e.message));
 
 async function shot(name) {
-  // Park the pointer so hover tooltips do not appear in the capture.
   await page.mouse.move(10, 500);
   await page.waitForTimeout(700);
   await page.screenshot({ path: `${OUT}/${name}.png` });
@@ -30,8 +25,6 @@ async function shot(name) {
 async function pickTemplate(title) {
   await page.locator('button[aria-label^="Template:"]').click();
   await page.waitForTimeout(400);
-  // Scope to the drawer: the header button matches the same name and sits
-  // behind the modal mask.
   await page.locator('.ant-drawer').getByRole('button', { name: new RegExp(title) }).first().click();
   await page.waitForTimeout(800);
 }
@@ -73,15 +66,11 @@ for (const step of plan) {
   console.log(`▸ ${step.title}`);
   await pickTemplate(step.title);
   await runAndShow(step.tab);
-  // Land on a mid-run frame; the first is usually the boring initial state.
-  // Step a little way in from the start: the first frame is usually the empty
-  // initial state and the last is the finished one.
   await page.locator('[class*="VisualizerPanel"] [role="slider"]').first().click({ force: true });
   for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowLeft');
   await shot(step.name);
 }
 
-// Analysis panel on a template with an interesting curve.
 console.log('▸ Analyze panel');
 await pickTemplate('Sorting — Merge');
 await page.getByRole('button', { name: 'Analyze' }).click();
@@ -103,7 +92,6 @@ for (const [name, file] of [
   await page.getByRole('button', { name: 'Theme' }).click();
   await page.waitForTimeout(300);
   await page.getByText(name, { exact: true }).click();
-  // Monaco repaints its theme asynchronously; give it room before capturing.
   await page.waitForTimeout(1500);
   await shot(file);
 }

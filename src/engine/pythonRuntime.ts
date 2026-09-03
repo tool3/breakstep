@@ -1,19 +1,3 @@
-/**
- * Python-side runtime, shipped to Pyodide as source.
- *
- * Two things happen here that make Python a first-class citizen rather than a
- * bolt-on:
- *
- *  1. `_Instrumenter` rewrites the user's AST to bump an operation counter at
- *     every loop iteration and function call — the same measure the JS side
- *     uses, so complexity fits are comparable across languages. (The obvious
- *     alternative, `sys.settrace`, is 10–50× slower and would make the
- *     benchmark sweep useless.)
- *  2. `_encode` serializes arbitrary Python values — including class instances
- *     and *cyclic* linked lists — into a JSON graph with explicit back
- *     references, which `revivePython` on the JS side turns back into real
- *     object cycles so shape detection works identically for both languages.
- */
 
 import { NO_BENCHMARK_MESSAGE } from './benchNotice';
 
@@ -568,10 +552,6 @@ def _breakstep_bench(source, params, sizes, op_limit):
     return json.dumps({"samples": samples})
 `;
 
-// ---------------------------------------------------------------------------
-// JS-side decoding
-// ---------------------------------------------------------------------------
-
 type Encoded =
   | null
   | boolean
@@ -588,14 +568,6 @@ function isRef(v: unknown): v is { __ref__: number } {
   return typeof v === 'object' && v !== null && '__ref__' in (v as object);
 }
 
-/**
- * Rebuild the Python value graph, restoring shared references and cycles.
- *
- * Two passes are required: shells are registered by id before their contents are
- * filled, so a node that points back at an ancestor resolves to the real object
- * rather than a copy. That is what lets a cyclic Python linked list render as a
- * cycle instead of recursing forever.
- */
 export function revivePython(encoded: unknown): unknown {
   const registry = new Map<number, unknown>();
   const fillQueue: (() => void)[] = [];
@@ -604,7 +576,6 @@ export function revivePython(encoded: unknown): unknown {
     if (node === null || typeof node !== 'object') return node;
     if (isRef(node)) {
       const id = node.__ref__;
-      // Resolved lazily: the target may not be built yet.
       return registry.has(id) ? registry.get(id) : { __pendingRef__: id };
     }
     if (!isEncodedNode(node)) return node;
@@ -622,8 +593,6 @@ export function revivePython(encoded: unknown): unknown {
 
     if (t === 'map') {
       const entries = (v as [unknown, unknown][]) ?? [];
-      // Python dicts with string keys map most naturally onto plain objects,
-      // which is what the shape detector expects for adjacency lists.
       const allStringKeys = entries.every(([k]) => typeof k === 'string');
       if (allStringKeys) {
         const shell: Record<string, unknown> = {};
@@ -653,10 +622,8 @@ export function revivePython(encoded: unknown): unknown {
 
   const root = build(encoded);
 
-  // Drain the queue; filling can enqueue more work as it descends.
   while (fillQueue.length) fillQueue.shift()!();
 
-  // Second sweep resolves refs that pointed forward at build time.
   const seen = new Set<unknown>();
   const patch = (value: unknown): unknown => {
     if (value === null || typeof value !== 'object') return value;

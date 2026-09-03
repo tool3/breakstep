@@ -1,23 +1,11 @@
 import type { PatternId } from './types';
 
-/**
- * LeetCode's topic tags, mapped onto what Breakstep can actually teach.
- *
- * This is what makes the full index worth having: for any of the four thousand
- * problems, the recommendation comes from the tags the site itself assigns,
- * not from guessing at words in the slug.
- */
-
 interface TagRule {
-  /** The technique this tag points at. */
   pattern: PatternId;
-  /** Higher wins. A tag naming the technique outright beats a hint. */
   weight: number;
 }
 
-/** Tag → technique. A tag may point at more than one. */
 const TAG_PATTERNS: Record<string, TagRule[]> = {
-  // The tag *is* the technique.
   'two-pointers': [{ pattern: 'two-pointers', weight: 10 }],
   'sliding-window': [{ pattern: 'sliding-window', weight: 10 }],
   'binary-search': [{ pattern: 'binary-search', weight: 10 }],
@@ -27,7 +15,6 @@ const TAG_PATTERNS: Record<string, TagRule[]> = {
   recursion: [{ pattern: 'recursion', weight: 10 }],
   backtracking: [{ pattern: 'backtracking', weight: 10 }],
 
-  // Tags that imply a technique without naming it.
   'divide-and-conquer': [
     { pattern: 'recursion', weight: 6 },
     { pattern: 'binary-search', weight: 3 },
@@ -75,12 +62,6 @@ const TAG_PATTERNS: Record<string, TagRule[]> = {
   combinatorics: [{ pattern: 'backtracking', weight: 3 }],
 };
 
-/**
- * Tags that describe the *input*, not a technique.
- *
- * Reporting "Breakstep has no template for array" would be noise: there is
- * nothing to have a template for.
- */
 const DESCRIPTIVE = new Set([
   'array',
   'string',
@@ -100,7 +81,6 @@ const DESCRIPTIVE = new Set([
   'brainteaser',
 ]);
 
-/** Tag → the data-structure template that teaches it. */
 const TAG_STRUCTURES: Record<string, string> = {
   stack: 'stack',
   'monotonic-stack': 'stack',
@@ -118,17 +98,13 @@ const TAG_STRUCTURES: Record<string, string> = {
   'topological-sort': 'dag',
 };
 
-/** How a tag reads in prose. */
 export function tagLabel(tag: string): string {
   return tag.replace(/-/g, ' ');
 }
 
 export interface TopicVerdict {
-  /** Techniques, best first, with the tags that argued for each. */
   ranked: { pattern: PatternId; score: number; from: string[] }[];
-  /** Structure templates worth opening alongside. */
   structures: string[];
-  /** Tags Breakstep has nothing for — named rather than quietly dropped. */
   unmapped: string[];
 }
 
@@ -144,8 +120,6 @@ export function readTopics(topics: string[]): TopicVerdict {
     if (structure && !structures.includes(structure)) structures.push(structure);
 
     if (!rules) {
-      // A tag that maps to a structure is still "covered", just not by a
-      // pattern; one that only describes the input is not a gap at all.
       if (!structure && !DESCRIPTIVE.has(tag)) unmapped.push(tag);
       continue;
     }

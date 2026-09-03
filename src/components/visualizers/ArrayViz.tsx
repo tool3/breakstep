@@ -3,13 +3,6 @@ import type { ArrayView } from '@/types/viz';
 import { Cell } from './Cell';
 import styles from './viz.module.scss';
 
-/**
- * Arrays, stacks, queues and deques all render from this one view.
- *
- * A stack is drawn as a vertical column with the top at the top; a queue keeps
- * the horizontal axis but labels the ends, because "which end do I take from"
- * is the only thing that distinguishes them.
- */
 export const ArrayViz = memo(function ArrayViz({ view }: { view: ArrayView }) {
   const { items, pointers, variant = 'array', showIndices } = view;
   const isStack = variant === 'stack';

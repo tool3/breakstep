@@ -1,7 +1,5 @@
 import type { LeetProblem } from '../types';
 
-// --- 133 · Clone Graph -------------------------------------------------------
-
 const cloneHeader = {
   typescript: `class GraphNode {
   val: number;
@@ -200,8 +198,6 @@ ${cloneDriver.python}`,
   ],
 };
 
-// --- 207 · Course Schedule ---------------------------------------------------
-
 const courseDriver = {
   typescript: `
 // --- examples ---------------------------------------------------------------
@@ -335,8 +331,6 @@ ${courseDriver.python}`,
   expectedOutput: ['example 1 -> true', 'example 2 -> false', 'example 3 -> true'],
 };
 
-// --- 695 · Max Area of Island ------------------------------------------------
-
 const areaDriver = {
   typescript: `
 // --- examples ---------------------------------------------------------------
@@ -458,9 +452,6 @@ ${areaDriver.python}`,
   },
   expectedOutput: ['example 1 -> 6', 'example 2 -> 0', 'example 3 -> 3'],
 };
-
-
-// --- 543 · Diameter of Binary Tree -------------------------------------------
 
 const diameterDriver = {
   typescript: `
@@ -645,8 +636,6 @@ ${diameterDriver.python}`,
   },
   expectedOutput: ['example 1 -> 3', 'example 2 -> 1', 'example 3 -> 0'],
 };
-
-// --- 130 · Surrounded Regions ------------------------------------------------
 
 const surroundedDriver = {
   typescript: `

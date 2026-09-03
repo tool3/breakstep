@@ -1,30 +1,24 @@
 import type { EditorMode, Language, ParamValues, SourceSet, Template } from '@/types';
 import { stripTypes } from '@/engine/transpile';
 import { readParamsFromSource } from '@/engine/paramBinding';
+import { callsAtTopLevel } from '@/leetcode/entryCall';
 
-// --- Data structures --------------------------------------------------------
 import { doublyLinkedList, linkedList, queue, stack } from './structures/linear';
 import { maxHeap, minHeap, priorityQueue } from './structures/heaps';
 import { binarySearchTree, trie } from './structures/trees';
 import { hashMap } from './structures/maps';
 import { dag, graph } from './structures/graphs';
 
-// --- Patterns ---------------------------------------------------------------
 import { binarySearch, slidingWindow, sorting, twoPointers } from './patterns/arrays';
 import { bfs, dfs } from './patterns/graphs';
 import { backtracking, recursion } from './patterns/recursion';
 
-// --- Worked examples (the original catalogue, preserved) ---------------------
 import * as exampleArrays from './examples/arrays';
 import * as exampleLinear from './examples/linear';
 import * as exampleTrees from './examples/trees';
 import * as exampleGraphs from './examples/graphs';
 import * as exampleAdvanced from './examples/advanced';
 
-/**
- * The twelve classic structures. Each is a full implementation plus a driver
- * that exercises the whole API, so the output shows what every method returns.
- */
 export const STRUCTURE_TEMPLATES: Template[] = [
   stack,
   queue,
@@ -40,10 +34,6 @@ export const STRUCTURE_TEMPLATES: Template[] = [
   dag,
 ];
 
-/**
- * The eight classic techniques, each shown solving a named problem — a pattern
- * is only meaningful attached to something it is good at.
- */
 export const PATTERN_TEMPLATES: Template[] = [
   twoPointers,
   slidingWindow,
@@ -55,7 +45,6 @@ export const PATTERN_TEMPLATES: Template[] = [
   backtracking,
 ];
 
-/** The original catalogue, kept intact and still runnable. */
 export const EXAMPLE_TEMPLATES: Template[] = [
   exampleArrays.twoPointers,
   exampleArrays.slidingWindow,
@@ -83,7 +72,6 @@ export const TEMPLATES: Template[] = [
   ...SCRATCH_TEMPLATES,
 ];
 
-/** Category order in the picker; anything unlisted sorts to the end. */
 export const CATEGORY_ORDER = [
   'LeetCode',
   'Data structures',
@@ -94,12 +82,6 @@ export const CATEGORY_ORDER = [
 
 export const DEFAULT_TEMPLATE_ID = 'linked-list';
 
-/**
- * Templates added at runtime — currently the LeetCode problems, which only
- * exist once someone loads one. They behave exactly like built-in templates
- * from here on: the picker lists them, edits are stored per id, and Reset code
- * goes back to the starter.
- */
 const registered = new Map<string, Template>();
 
 export function registerTemplate(template: Template): Template {
@@ -107,7 +89,6 @@ export function registerTemplate(template: Template): Template {
   return template;
 }
 
-/** Every template, built-in and registered, in picker order. */
 export function allTemplates(): Template[] {
   return [...TEMPLATES, ...registered.values()];
 }
@@ -116,7 +97,6 @@ export function getTemplate(id: string): Template {
   return TEMPLATES.find((t) => t.id === id) ?? registered.get(id) ?? TEMPLATES[0];
 }
 
-/** Category → templates, preserving the declaration order within each group. */
 export function templatesByCategory(): { category: string; items: Template[] }[] {
   const groups = new Map<string, Template[]>();
   for (const t of allTemplates()) {
@@ -134,10 +114,6 @@ export function templatesByCategory(): { category: string; items: Template[] }[]
     .sort((a, b) => rank(a.category) - rank(b.category));
 }
 
-/**
- * Pick a language out of a source set.
- * JavaScript is derived from TypeScript so the two can never drift apart.
- */
 function pick(set: SourceSet, language: Language): string {
   if (language === 'python') return set.python;
   if (language === 'javascript') {
@@ -148,7 +124,6 @@ function pick(set: SourceSet, language: Language): string {
   return set.typescript;
 }
 
-/** The source the editor shows for a template, in a given language and mode. */
 export function templateSource(
   template: Template,
   language: Language,
@@ -157,13 +132,6 @@ export function templateSource(
   return pick(mode === 'instrumented' ? template.instrumented : template.code, language);
 }
 
-/**
- * The benchmark harness appended when running the clean variant.
- *
- * Clean code contains no Breakstep API at all, so the Analyze tab would have nothing
- * to sweep. This is the one piece the runner adds on the user's behalf — and it
- * is right there in the instrumented view, not hidden.
- */
 export function templateBench(template: Template, language: Language): string {
   if (language === 'python') return template.bench.python;
   if (language === 'javascript') {
@@ -173,13 +141,32 @@ export function templateBench(template: Template, language: Language): string {
   return template.bench.typescript;
 }
 
-/** Marks the boundary between the user's code and the appended harness. */
 export const BENCH_BANNER = {
   typescript: '// ─── benchmark harness (added by Breakstep in clean mode) ───',
   python: '# --- benchmark harness (added by Breakstep in clean mode) ---',
 } as const;
 
-/** Assemble what actually executes: the editor buffer, plus the harness in clean mode. */
+function runHarness(expression: string, language: Language): string {
+  if (language === 'python') {
+    return [
+      '# --- run (Breakstep calls your solution with the values in the Parameters panel) ---',
+      `__bs_answer = ${expression}`,
+      'if __bs_answer is not None:',
+      "    print('->', __bs_answer)",
+    ].join('\n');
+  }
+
+  return [
+    '// ─── run (Breakstep calls your solution with the values in the Parameters panel) ───',
+    `const __bsAnswer = ${expression};`,
+    "if (__bsAnswer !== undefined) console.log('->', __bsAnswer);",
+  ].join('\n');
+}
+
+export function templateEntry(template: Template, language: Language) {
+  return template.entry?.[language === 'python' ? 'python' : 'typescript'] ?? null;
+}
+
 export function assembleRunnable(
   template: Template,
   language: Language,
@@ -188,20 +175,22 @@ export function assembleRunnable(
 ): string {
   if (mode === 'instrumented') return code;
 
-  const harness = templateBench(template, language);
-  if (!harness.trim()) return code;
+  let out = code;
 
-  const banner = language === 'python' ? BENCH_BANNER.python : BENCH_BANNER.typescript;
-  return `${code}\n\n${banner}\n${harness}`;
+  const entry = templateEntry(template, language);
+  if (entry && !callsAtTopLevel(code, entry.name, language)) {
+    out = `${out}\n\n${runHarness(entry.expression, language)}`;
+  }
+
+  const harness = templateBench(template, language);
+  if (harness.trim()) {
+    const banner = language === 'python' ? BENCH_BANNER.python : BENCH_BANNER.typescript;
+    out = `${out}\n\n${banner}\n${harness}`;
+  }
+
+  return out;
 }
 
-/**
- * Starting parameter values.
- *
- * In clean mode the panel mirrors the literals in the source, so it is read
- * from the code rather than from the spec defaults — otherwise editing a
- * constant by hand would leave the sliders lying.
- */
 export function defaultParams(
   template: Template,
   language: Language = 'typescript',

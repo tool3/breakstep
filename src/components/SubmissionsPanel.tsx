@@ -15,22 +15,17 @@ import type { Submission, Verdict } from '@/submissions/types';
 import styles from './SubmissionsPanel.module.scss';
 
 interface Props {
-  /** The problem being solved, or null when an ordinary template is open. */
   problem: LeetProblem | null;
-  /** Attempts at this problem, newest first. */
   items: Submission[];
   loading: boolean;
-  /** True while a submission is in flight. */
   judging: boolean;
   onSubmit: () => void;
-  /** Put a past attempt's code back in the editor. */
   onRestore: (submission: Submission) => void;
   onRemove: (id: string) => void;
   onClear: () => void;
   onFindProblem: () => void;
 }
 
-/** How each verdict reads, in one place, so nothing describes it differently. */
 export const VERDICT: Record<Verdict, { label: string; tone: string; icon: ReactNode }> = {
   accepted: { label: 'Accepted', tone: 'pass', icon: <CheckCircleFilled /> },
   'wrong-answer': { label: 'Wrong answer', tone: 'fail', icon: <CloseCircleFilled /> },
@@ -38,12 +33,6 @@ export const VERDICT: Record<Verdict, { label: string; tone: string; icon: React
   unjudged: { label: 'Not judged', tone: 'unknown', icon: <QuestionCircleOutlined /> },
 };
 
-/**
- * The verdict as a single glyph, for tab labels and list rows.
- *
- * Shape as well as colour: a tick and a cross are still different marks in
- * greyscale, and roughly one reader in twelve needs them to be.
- */
 export function VerdictDot({ verdict, title }: { verdict: Verdict; title?: string }) {
   const meta = VERDICT[verdict];
   return (
@@ -58,12 +47,6 @@ export function VerdictDot({ verdict, title }: { verdict: Verdict; title?: strin
   );
 }
 
-/**
- * `4.0 µs`, `0.42 ms`, `13 ms` — precision where it means something, no further.
- *
- * Three calls on an example-sized input really can land under ten microseconds,
- * and `<0.01 ms` tells you nothing about which of two solutions was quicker.
- */
 export function formatMs(ms: number): string {
   if (!Number.isFinite(ms) || ms < 0) return '—';
   if (ms === 0) return '0 ms';
@@ -80,7 +63,6 @@ const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ['day', 86_400_000],
 ];
 
-/** `just now`, `4 min ago`, then the date once it stops being recent. */
 export function formatWhen(iso: string, now = Date.now()): string {
   const then = Date.parse(iso);
   if (Number.isNaN(then)) return iso;
@@ -118,14 +100,6 @@ function Metric({ label, value, title }: { label: string; value: string; title?:
   );
 }
 
-/**
- * What happened when you submitted, and what happened every time before.
- *
- * A verdict is only worth something if you can see what it was decided on, so
- * the cases are here in full — the call, the published answer, and what the code
- * actually returned. The history below it is the record of the problem, and any
- * row can be put back in the editor.
- */
 export function SubmissionsPanel({
   problem,
   items,
@@ -137,7 +111,6 @@ export function SubmissionsPanel({
   onClear,
   onFindProblem,
 }: Props) {
-  /** Which attempt the detail is showing. Defaults to the newest. */
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = items.find((item) => item.id === selectedId) ?? items[0] ?? null;
 

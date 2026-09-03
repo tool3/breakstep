@@ -72,7 +72,7 @@ describe('normalize — shape detection', () => {
     const c: Record<string, unknown> = { val: 3 };
     a.next = b;
     b.next = c;
-    c.next = b; // loops back
+    c.next = b;
 
     const view = normalize(a) as LinkedListView;
     expect(view.cyclic).toBe(true);
@@ -115,7 +115,6 @@ describe('normalize — shape detection', () => {
     const view = normalize({ a: ['b'], b: ['a', 'c'], c: ['b'] }) as GraphView;
     expect(view.kind).toBe('graph');
     expect(view.nodes.map((n) => n.id).sort()).toEqual(['a', 'b', 'c']);
-    // Mutual links collapse into undirected edges.
     expect(view.directed).toBe(false);
     expect(view.edges).toHaveLength(2);
   });
@@ -165,7 +164,6 @@ describe('normalize — shape detection', () => {
 
   it('falls back to a raw view for primitives', () => {
     expect(normalize(42)).toEqual({ kind: 'raw', value: 42 });
-    // A single character has no positions to point at, so it stays a value.
     expect(normalize('h')).toEqual({ kind: 'raw', value: 'h' });
   });
 });
@@ -320,7 +318,6 @@ describe('normalize — hand-written structure classes', () => {
     expect(view.kind).toBe('hashmap');
     expect(view.synthetic).toBe(false);
     expect(view.buckets).toHaveLength(4);
-    // Bucket 1 holds a genuine collision.
     expect(view.buckets[1].entries.map((e) => e.key)).toEqual(['a', 'q']);
     expect(view.buckets[3].entries[0].value).toBe(2);
   });

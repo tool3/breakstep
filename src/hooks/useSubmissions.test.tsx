@@ -53,7 +53,6 @@ describe('useSubmissions', () => {
     });
     expect(result.current.latest?.verdict).toBe('accepted');
     expect(result.current.items).toHaveLength(2);
-    // Solved is about every problem, not just this one, so the drawer can tick.
     expect(result.current.solved.has('two-sum')).toBe(true);
   });
 

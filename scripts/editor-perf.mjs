@@ -1,28 +1,3 @@
-/**
- * Measure how the editor feels: scrolling *and* typing.
- *
- * Monaco does not hand its scrolling to the compositor — it re-renders the
- * visible lines every frame — so editor options are per-frame costs, and the
- * only way to keep them honest is to measure them. This drives real wheel and
- * scrollbar-drag input in Chrome, records a DevTools trace, and reports the
- * gaps between committed frames along with where the time went.
- *
- * A 120 Hz display gives you 8.3 ms per frame, a 60 Hz one 16.7 ms.
- *
- * Typing is measured separately and matters more, because it is the one that
- * regressed: the app used to persist the buffer, re-read its bound literals and
- * re-render the whole tree on every keystroke, which put 35 ms of synchronous
- * work inside the input handler. Event Timing gives the two numbers that
- * describe it — how long the app blocked inside the handler, and how long the
- * keystroke took to reach the screen. Both are budgeted below, so that cost
- * cannot come back unnoticed.
- *
- * Usage:
- *   node scripts/editor-perf.mjs                 # production build, 1x CPU
- *   node scripts/editor-perf.mjs --throttle 6    # simulate a slower machine
- *   node scripts/editor-perf.mjs --dev           # against the dev server
- *   node scripts/editor-perf.mjs --headless      # no window (no frame data)
- */
 import { chromium } from 'playwright';
 import { createServer, preview } from 'vite';
 
@@ -32,52 +7,16 @@ const arg = (name, fallback) => {
 };
 
 const DEV = process.argv.includes('--dev');
-// Headed by default: a headless Chrome has no real compositor, so it never
-// commits frames and the numbers that matter here do not exist.
 const HEADLESS = process.argv.includes('--headless');
 const THROTTLE = Number(arg('--throttle', 1));
 const WIDTH = Number(arg('--width', 1600));
 const HEIGHT = Number(arg('--height', 1000));
 const DPR = Number(arg('--dpr', 2));
 
-/**
- * A 120 Hz budget, since that is the bar this is held to — scaled by the CPU
- * throttle, because the same work simply takes N times longer on a machine N
- * times slower. At 1x it is the real 8.3 ms.
- *
- * The verdict is on main-thread work per frame, not on the gaps between
- * committed frames: a gap only means the compositor had nothing new to show,
- * which happens whenever input arrives slower than the display refreshes. What
- * the app controls — and what makes scrolling stutter — is how long the main
- * thread blocks.
- */
 const BUDGET_MS = 8.3 * Math.max(1, THROTTLE);
 
-/**
- * Typing budgets, stated per unit of CPU throttling so one number holds on a
- * fast desktop and a simulated slow laptop alike.
- *
- * The handler budget is the strict one: it is almost entirely under the app's
- * control, and everything the app does there is work it chose to do on the
- * keystroke rather than after it. Latency includes Monaco tokenizing and
- * painting the line, which it must, so it gets more room.
- */
 const HANDLER_BUDGET_MS = 3 * Math.max(1, THROTTLE);
-/**
- * Keystroke-to-screen has a floor that has nothing to do with this app: a key
- * arriving just after a vsync waits up to 16.7 ms for the next 60 Hz frame, and
- * Event Timing rounds every duration up to a multiple of 8 ms. So 24 ms is what
- * "instant" measures as, and the budget is that floor plus room for Monaco to
- * tokenize and paint the line — which is the part that grows with throttling.
- */
 const LATENCY_FLOOR_MS = 24;
-/**
- * One extra 8 ms quantum of slack on top, because a budget set exactly at the
- * quantization boundary tests the quantizer rather than the app: a single
- * unlucky sample moves p95 by a whole step. The decisive number here is the
- * handler budget above, which is entirely the app's own work; this one is a
- * sanity check that the keystroke still reaches the screen promptly.
- */
 const LATENCY_BUDGET_MS = LATENCY_FLOOR_MS + 8 * (1 + Math.max(1, THROTTLE));
 
 let server;
@@ -104,7 +43,6 @@ const page = await browser.newPage({
 
 await page.goto(base, { waitUntil: 'networkidle' });
 await page.waitForSelector('.monaco-editor', { timeout: 60_000 });
-// Monaco paints its container before its text; wait for real content.
 await page.waitForFunction(
   () => (document.querySelector('.view-lines')?.textContent ?? '').length > 40,
   null,
@@ -126,8 +64,6 @@ async function record(action) {
     traceConfig: {
       includedCategories: [
         'devtools.timeline',
-        // Commit — the moment a frame is handed to the compositor — is only
-        // emitted under this category, and it is the frame signal that matters.
         'disabled-by-default-devtools.timeline',
       ],
     },
@@ -150,7 +86,6 @@ function summarise(label, events) {
   const gaps = commits.slice(1).map((t, i) => t - commits[i]).sort((a, b) => a - b);
   const at = (q) => gaps[Math.floor(gaps.length * q)] ?? 0;
 
-  // Main-thread tasks are what block a frame from being produced at all.
   const tasks = events
     .filter((e) => e.name === 'RunTask' && e.ph === 'X')
     .map((e) => e.dur / 1000)
@@ -175,7 +110,6 @@ function summarise(label, events) {
       `raster ${spent('RasterTask').toFixed(0)}ms`,
   );
 
-  // What the slowest main-thread task was actually doing — the thing to fix.
   if (process.argv.includes('--explain')) {
     const worstRun = events
       .filter((e) => e.name === 'RunTask' && e.ph === 'X')
@@ -202,11 +136,6 @@ function summarise(label, events) {
   return { blocking, worstTask, median: at(0.5) };
 }
 
-/**
- * Both phases run against a file big enough to be worth measuring: 1,200 lines,
- * pasted rather than typed, because typing it would trip Monaco's auto-indent
- * on every line and produce a runaway staircase instead of a document.
- */
 const BIG_FILE = Array.from(
   { length: 1200 },
   (_, i) =>
@@ -227,8 +156,6 @@ await page.waitForTimeout(3500);
 
 const box = await page.locator('.monaco-editor').first().boundingBox();
 
-// A warm-up pass: the first scroll tokenizes lines nothing has rendered yet,
-// which is real work but not what steady-state scrolling costs.
 await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
 for (let i = 0; i < 20; i++) {
   await page.mouse.wheel(0, 120);
@@ -277,14 +204,6 @@ if (slider) {
   console.log('  scrollbar drag — skipped, the file is too short to have a slider');
 }
 
-/**
- * Typing.
- *
- * Event Timing reports, per input event, how long the handlers ran and how long
- * it took the resulting frame to reach the screen — which is what "laggy" means
- * when someone says it. `durationThreshold: 0` is required: the default only
- * reports events slower than 104 ms, by which point the argument is over.
- */
 await page.evaluate(() => {
   window.__typing = [];
   new PerformanceObserver((list) => {
@@ -302,13 +221,9 @@ await page.evaluate(() => {
 
 await page.locator('.view-lines').first().click();
 await page.keyboard.press(process.platform === 'darwin' ? 'Meta+End' : 'Control+End');
-// Warm up: the first few characters pay for the caret's first trip through code
-// paths nothing has touched yet.
 await page.keyboard.type('  // warm', { delay: 30 });
 await page.evaluate(() => (window.__typing.length = 0));
 
-// Enough characters that p95 means something: at 8 ms granularity a short
-// sample lets one outlier decide the verdict.
 await page.keyboard.type(
   '  const measured = compute(values) + 1; // steady state, measured over a long enough line to be stable',
   { delay: 30 },

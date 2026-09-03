@@ -1,25 +1,14 @@
-/**
- * The submission history for the problem on screen.
- *
- * Every call goes through the async `SubmissionStore`, including the local one,
- * so this hook is already written the way it will need to be written when the
- * store is a service: nothing here assumes a read is instant.
- */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { submissionStore } from '@/submissions/store';
 import type { Submission, SubmissionDraft } from '@/submissions/types';
 
 export interface Submissions {
-  /** Attempts at the current problem, newest first. */
   items: Submission[];
-  /** The most recent attempt, which is what the verdict badge reads. */
   latest: Submission | null;
-  /** Every problem with at least one accepted attempt, for the solved ticks. */
   solved: Set<string>;
   loading: boolean;
   record: (draft: SubmissionDraft) => Promise<Submission>;
   remove: (id: string) => Promise<void>;
-  /** Forget every attempt at this problem. */
   clear: () => Promise<void>;
 }
 
@@ -28,7 +17,6 @@ export function useSubmissions(problemSlug: string | null): Submissions {
   const [solved, setSolved] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
 
-  /** Bumped per load, so a slow read for a problem you have left is discarded. */
   const generation = useRef(0);
 
   const refresh = useCallback(async () => {

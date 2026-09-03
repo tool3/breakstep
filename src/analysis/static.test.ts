@@ -42,8 +42,6 @@ describe('analyzeJs — loop nesting', () => {
   });
 
   it('composes cost across the call graph', () => {
-    // A loop calling a function that loops is quadratic, even though neither
-    // scope contains nested loops on its own.
     const r = analyzeJs(`
       function helper() { for (let i = 0; i < n; i++) work(); }
       for (let j = 0; j < n; j++) helper();

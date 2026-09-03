@@ -107,7 +107,6 @@ describe('ProblemPanel', () => {
 
     expect(screen.queryByRole('button', { name: /Reveal the solution/ })).not.toBeInTheDocument();
     expect(screen.getByText(/No solution to reveal/)).toBeInTheDocument();
-    // And it is honest about where the statement is.
     expect(screen.getByText('statement on LeetCode')).toBeInTheDocument();
     expect(screen.queryByText('Constraints')).not.toBeInTheDocument();
   });

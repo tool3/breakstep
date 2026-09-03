@@ -3,24 +3,6 @@ import type { LinkedListView } from '@/types/viz';
 import { Cell } from './Cell';
 import styles from './viz.module.scss';
 
-/**
- * Singly and doubly linked lists.
- *
- * The interesting case is a cycle: the normalizer stops traversal and flags it,
- * and here the final connector becomes a labelled loop-back rather than a
- * terminator, so Floyd's algorithm has something real to point at.
- */
-/**
- * Anything sitting on the same line as the nodes: the connectors, and the
- * `head` and `null` captions at the ends.
- *
- * It mirrors a node's column exactly — an empty pointer row, an empty pointer
- * arrow, a body the same height as a cell, an empty index line — so its content
- * lands on the cell's centre by construction. The alternative, nudging each one
- * down by a hand-measured number of pixels, only held while nothing above or
- * below the cell changed, which is not true once pointers and indices come and
- * go.
- */
 function Rail({ children, hidden }: { children: ReactNode; hidden?: boolean }) {
   return (
     <div className={styles.slot} aria-hidden={hidden}>

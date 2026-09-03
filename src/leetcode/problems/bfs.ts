@@ -1,7 +1,5 @@
 import type { LeetProblem } from '../types';
 
-// --- 102 · Binary Tree Level Order Traversal ---------------------------------
-
 const levelHeader = {
   typescript: `class TreeNode {
   val: number;
@@ -191,8 +189,6 @@ ${levelDriver.python}`,
   ],
 };
 
-// --- 994 · Rotting Oranges ---------------------------------------------------
-
 const orangesDriver = {
   typescript: `
 // --- examples ---------------------------------------------------------------
@@ -331,8 +327,6 @@ ${orangesDriver.python}`,
   },
   expectedOutput: ['example 1 -> 4', 'example 2 -> -1', 'example 3 -> 0'],
 };
-
-// --- 200 · Number of Islands -------------------------------------------------
 
 const islandsDriver = {
   typescript: `
@@ -477,9 +471,6 @@ ${islandsDriver.python}`,
   },
   expectedOutput: ['example 1 -> 1', 'example 2 -> 3', 'example 3 -> 0'],
 };
-
-
-// --- 199 · Binary Tree Right Side View ---------------------------------------
 
 const rightViewDriver = {
   typescript: `
@@ -666,8 +657,6 @@ ${rightViewDriver.python}`,
   },
   expectedOutput: ['example 1 -> [1, 3, 4]', 'example 2 -> [1, 3]', 'example 3 -> []'],
 };
-
-// --- 542 · 01 Matrix ---------------------------------------------------------
 
 const zeroOneDriver = {
   typescript: `

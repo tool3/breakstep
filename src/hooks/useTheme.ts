@@ -3,14 +3,6 @@ import { useLocalStorage } from './useLocalStorage';
 
 export type ThemeName = 'graphite' | 'midnight' | 'light';
 
-/**
- * The handful of colours Ant Design needs as JavaScript values.
- *
- * Everything else comes from the CSS custom properties in `global.scss`, but
- * antd's config is built before paint and renders into portals, so it cannot
- * read them. Keep these in step with the matching block there — they are the
- * same palette, said twice because two consumers need it in two forms.
- */
 export interface AntdTokens {
   bg: string;
   container: string;
@@ -31,7 +23,6 @@ export interface ThemeDefinition {
   value: ThemeName;
   label: string;
   hint: string;
-  /** Drives the browser UI colour and the initial paint. */
   chrome: string;
   dark: boolean;
   antd: AntdTokens;
@@ -106,13 +97,6 @@ export const THEMES: ThemeDefinition[] = [
   },
 ];
 
-/**
- * Graphite is the default.
- *
- * Near-black looks striking in a screenshot and is tiring to read for an hour;
- * a lighter charcoal with softened near-white text holds contrast without the
- * glare. Midnight is still there for anyone who prefers it.
- */
 export const DEFAULT_THEME: ThemeName = 'graphite';
 
 export function isDarkTheme(theme: ThemeName): boolean {
@@ -123,11 +107,6 @@ export function themeDefinition(theme: ThemeName): ThemeDefinition {
   return THEMES.find((t) => t.value === theme) ?? THEMES[0];
 }
 
-/**
- * Theme lives on `<html data-theme>` so the CSS custom properties in
- * `global.scss` switch without a re-render cascade, and so the initial paint
- * (set in `index.html`) never flashes.
- */
 export function useTheme(): {
   theme: ThemeName;
   setTheme: (t: ThemeName) => void;
@@ -136,9 +115,6 @@ export function useTheme(): {
 } {
   const [theme, setTheme] = useLocalStorage<ThemeName>('theme', DEFAULT_THEME);
 
-  // Themes that no longer exist — an early build's 'dark', and 'slate', which
-  // Graphite replaced — resolve to the default rather than leaving the app with
-  // no tokens at all.
   const resolved: ThemeName = THEMES.some((t) => t.value === theme) ? theme : DEFAULT_THEME;
 
   useEffect(() => {
@@ -148,7 +124,6 @@ export function useTheme(): {
       ?.setAttribute('content', themeDefinition(resolved).chrome);
   }, [resolved]);
 
-  /** Quick swap between the current dark theme and light, for the header button. */
   const toggle = useCallback(() => {
     setTheme((prev) => (isDarkTheme(prev as ThemeName) ? 'light' : DEFAULT_THEME));
   }, [setTheme]);

@@ -1,7 +1,5 @@
 import type { LeetProblem } from '../types';
 
-// --- 704 · Binary Search -----------------------------------------------------
-
 const searchDriver = {
   typescript: `
 // --- examples ---------------------------------------------------------------
@@ -110,8 +108,6 @@ ${searchDriver.python}`,
   },
   expectedOutput: ['example 1 -> 4', 'example 2 -> -1', 'example 3 -> 0'],
 };
-
-// --- 33 · Search in Rotated Sorted Array -------------------------------------
 
 const rotatedDriver = {
   typescript: `
@@ -235,8 +231,6 @@ ${rotatedDriver.python}`,
   expectedOutput: ['example 1 -> 4', 'example 2 -> -1', 'example 3 -> -1'],
 };
 
-// --- 875 · Koko Eating Bananas -----------------------------------------------
-
 const kokoDriver = {
   typescript: `
 // --- examples ---------------------------------------------------------------
@@ -349,9 +343,6 @@ ${kokoDriver.python}`,
   expectedOutput: ['example 1 -> 4', 'example 2 -> 30', 'example 3 -> 23'],
 };
 
-
-// --- 153 · Find Minimum in Rotated Sorted Array ------------------------------
-
 const minRotatedDriver = {
   typescript: `
 // --- examples ---------------------------------------------------------------
@@ -454,8 +445,6 @@ ${minRotatedDriver.python}`,
   },
   expectedOutput: ['example 1 -> 1', 'example 2 -> 0', 'example 3 -> 11'],
 };
-
-// --- 74 · Search a 2D Matrix -------------------------------------------------
 
 const matrixDriver = {
   typescript: `

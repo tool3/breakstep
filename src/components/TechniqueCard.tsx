@@ -5,13 +5,6 @@ import { PATTERN_LABEL, type Technique } from '@/leetcode/types';
 import { getTemplate } from '@/templates';
 import styles from './TechniqueCard.module.scss';
 
-/**
- * One recommended technique, with the reason it fits and a way into the
- * template that teaches it.
- *
- * Shared by the finder drawer and the problem panel: the drawer needs it for
- * problems it cannot open, the panel for the one it did.
- */
 export function TechniqueCard({
   technique,
   onOpenTemplate,
@@ -48,7 +41,6 @@ export function TechniqueCard({
   );
 }
 
-/** The structures a problem's tags point at, as ways into their templates. */
 export function StructureLinks({
   structures,
   onOpenTemplate,
@@ -75,7 +67,6 @@ export function StructureLinks({
   );
 }
 
-/** Tags Breakstep has no template for — named rather than quietly dropped. */
 export function UnmappedTags({ tags }: { tags: string[] }) {
   if (tags.length === 0) return null;
 

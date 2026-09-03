@@ -100,8 +100,6 @@
   color: var(--breakstep-text-faint);
 }
 
-// --- Error block ------------------------------------------------------------
-
 .error {
   margin: $space-3;
   padding: $space-3;
@@ -167,8 +165,6 @@
     @include scrollbars;
   }
 }
-
-// --- Status bar -------------------------------------------------------------
 
 .status {
   display: flex;

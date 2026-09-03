@@ -8,8 +8,6 @@
   overscroll-behavior: contain;
 }
 
-// --- Paste a link ------------------------------------------------------------
-
 .searchRow {
   padding: $space-4;
   border-bottom: 1px solid var(--breakstep-border);
@@ -29,8 +27,6 @@
 .notice {
   padding: $space-3 $space-4 0;
 }
-
-// --- Sections ----------------------------------------------------------------
 
 .section {
   padding: $space-4;
@@ -61,8 +57,6 @@
   color: var(--breakstep-text-dim);
 }
 
-// --- Recommended techniques --------------------------------------------------
-
 .techniques {
   margin: 0;
   padding: 0;
@@ -78,7 +72,6 @@
   padding: $space-3;
   background: var(--breakstep-panel-alt);
 
-  // The first recommendation is the one to read; the rest are alternatives.
   &[data-rank='1'] {
     border-color: #{rgba(#5b8cff, 0.45)};
     background: var(--breakstep-accent-soft);
@@ -125,8 +118,6 @@
   font-size: 11px;
 }
 
-// --- The problem -------------------------------------------------------------
-
 .problemHead {
   display: flex;
   align-items: center;
@@ -167,8 +158,6 @@
   border: 1px solid var(--breakstep-border);
   color: var(--breakstep-text-faint);
 }
-
-// --- Examples ----------------------------------------------------------------
 
 .examples,
 .constraints {
@@ -228,8 +217,6 @@
   color: var(--breakstep-text-dim);
 }
 
-// --- Actions -----------------------------------------------------------------
-
 .actions {
   display: flex;
   align-items: center;
@@ -244,8 +231,6 @@
   @include mono(10px);
   color: var(--breakstep-text-faint);
 }
-
-// --- Browse ------------------------------------------------------------------
 
 .group {
   display: flex;
@@ -320,8 +305,6 @@
   flex-shrink: 0;
 }
 
-// --- Narrow ------------------------------------------------------------------
-
 @include below(480px) {
   .searchRow,
   .section,
@@ -333,8 +316,6 @@
     flex: 1;
   }
 }
-
-// --- Structures and unmapped tags -------------------------------------------
 
 .structures {
   display: flex;
@@ -369,7 +350,6 @@
   }
 }
 
-/** Shown in place of the reveal button for a problem assembled from metadata. */
 .noSolution {
   @include mono(10px);
   color: var(--breakstep-text-faint);
@@ -378,7 +358,6 @@
   min-width: 140px;
 }
 
-/** Says what a click in the list below will do. */
 .headingHint {
   @include mono(9px);
   text-transform: none;
@@ -387,7 +366,6 @@
   margin-left: auto;
 }
 
-/// An accepted submission, on the row of the problem it accepted.
 .solved {
   color: var(--breakstep-mint);
   font-size: 12px;

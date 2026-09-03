@@ -12,19 +12,11 @@ import styles from './ProblemDrawer.module.scss';
 
 interface Props {
   open: boolean;
-  /** The problem currently loaded in the editor, if any. */
   currentSlug: string | null;
-  /** Problems with an accepted submission, marked so the list shows progress. */
   solvedSlugs?: Set<string>;
   compact?: boolean;
   onClose: () => void;
-  /**
-   * Open a problem in the editor. Everything about a loaded problem — its
-   * statement, its examples, revealing the solution — lives in the problem
-   * panel, so this drawer only has to find one and hand it over.
-   */
   onLoad: (problem: LeetProblem) => void;
-  /** Open a pattern or structure template by id. */
   onOpenTemplate: (templateId: string) => void;
 }
 
@@ -42,15 +34,10 @@ export function ProblemDrawer({
   const [input, setInput] = useState('');
   const [submitted, setSubmitted] = useState('');
   const [index, setIndex] = useState<ProblemIndex | null>(null);
-  // Assembled from LeetCode's published interface when a problem is not one of
-  // the ones written out here. Null while it loads, and for problems that have
-  // nothing runnable to build from.
   const [generated, setGenerated] = useState<LeetProblem | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [runnable, setRunnable] = useState(0);
 
-  // ~300 kB of metadata, so it is fetched the first time the drawer opens and
-  // never at all for someone who does not use this feature.
   useEffect(() => {
     if (!open || index) return;
     let live = true;
@@ -59,7 +46,6 @@ export function ProblemDrawer({
         if (live) setIndex(loaded);
       })
       .catch(() => {
-        /* the keyword fallback still works without it */
       });
     void detailCount().then((count) => {
       if (live) setRunnable(count);
@@ -74,8 +60,6 @@ export function ProblemDrawer({
     [submitted, index],
   );
 
-  // A problem Breakstep knows of but does not carry: fetch its shard and build
-  // something runnable out of the interface LeetCode publishes.
   useEffect(() => {
     setGenerated(null);
     const indexedProblem = result?.indexed;
@@ -98,23 +82,8 @@ export function ProblemDrawer({
     };
   }, [result]);
 
-  // Written out here, or assembled from what LeetCode publishes — either way,
-  // something that can be opened.
   const openable = result?.problem ?? generated ?? null;
 
-  /*
-   * Finding a problem and opening it are the same action.
-   *
-   * Pressing Find used to leave you on a summary with a Load button, which is
-   * the same two-step-behind-a-one-step-affordance the list rows had. A problem
-   * that can be opened is opened, and the problem panel takes it from there;
-   * the drawer only has to say something when it *cannot* open one.
-   *
-   * Guarded on the slug and read through refs, because it must fire once per
-   * problem found — not once per render. Depending on the callbacks directly
-   * re-ran it whenever the parent re-rendered, which quietly reloaded the
-   * starter over a solution someone had just revealed.
-   */
   const openedRef = useRef<string | null>(null);
   const loadRef = useRef(onLoad);
   loadRef.current = onLoad;
@@ -128,7 +97,6 @@ export function ProblemDrawer({
     closeRef.current();
   }, [openable]);
 
-  /** How many of the written problems have an accepted submission. */
   const solved = PROBLEMS.reduce((count, p) => count + (solvedSlugs?.has(p.slug) ? 1 : 0), 0);
 
   const techniques = result?.techniques ?? [];
@@ -138,7 +106,6 @@ export function ProblemDrawer({
     : null;
 
   const submit = (value: string) => {
-    // A fresh search may well be for the problem already open; let it reopen.
     openedRef.current = null;
     setSubmitted(value);
   };
@@ -191,8 +158,7 @@ export function ProblemDrawer({
                 result.source === 'unrecognised'
                   ? 'That link was not a problem link'
                   : result.source === 'indexed'
-                    ? // A problem that can be opened has been; this branch is
-                      // only ever the ones that cannot.
+                    ?
                       loadingDetail
                       ? 'Looking it up…'
                       : 'Breakstep knows this problem, but cannot open it'
@@ -317,9 +283,6 @@ export function ProblemDrawer({
                       className={styles.groupItem}
                       aria-current={p.slug === currentSlug}
                       data-active={p.slug === currentSlug}
-                      // Clicking a problem opens it, which is what the row
-                      // looks like it does. Everything about it then lives in
-                      // the problem panel, beside the code.
                       onClick={() => {
                         setSubmitted('');
                         onLoad(p);

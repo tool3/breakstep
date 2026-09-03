@@ -9,7 +9,6 @@ import type { TreeNode, VizKind } from '@/types/viz';
 describe('string strips', () => {
   it('gives whitespace a visible stand-in', () => {
     render(<Visualizer view={normalize('a b')} />);
-    // The middle cell is a space; an empty box reads as missing data.
     expect(screen.getByText('·')).toBeInTheDocument();
     expect(screen.getByRole('gridcell', { name: /index 1: space/ })).toBeInTheDocument();
   });
@@ -129,7 +128,6 @@ describe('TreeViz', () => {
       right: { value: 8, left: null, right: null },
     };
     const { container } = render(<Visualizer view={normalize(tree)} />);
-    // The node label and the summary line both say "5"; scope to the SVG.
     const labels = [...container.querySelectorAll('svg text')].map((t) => t.textContent);
     expect(labels).toEqual(expect.arrayContaining(['5', '3', '8']));
     expect(screen.getByText('3 nodes · height 2')).toBeInTheDocument();
@@ -207,10 +205,6 @@ describe('RawViz', () => {
     expect(screen.getByText(/"a": 1/)).toBeInTheDocument();
   });
 });
-
-// ---------------------------------------------------------------------------
-// Layout maths
-// ---------------------------------------------------------------------------
 
 describe('layoutTree', () => {
   const leaf = (id: string, value: number): TreeNode => ({ id, value, children: [null, null] });

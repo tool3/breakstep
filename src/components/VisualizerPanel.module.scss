@@ -12,7 +12,6 @@
   display: flex;
   flex-direction: column;
   @include scrollbars;
-  // Momentum scrolling, and no rubber-banding the whole page behind it.
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
 }
@@ -84,8 +83,6 @@
   flex-wrap: wrap;
 }
 
-// Below this the buttons and the scrubber cannot share a row without the
-// scrubber shrinking to nothing, so it takes a line of its own.
 @include below(560px) {
   .controls {
     padding: $space-2;
@@ -174,7 +171,6 @@
   }
 }
 
-// A phone in landscape has no room for a colour key on top of everything else.
 @media (max-height: 460px) {
   .legend {
     display: none;
@@ -196,7 +192,6 @@
   border: 1px solid;
 }
 
-/** Shown while the debugger owns the transport. */
 .following {
   @include mono(9px);
   text-transform: uppercase;

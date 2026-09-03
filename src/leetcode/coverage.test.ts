@@ -5,10 +5,6 @@ import { loadProblemIndex } from './problemIndex';
 import { PROBLEMS } from './catalogue';
 import type { ProblemDetail } from './details';
 
-/**
- * Every shard, eagerly — the app loads one at a time, but a coverage check has
- * to see all of them.
- */
 const SHARDS = import.meta.glob<Record<string, ProblemDetail>>('./details/*.json', {
   import: 'default',
   eager: true,
@@ -27,16 +23,10 @@ describe('runnable coverage', () => {
 
   it('can scaffold all but a handful of them', () => {
     const scaffoldable = everyDetail.filter(([, detail]) => canGenerate(detail));
-    // The rest are in-place problems with nothing to print, or take a type with
-    // no literal form. If this ratio slips, the generator has regressed.
     expect(scaffoldable.length / everyDetail.length).toBeGreaterThan(0.98);
   });
 
   it('never stores a statement, only the data around it', () => {
-    // Sniffing the values for prose does not work — `tag-validator` takes HTML
-    // as its input and `html-entity-parser` takes entities, both legitimately.
-    // The guarantee is structural instead, and stronger for it: the shape has
-    // nowhere to put a statement, so none can be stored by accident.
     for (const [slug, detail] of everyDetail) {
       expect(Object.keys(detail).sort(), slug).toEqual(['cases', 'fn', 'params', 'returns']);
       for (const testCase of detail.cases) {
@@ -49,7 +39,6 @@ describe('runnable coverage', () => {
     for (const [slug] of everyDetail) {
       const entry = index.get(slug);
       expect(entry, slug).toBeDefined();
-      // Premium problems publish nothing, so none should have been taken.
       expect(entry!.paidOnly, slug).toBe(false);
     }
   });
@@ -82,8 +71,6 @@ describe('runnable coverage', () => {
   });
 
   it('lets a hand-written problem win over its generated version', () => {
-    // Both exist for these; the catalogue is the better answer and must be
-    // what the recommender reaches for first.
     for (const written of PROBLEMS) {
       const entry = index.get(written.slug);
       expect(entry, written.slug).toBeDefined();

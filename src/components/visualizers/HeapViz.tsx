@@ -5,11 +5,6 @@ import { Cell, nodeStateClass } from './Cell';
 import { formatValue } from './format';
 import styles from './viz.module.scss';
 
-/**
- * A heap is one structure with two faces: the flat array it actually is, and
- * the tree its index arithmetic implies. Showing both at once is the fastest
- * way to make `parent(i) = (i-1)/2` stop being a magic formula.
- */
 export const HeapViz = memo(function HeapViz({ view }: { view: HeapView }) {
   const { items, heapType } = view;
 

@@ -1,22 +1,3 @@
-/**
- * Static complexity estimation for JavaScript/TypeScript (post type-strip).
- *
- * Three ideas do most of the work here:
- *
- *  1. **Scopes, not one flat walk.** Each function and the program root is its
- *     own scope with its own loop-nesting budget.
- *  2. **Call composition.** A loop that calls a function containing another loop
- *     is quadratic. Cost propagates along the call graph, so putting the real
- *     work in `solve()` and calling it from the bottom of the file — which is
- *     how everybody actually writes code — is analyzed correctly.
- *  3. **Per-path recursion counting.** `fib(n-1) + fib(n-2)` branches twice, but
- *     `cond ? bs(lo, mid) : bs(mid, hi)` branches once. Counting call sites
- *     would call binary search O(n); counting the worst single execution path
- *     gets O(log n).
- *
- * It is still a heuristic. Every verdict carries its evidence and a confidence
- * score, and the empirical fitter is there to check its homework.
- */
 import type { ComplexityClass, StaticComplexity } from '@/types';
 import { parseJs, walkAst } from './instrument';
 
@@ -39,7 +20,6 @@ const FUNC_TYPES = new Set([
   'ArrowFunctionExpression',
 ]);
 
-/** Array methods whose callback iterates the receiver once. */
 const ITERATING_METHODS = new Set([
   'map',
   'filter',
@@ -116,11 +96,6 @@ function childNodes(node: AnyNode): AnyNode[] {
   return out;
 }
 
-// ---------------------------------------------------------------------------
-// Loop classification
-// ---------------------------------------------------------------------------
-
-/** `for (let i = 1; i < n; i *= 2)` and friends — logarithmic, not linear. */
 function isLogarithmicLoop(node: AnyNode, source: string): boolean {
   if (node.type === 'ForStatement' && node.update) {
     const text = src(source, node.update as AnyNode).replace(/\s/g, '');
@@ -128,7 +103,6 @@ function isLogarithmicLoop(node: AnyNode, source: string): boolean {
   }
   if (node.type === 'WhileStatement' || node.type === 'ForStatement') {
     const body = src(source, node);
-    // Binary-search shape: a midpoint recomputed each iteration.
     const hasMid = /\b(mid|middle|midpoint)\b\s*=/.test(body);
     const halves = /\/\s*2|>>\s*1/.test(body);
     const shrinks =
@@ -136,14 +110,12 @@ function isLogarithmicLoop(node: AnyNode, source: string): boolean {
         body,
       );
     if (hasMid && halves && shrinks) return true;
-    // `while (n > 0) n = Math.floor(n / 2)` — digit/bit walks.
     if (/(\w+)\s*=\s*(?:Math\.floor\()?\s*\1\s*\/\s*(?:2|10)/.test(body)) return true;
     if (/(\w+)\s*(?:>>>?=|\/=)\s*(?:1|2|10)/.test(body)) return true;
   }
   return false;
 }
 
-/** `for (let i = 0; i < 26; i++)` — bounded by a literal, so O(1). */
 function isConstantBoundLoop(node: AnyNode): boolean {
   if (node.type !== 'ForStatement' || !node.test) return false;
   const test = node.test as AnyNode;
@@ -175,18 +147,11 @@ function calleeName(node: AnyNode): string | null {
   return null;
 }
 
-// ---------------------------------------------------------------------------
-// Scopes
-// ---------------------------------------------------------------------------
-
 interface Scope {
   name: string;
-  /** Deepest loop nesting written directly in this scope. */
   ownLoopDepth: number;
   hasLogLoop: boolean;
-  /** Called functions, with the loop depth at the call site. */
   calls: { name: string; atDepth: number }[];
-  /** Worst-case self-calls along a single execution path. */
   pathSelfCalls: number;
   halving: boolean;
   memoized: boolean;
@@ -210,12 +175,6 @@ function functionName(node: AnyNode, parent: AnyNode | null): string | null {
   return null;
 }
 
-/**
- * Worst-case self-calls along one execution path.
- *
- * Branches take the max of their arms; everything else sums. This is the
- * difference between "binary search is O(log n)" and "binary search is O(n)".
- */
 function pathSelfCallCount(node: AnyNode, self: string, stopAtFunctions: boolean): number {
   const visit = (cur: AnyNode): number => {
     if (stopAtFunctions && cur !== node && FUNC_TYPES.has(cur.type)) return 0;
@@ -254,7 +213,6 @@ function pathSelfCallCount(node: AnyNode, self: string, stopAtFunctions: boolean
   return visit(node);
 }
 
-/** Analyze one scope body without descending into nested function bodies. */
 function scanScope(root: AnyNode, source: string, self: string | null): Omit<Scope, 'name' | 'bodyText'> {
   let ownLoopDepth = 0;
   let hasLogLoop = false;
@@ -262,7 +220,7 @@ function scanScope(root: AnyNode, source: string, self: string | null): Omit<Sco
 
   const walk = (node: AnyNode, depth: number) => {
     for (const child of childNodes(node)) {
-      if (FUNC_TYPES.has(child.type)) continue; // its own scope
+      if (FUNC_TYPES.has(child.type)) continue;
 
       let next = depth;
       if (LOOP_TYPES.has(child.type)) {
@@ -295,7 +253,6 @@ function scanScope(root: AnyNode, source: string, self: string | null): Omit<Sco
   };
 }
 
-/** Does the recursive call shrink its argument by a constant factor? */
 function isHalvingRecursion(root: AnyNode, source: string, self: string): boolean {
   let halving = false;
   walkAst(root as never, (node) => {
@@ -329,10 +286,6 @@ function collectScopes(ast: AnyNode, source: string): { root: Scope; functions: 
   return { root, functions };
 }
 
-/**
- * Loop depth a scope contributes once its callees are inlined.
- * Recursion short-circuits (the recurrence solver handles that separately).
- */
 function effectiveDepth(
   scope: Scope,
   functions: Map<string, Scope>,
@@ -352,7 +305,6 @@ function effectiveDepth(
   return best;
 }
 
-/** Does this scope, or anything it calls, contain a halving loop? */
 function reachesLogLoop(
   scope: Scope,
   functions: Map<string, Scope>,
@@ -368,10 +320,8 @@ function reachesLogLoop(
   return false;
 }
 
-/** Mini master theorem for T(n) = a·T(n/b) + O(n^k). */
 export function solveRecurrence(a: number, halving: boolean, k: number): ComplexityClass {
   if (!halving) {
-    // T(n) = a·T(n-1) + O(n^k)
     if (a <= 1) return polyClass(k + 1);
     return 'O(2^n)';
   }
@@ -390,11 +340,6 @@ export function solveRecurrence(a: number, halving: boolean, k: number): Complex
   return polyClass(k);
 }
 
-// ---------------------------------------------------------------------------
-// Space
-// ---------------------------------------------------------------------------
-
-/** Allocation shapes that mean "a table with one cell per (i, j) pair". */
 const TWO_D_PATTERNS: RegExp[] = [
   /Array\.from\([\s\S]{0,80}?=>[\s\S]{0,80}?(?:new\s+Array\(|Array\(|\[\s*\])/,
   /\.fill\([^)]*\)\s*\.\s*map\(/,
@@ -442,10 +387,6 @@ function estimateSpace(
   return { cls, note };
 }
 
-// ---------------------------------------------------------------------------
-// Entry point
-// ---------------------------------------------------------------------------
-
 export function analyzeJs(source: string): StaticComplexity {
   const notes: string[] = [];
   let ast: AnyNode;
@@ -465,10 +406,6 @@ export function analyzeJs(source: string): StaticComplexity {
   const scopes = collectScopes(ast, source);
   const { root, functions } = scopes;
 
-  // Loop depth as seen from the program entry point, callees inlined. A file
-  // that only *defines* functions (a library, or a snippet pasted mid-edit)
-  // has nothing reachable from the top level, so fall back to the worst
-  // function in the file rather than claiming the program is constant-time.
   const reachable = root.calls.some((c) => functions.has(c.name));
   const depth = reachable
     ? effectiveDepth(root, functions)
@@ -501,7 +438,6 @@ export function analyzeJs(source: string): StaticComplexity {
   const recursive = [...functions.values()].filter((f) => f.pathSelfCalls > 0);
 
   for (const fn of recursive) {
-    // Recursion written inside a loop has a data-dependent branching factor.
     const inLoop = fn.calls.length >= 0 && recursesInsideLoop(fn, source);
     const branching = inLoop ? Math.max(fn.pathSelfCalls, 2) : fn.pathSelfCalls;
     const workDepth = effectiveDepth(fn, functions);
@@ -546,7 +482,6 @@ export function analyzeJs(source: string): StaticComplexity {
     confidence = 0.85;
   }
 
-  // Per-call costs that look free but are not.
   const seenNotes = new Set(notes);
   walkAst(ast as never, (node) => {
     const n = node as unknown as AnyNode;
@@ -583,10 +518,7 @@ export function analyzeJs(source: string): StaticComplexity {
   };
 }
 
-/** True when a self-call appears lexically inside a loop within the function. */
 function recursesInsideLoop(fn: Scope, source: string): boolean {
-  // Re-parse just the function body text; cheap and avoids threading the node
-  // through the Scope record.
   let ast: AnyNode;
   try {
     ast = parseJs(`(${fn.bodyText})`) as unknown as AnyNode;

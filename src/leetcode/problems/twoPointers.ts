@@ -1,14 +1,5 @@
 import type { LeetProblem } from '../types';
 
-/**
- * Two-pointer problems.
- *
- * Every problem restates the task in our own words and ships the exact example
- * datasets the site uses, so a run here answers the same question the judge asks.
- */
-
-// --- 167 · Two Sum II --------------------------------------------------------
-
 const twoSumDriver = {
   typescript: `
 // --- examples ---------------------------------------------------------------
@@ -127,8 +118,6 @@ ${twoSumDriver.python}`,
   expectedOutput: ['example 1 -> [1, 2]', 'example 2 -> [1, 3]', 'example 3 -> [1, 2]'],
 };
 
-// --- 11 · Container With Most Water ------------------------------------------
-
 const containerDriver = {
   typescript: `
 // --- examples ---------------------------------------------------------------
@@ -235,8 +224,6 @@ ${containerDriver.python}`,
   },
   expectedOutput: ['example 1 -> 49', 'example 2 -> 1', 'example 3 -> 16'],
 };
-
-// --- 15 · 3Sum ---------------------------------------------------------------
 
 const threeSumDriver = {
   typescript: `
@@ -380,9 +367,6 @@ ${threeSumDriver.python}`,
   ],
 };
 
-
-// --- 125 · Valid Palindrome --------------------------------------------------
-
 const palindromeDriver = {
   typescript: `
 // --- examples ---------------------------------------------------------------
@@ -484,8 +468,6 @@ ${palindromeDriver.python}`,
   },
   expectedOutput: ['example 1 -> true', 'example 2 -> false', 'example 3 -> true'],
 };
-
-// --- 42 · Trapping Rain Water ------------------------------------------------
 
 const rainDriver = {
   typescript: `

@@ -8,14 +8,6 @@ import { RECURSION_PROBLEMS } from './problems/recursion';
 import { BACKTRACKING_PROBLEMS } from './problems/backtracking';
 import type { LeetProblem, PatternId } from './types';
 
-/**
- * The offline problem catalogue.
- *
- * Breakstep never calls LeetCode. Everything here is written from scratch —
- * the prompts are restated, the datasets are the public examples, and the
- * solutions are ours. That keeps the app a static site with no backend, no
- * scraping and nothing to rate-limit, and it means a problem opens instantly.
- */
 export const PROBLEMS: LeetProblem[] = [
   ...TWO_POINTER_PROBLEMS,
   ...SLIDING_WINDOW_PROBLEMS,
@@ -31,12 +23,10 @@ export function getProblem(slug: string): LeetProblem | undefined {
   return PROBLEMS.find((p) => p.slug === slug);
 }
 
-/** Problems whose top recommendation is this pattern. */
 export function problemsForPattern(pattern: PatternId): LeetProblem[] {
   return PROBLEMS.filter((p) => p.techniques.some((t) => t.pattern === pattern && t.rank === 1));
 }
 
-/** Grouped for browsing, in the order the patterns are taught. */
 export function problemsByPattern(): { pattern: PatternId; problems: LeetProblem[] }[] {
   const order: PatternId[] = [
     'two-pointers',

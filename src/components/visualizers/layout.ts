@@ -1,10 +1,3 @@
-/**
- * Layout maths for the SVG visualizers.
- *
- * Pure and deterministic on purpose: the same structure must produce the same
- * picture on every frame, or scrubbing the timeline turns into an unreadable
- * jitter of nodes jumping around.
- */
 import type { GraphEdge, GraphNode, TreeNode, TrieNode } from '@/types/viz';
 
 export interface PositionedNode<T> {
@@ -19,18 +12,11 @@ export interface TreeLayout {
   edges: { from: string; to: string; x1: number; y1: number; x2: number; y2: number }[];
   width: number;
   height: number;
-  /** Depth of the deepest node, 0-based. */
   depth: number;
 }
 
 export const TREE_SPACING = { x: 56, y: 74, padding: 36 } as const;
 
-/**
- * Classic in-order placement: every node gets its own column, so no two nodes
- * overlap and left/right children stay visually on their correct side. Empty
- * slots in a binary tree consume a column too, which is what keeps a
- * degenerate (list-shaped) tree looking degenerate.
- */
 export function layoutTree(root: TreeNode | null, binary: boolean): TreeLayout {
   if (!root) return { nodes: [], edges: [], width: 0, height: 0, depth: 0 };
 
@@ -42,8 +28,6 @@ export function layoutTree(root: TreeNode | null, binary: boolean): TreeLayout {
 
   const place = (node: TreeNode | null, depth: number): number | null => {
     if (!node) {
-      // A null child still reserves a column in a binary tree so siblings stay
-      // on their proper side of the parent.
       if (binary) column += 1;
       return null;
     }
@@ -75,7 +59,6 @@ export function layoutTree(root: TreeNode | null, binary: boolean): TreeLayout {
       return self;
     }
 
-    // N-ary: place children first, then centre the parent over them.
     const childXs: number[] = [];
     for (const child of children) {
       const cx = place(child, depth + 1);
@@ -117,7 +100,6 @@ export function layoutTree(root: TreeNode | null, binary: boolean): TreeLayout {
   };
 }
 
-/** A trie is an n-ary tree; reuse the layout by projecting the node shape. */
 export function trieToTreeNode(node: TrieNode): TreeNode {
   return {
     id: node.id,
@@ -128,7 +110,6 @@ export function trieToTreeNode(node: TrieNode): TreeNode {
   };
 }
 
-/** Level-order array → binary tree, for the heap's tree projection. */
 export function heapToTree(values: unknown[], states: (string | undefined)[]): TreeNode | null {
   if (values.length === 0) return null;
   const build = (i: number): TreeNode | null => {
@@ -144,10 +125,6 @@ export function heapToTree(values: unknown[], states: (string | undefined)[]): T
   return build(0);
 }
 
-// ---------------------------------------------------------------------------
-// Graph layout
-// ---------------------------------------------------------------------------
-
 export interface GraphLayout {
   nodes: (GraphNode & { x: number; y: number })[];
   width: number;
@@ -156,14 +133,6 @@ export interface GraphLayout {
 
 export const GRAPH_LAYOUT = { radius: 22, padding: 44, minSize: 320 } as const;
 
-/**
- * Deterministic force-directed layout.
- *
- * Nodes start on a circle (already a decent layout for small graphs) and are
- * then relaxed with a fixed number of spring/repulsion iterations. No
- * randomness anywhere, so the picture is stable across frames — which matters
- * far more here than finding a globally optimal arrangement.
- */
 export function layoutGraph(
   nodes: GraphNode[],
   edges: GraphEdge[],
@@ -177,7 +146,6 @@ export function layoutGraph(
   const ring = centre - GRAPH_LAYOUT.padding;
 
   const pos = nodes.map((node, i) => {
-    // Honour an explicit position when the user supplied one.
     if (typeof node.x === 'number' && typeof node.y === 'number') {
       return { x: node.x * size, y: node.y * size, pinned: true };
     }
@@ -198,7 +166,6 @@ export function layoutGraph(
   const repulsion = ideal * ideal;
 
   for (let step = 0; step < iterations && n > 1; step++) {
-    // Cooling schedule: large corrections early, fine adjustments later.
     const cooling = 1 - step / iterations;
     const dx = new Array<number>(n).fill(0);
     const dy = new Array<number>(n).fill(0);
@@ -209,7 +176,6 @@ export function layoutGraph(
         let vy = pos[i].y - pos[j].y;
         let dist = Math.hypot(vx, vy);
         if (dist < 0.01) {
-          // Deterministic nudge for coincident nodes — no Math.random().
           vx = ((i % 3) - 1) || 1;
           vy = ((j % 3) - 1) || 1;
           dist = Math.hypot(vx, vy);
@@ -240,7 +206,6 @@ export function layoutGraph(
       const norm = Math.max(Math.hypot(dx[i], dy[i]), 0.01);
       pos[i].x += (dx[i] / norm) * step2;
       pos[i].y += (dy[i] / norm) * step2;
-      // Keep everything inside the viewBox.
       pos[i].x = clamp(pos[i].x, GRAPH_LAYOUT.padding, size - GRAPH_LAYOUT.padding);
       pos[i].y = clamp(pos[i].y, GRAPH_LAYOUT.padding, size - GRAPH_LAYOUT.padding);
     }
@@ -257,7 +222,6 @@ function clamp(v: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, v));
 }
 
-/** Shorten an edge so its arrowhead stops at the node border, not its centre. */
 export function trimToRadius(
   x1: number,
   y1: number,
@@ -279,14 +243,6 @@ export function trimToRadius(
   };
 }
 
-/**
- * Let a diagram use the room it is given.
- *
- * The `viewBox` already describes the picture, so the element can be sized
- * freely: never smaller than the layout's natural size (a cramped graph is
- * worse than a scrollbar), and up to a bit larger when the panel is wide, which
- * is where a big tree stops looking smooshed.
- */
 export function scalable(width: number, height: number) {
   return {
     width: '100%',
@@ -297,5 +253,4 @@ export function scalable(width: number, height: number) {
   } as const;
 }
 
-/** How far past its natural size a diagram may grow. */
 const MAX_UPSCALE = 1.8;

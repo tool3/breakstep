@@ -1,13 +1,3 @@
-/**
- * Turn a problem's published interface into code you can run.
- *
- * LeetCode publishes, separately from the statement, the shape of the function
- * a problem wants — its name, parameter names and types, and return type — and
- * the example inputs. Put those together with the expected answers and you can
- * generate the whole scaffold: a correctly typed stub, the datasets as literals,
- * and a driver that runs each example. Nothing here reproduces their prose; it
- * is all built from the interface and the data.
- */
 import type { ProblemDetail } from './details';
 
 export interface GeneratedSource {
@@ -15,7 +5,6 @@ export interface GeneratedSource {
   python: string;
 }
 
-/** LeetCode's type names → TypeScript. */
 const TS_TYPES: Record<string, string> = {
   integer: 'number',
   double: 'number',
@@ -28,7 +17,6 @@ const TS_TYPES: Record<string, string> = {
   TreeNode: 'TreeNode | null',
 };
 
-/** The same, for the Python annotations in the docstring. */
 const PY_TYPES: Record<string, string> = {
   integer: 'int',
   double: 'float',
@@ -41,12 +29,6 @@ const PY_TYPES: Record<string, string> = {
   TreeNode: 'TreeNode',
 };
 
-/**
- * `list<integer>` and `integer[]` mean the same thing; normalise to the latter.
- *
- * Nesting has to be unwrapped from the outside in, keeping any `[]` already on
- * the end — `list<list<integer>>` is `integer[][]`, not `list<integer>[]`.
- */
 export function normalizeType(type: string): string {
   let out = type.trim();
   for (;;) {
@@ -63,13 +45,6 @@ export function baseOf(type: string): { base: string; depth: number } {
   return { base: normalized.replace(/\[\]/g, '').trim(), depth };
 }
 
-/**
- * Whether a type has a literal form the app can build an argument out of.
- *
- * Exported because the judge needs the same gate: a problem whose published
- * parameter is a `Node` or a `NestedInteger` cannot be called from a literal,
- * and pretending otherwise would produce a confident wrong verdict.
- */
 export function supportedType(type: string): boolean {
   return tsType(type) !== null;
 }
@@ -78,7 +53,6 @@ function tsType(type: string): string | null {
   const { base, depth } = baseOf(type);
   const mapped = TS_TYPES[base];
   if (!mapped) return null;
-  // A node type inside an array is not something this generates helpers for.
   if (depth > 0 && (base === 'ListNode' || base === 'TreeNode')) return null;
   return mapped + '[]'.repeat(depth);
 }
@@ -94,7 +68,6 @@ function pyType(type: string): string | null {
   return out;
 }
 
-/** What a stub should return so the file runs before anything is written. */
 function tsPlaceholder(type: string): string {
   const { base, depth } = baseOf(type);
   if (depth > 0) return '[]';
@@ -115,7 +88,6 @@ function pyPlaceholder(type: string): string {
   return '0';
 }
 
-/** `twoSum` → `two_sum`, the way the same problem is written in Python. */
 export function toSnakeCase(name: string): string {
   return name
     .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
@@ -123,13 +95,6 @@ export function toSnakeCase(name: string): string {
     .toLowerCase();
 }
 
-/**
- * Rewrite a JSON-ish literal for Python.
- *
- * The values are JSON, so only the three keywords differ — and they must not be
- * touched inside a string, which is why this walks the text rather than
- * replacing globally.
- */
 export function toPythonLiteral(literal: string): string {
   let out = '';
   let inString = false;
@@ -180,9 +145,7 @@ export function toPythonLiteral(literal: string): string {
   return out;
 }
 
-/** Can a runnable file be built for this problem at all? */
 export function canGenerate(detail: ProblemDetail): boolean {
-  // Nothing to print, so nothing to check an example against.
   if (normalizeType(detail.returns) === 'void') return false;
   if (detail.cases.length === 0) return false;
   if (detail.params.length === 0) return false;
@@ -190,7 +153,6 @@ export function canGenerate(detail: ProblemDetail): boolean {
   return detail.params.every(([, type]) => tsType(type) !== null);
 }
 
-/** Which node helpers the generated file needs. */
 function neededHelpers(detail: ProblemDetail): { list: boolean; tree: boolean } {
   const types = [...detail.params.map(([, t]) => t), detail.returns];
   return {
@@ -355,7 +317,6 @@ def from_tree(root):
     return out
 `;
 
-/** Wrap an example input so it arrives as the type the signature asks for. */
 function wrapInput(literal: string, type: string, python: boolean): string {
   const { base } = baseOf(type);
   const value = python ? toPythonLiteral(literal) : literal;
@@ -365,7 +326,6 @@ function wrapInput(literal: string, type: string, python: boolean): string {
   return value;
 }
 
-/** Read the answer back out, when it is a node rather than a value. */
 function unwrapCall(call: string, type: string, python: boolean): string {
   const { base } = baseOf(type);
   if (base === 'ListNode') return python ? `from_list(${call})` : `fromList(${call})`;
@@ -378,14 +338,9 @@ export interface GenerateOptions {
   number: number;
   title: string;
   difficulty: string;
-  /** Where the statement lives, since Breakstep does not reproduce it. */
   url: string;
 }
 
-/**
- * The whole file: a header, the helpers it needs, a typed stub, and a driver
- * that runs every published example with the expected answer beside it.
- */
 export function generateStarter({
   detail,
   number,

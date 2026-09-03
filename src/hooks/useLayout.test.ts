@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 import { BREAKPOINTS, useLayout } from './useLayout';
 
-/** Resize the jsdom window and fire the event the hook listens for. */
 function resize(width: number, height: number, coarse = false) {
   Object.defineProperty(window, 'innerWidth', { value: width, configurable: true });
   Object.defineProperty(window, 'innerHeight', { value: height, configurable: true });
@@ -19,7 +18,6 @@ function resize(width: number, height: number, coarse = false) {
   window.dispatchEvent(new Event('resize'));
 }
 
-/** The hook debounces through rAF; jsdom needs a tick to run it. */
 async function settle() {
   await act(async () => {
     await new Promise((r) => setTimeout(r, 20));
@@ -51,7 +49,6 @@ describe('useLayout', () => {
   });
 
   it('falls back to compact on a short viewport, however wide', async () => {
-    // A phone in landscape: plenty of width, no height to split.
     resize(844, 390);
     const { result } = renderHook(() => useLayout());
     await settle();

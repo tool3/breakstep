@@ -33,7 +33,6 @@
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: $space-3 $space-4;
 
-  // Below ~210px per column the grid would overflow rather than reflow.
   @include below(480px) {
     grid-template-columns: 1fr;
     gap: $space-3;
@@ -120,4 +119,16 @@
   padding: 0 5px;
   line-height: 15px;
   cursor: help;
+}
+
+.invocation {
+  margin: 0;
+  padding: 0 $space-3 $space-2;
+  @include mono(10px);
+  line-height: 1.6;
+  color: var(--breakstep-text-faint);
+
+  code {
+    color: var(--breakstep-accent-text);
+  }
 }

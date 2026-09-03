@@ -1,19 +1,3 @@
-/**
- * Judge a submission against the examples LeetCode publishes.
- *
- * The verdict is not read off the console. Every problem — the forty written out
- * here and the three thousand assembled from published metadata — has a detail
- * shard giving the function it wants, its parameter types and its example cases,
- * so a submission is judged the way the site judges one: call the function once
- * per case and compare the answer. That survives an edited driver, an extra
- * `console.log`, and a solution written from scratch, and it can say *which*
- * case failed and with what.
- *
- * The harness is appended to the submitted file at submit time and reports one
- * line of JSON behind a sentinel, which the caller strips out of the log. It is
- * the only code Breakstep adds on your behalf besides the benchmark harness, and
- * like that one it is generated, not hidden: everything it does is below.
- */
 import {
   baseOf,
   normalizeType,
@@ -27,24 +11,17 @@ import type { LeetProblem } from '@/leetcode/types';
 import type { Language, LogEntry, RunResult } from '@/types';
 import type { CaseOutcome, Verdict } from './types';
 
-/** Marks the harness's one line of output, so the Output panel never shows it. */
 export const JUDGE_SENTINEL = '##breakstep-judge##';
 
-/** Where the submitted file ends and the judge begins. */
 export const JUDGE_BANNER = {
   typescript: '// ─── judge (added by Breakstep on submit) ───',
   python: '# --- judge (added by Breakstep on submit) ---',
 } as const;
 
-/** Enough cases to be convincing, few enough to stay fast. */
 export const MAX_JUDGE_CASES = 8;
-/** A case whose literals are longer than this buries the file it is pasted into. */
 export const MAX_CASE_CHARS = 600;
 
-/** Floats are compared the way LeetCode compares them. */
 const TOLERANCE = 1e-5;
-
-// --- Building the harness ---------------------------------------------------
 
 const TS_HELPERS = {
   list: `function __bsToList(values) {
@@ -162,15 +139,6 @@ def __bs_from_tree(root):
     return out`,
 };
 
-/**
- * The judge builds its own node types rather than borrowing the file's.
- *
- * A submitted solution may have renamed `TreeNode`, deleted the helpers, or
- * never had them — a hand-written problem carries whatever its author wrote. The
- * `__bs` prefix keeps these out of the user's way, and structural typing means a
- * plain object is an acceptable `TreeNode` to any solution that only reads
- * `val`, `left` and `right`.
- */
 function helpersFor(detail: ProblemDetail): { list: boolean; tree: boolean } {
   const types = [...detail.params.map(([, t]) => t), detail.returns];
   return {
@@ -179,7 +147,6 @@ function helpersFor(detail: ProblemDetail): { list: boolean; tree: boolean } {
   };
 }
 
-/** Turn a published literal into an argument of the type the signature wants. */
 function wrap(literal: string, type: string, python: boolean): string {
   const { base } = baseOf(type);
   const value = python ? toPythonLiteral(literal) : literal;
@@ -188,7 +155,6 @@ function wrap(literal: string, type: string, python: boolean): string {
   return value;
 }
 
-/** Read an answer back out as the shape the published answer is written in. */
 function unwrap(expression: string, type: string, python: boolean): string {
   const { base } = baseOf(type);
   if (base === 'ListNode') return python ? `__bs_from_list(${expression})` : `__bsFromList(${expression})`;
@@ -196,17 +162,10 @@ function unwrap(expression: string, type: string, python: boolean): string {
   return expression;
 }
 
-/** `nums = [2,7,11,15], target = 9` — the call, as the reader would write it. */
 function caseLabel(detail: ProblemDetail, input: string[]): string {
   return detail.params.map(([name], i) => `${name} = ${input[i]}`).join(', ');
 }
 
-/**
- * The cases worth running: published, small enough to inline, and capped.
- *
- * Skipping is reported rather than silent — a verdict from two of five cases is
- * a different claim from a verdict from all five.
- */
 export function judgeCases(detail: ProblemDetail): { cases: ProblemDetail['cases']; skipped: number } {
   const usable = detail.cases.filter(
     (c) => c.input.join(', ').length <= MAX_CASE_CHARS && c.input.length === detail.params.length,
@@ -215,13 +174,6 @@ export function judgeCases(detail: ProblemDetail): { cases: ProblemDetail['cases
   return { cases, skipped: detail.cases.length - cases.length };
 }
 
-/**
- * One case, as a thunk.
- *
- * Arguments are bound before the call so an in-place problem can be judged:
- * LeetCode gives those a `void` return type and publishes the *mutated first
- * argument* as the answer, so that is what gets read back.
- */
 function tsThunk(detail: ProblemDetail, entry: string, input: string[]): string {
   const inPlace = normalizeType(detail.returns) === 'void';
   const args = detail.params.map((_, i) => `__a${i}`);
@@ -331,64 +283,32 @@ print('${JUDGE_SENTINEL}' + __bs_json.dumps({
 `;
 }
 
-// --- The plan --------------------------------------------------------------
-
 export type JudgePlan =
   | {
       kind: 'cases';
-      /** Appended to the submitted file. */
       harness: string;
-      /** The function the harness calls — not always the published name. */
       entry: string;
-      /** Labels and answers, in the order the harness reports them. */
       cases: { label: string; expected: string }[];
-      /** Published cases left out for being too large, if any. */
       skipped: number;
-      /**
-       * Expected output to fall back on if not one case can be called.
-       *
-       * A handful of problems publish their *judge's* interface rather than the
-       * signature you write — Clone Graph declares an adjacency list and a
-       * boolean — so a call built from it throws. When every case throws, this
-       * is what saves the verdict from being a confident lie.
-       */
       fallback?: string[];
     }
   | { kind: 'output'; expected: string[] }
   | { kind: 'none'; reason: string };
 
-/**
- * Whether a problem's published interface can be called from literals at all.
- *
- * A `Node` parameter or a nested-integer list has no literal form here, so there
- * is nothing to build an argument out of.
- */
 function callable(detail: ProblemDetail): boolean {
   if (detail.params.length === 0 || detail.cases.length === 0) return false;
   if (!supportedType(detail.returns)) return false;
   return detail.params.every(([, type]) => supportedType(type));
 }
 
-/** Letters only, lowercased — for comparing names people typed by hand. */
 const squash = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, '');
 
-/**
- * Which function in the file the judge should call.
- *
- * The published name is the first choice and usually right, but it is not a
- * requirement: a written problem here may have named it something clearer
- * (`searchRotated` rather than `search`), and someone writing their own solution
- * has no reason to match LeetCode's spelling at all. So the name is resolved
- * against the file — exactly, then by family resemblance, then by there being
- * only one candidate to mean.
- */
 export function resolveEntry(
   detail: ProblemDetail,
   code: string,
   language: Language,
 ): string | null {
   const published = language === 'python' ? toSnakeCase(detail.fn) : detail.fn;
-  // A method needs a receiver, so only free functions are callable from here.
   const names = listFunctions(code, language)
     .filter((fn) => !fn.qualified.includes('.'))
     .map((fn) => fn.name);
@@ -409,14 +329,6 @@ export function resolveEntry(
   return names[0];
 }
 
-/**
- * How this submission will be judged.
- *
- * Calling the function is the real answer, and it needs a detail shard. Without
- * one — a premium problem, or examples in a shape nothing could parse — a
- * written problem still knows exactly what its own driver prints, so the output
- * is compared line for line instead. Both are honest; the UI says which ran.
- */
 export function buildJudgePlan(
   problem: LeetProblem,
   detail: ProblemDetail | null,
@@ -449,8 +361,6 @@ export function buildJudgePlan(
     }
   }
 
-  // The stored expectation is what the *TypeScript* driver prints; Python
-  // formats values differently, so it is not something to grade against.
   if (printed) return { kind: 'output', expected: printed };
 
   return {
@@ -461,8 +371,6 @@ export function buildJudgePlan(
   };
 }
 
-// --- Comparing answers -----------------------------------------------------
-
 function parse(text: string): { ok: boolean; value: unknown } {
   try {
     return { ok: true, value: JSON.parse(text) as unknown };
@@ -471,7 +379,6 @@ function parse(text: string): { ok: boolean; value: unknown } {
   }
 }
 
-/** Deep equality, with LeetCode's tolerance for floats. */
 export function sameValue(a: unknown, b: unknown): boolean {
   if (typeof a === 'number' && typeof b === 'number') {
     return a === b || Math.abs(a - b) <= TOLERANCE;
@@ -491,13 +398,6 @@ export function sameValue(a: unknown, b: unknown): boolean {
   return a === b;
 }
 
-/**
- * A stable string for a value with every array sorted.
- *
- * Two answers with the same contents in a different order share one of these,
- * which is how a set-valued problem — subsets, group anagrams — gets graded the
- * way its judge grades it.
- */
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).sort().join(',')}]`;
   if (typeof value === 'number') return String(Math.round(value * 1e6) / 1e6);
@@ -514,27 +414,10 @@ export function sameUnordered(a: unknown, b: unknown): boolean {
   return canonical(a) === canonical(b);
 }
 
-/**
- * A list of lists — the shape whose order LeetCode genuinely does not grade.
- *
- * Subsets, permutations, group anagrams and the rest return a *collection* of
- * answers, and every judge for them accepts any order. A flat array is a
- * different claim: `[0,1,1,2,0,2]` has the same contents as the sorted array and
- * is emphatically not the answer to Sort Colors. So the leniency stops here.
- */
 function collectionOfAnswers(value: unknown): boolean {
   return Array.isArray(value) && value.some((item) => Array.isArray(item));
 }
 
-/**
- * Compare one answer with the published one.
- *
- * `unordered` means the two matched only once order was ignored. Paired with
- * `passed` it says which of the two situations this is: a set-valued answer
- * graded the way its judge grades it, or the right values in an order that may
- * or may not be acceptable — which the panel then says out loud rather than
- * deciding silently.
- */
 export function compareAnswer(
   got: string,
   expected: string,
@@ -555,14 +438,11 @@ export function compareAnswer(
   return { passed: false };
 }
 
-// --- Reading the harness's report ------------------------------------------
-
 interface HarnessReport {
   ms: number;
   results: { text?: string; error?: string }[];
 }
 
-/** Pull the harness's line out of a run's log. */
 export function readReport(logs: LogEntry[]): HarnessReport | null {
   for (let i = logs.length - 1; i >= 0; i--) {
     const at = logs[i].text.indexOf(JUDGE_SENTINEL);
@@ -576,7 +456,6 @@ export function readReport(logs: LogEntry[]): HarnessReport | null {
   return null;
 }
 
-/** The log as the user should see it: everything except the judge's own line. */
 export function withoutJudgeLine(logs: LogEntry[]): LogEntry[] {
   return logs.filter((entry) => !entry.text.includes(JUDGE_SENTINEL));
 }
@@ -586,20 +465,12 @@ export interface Judgement {
   passed: number;
   total: number;
   cases: CaseOutcome[];
-  /** Time spent on the judged cases alone, when the harness could measure it. */
   runtimeMs: number;
-  /** The function that was called, when the judge called one. */
   entry?: string;
   error?: string;
   note?: string;
 }
 
-/**
- * Turn a finished run into a verdict.
- *
- * A run that threw is a runtime error whatever the cases say — the answer to a
- * problem is not partially correct code that crashed on the way out.
- */
 export function judgeResult(plan: JudgePlan, result: RunResult): Judgement {
   if (plan.kind === 'none') {
     return { verdict: 'unjudged', passed: 0, total: 0, cases: [], runtimeMs: 0, note: plan.reason };
@@ -656,16 +527,6 @@ export function judgeResult(plan: JudgePlan, result: RunResult): Judgement {
     return { ...expected, got, passed, unordered };
   });
 
-  /*
-   * Not one case could even be called, and yet the file printed exactly the
-   * right answers: the published interface describes LeetCode's judge rather
-   * than the function you write — Clone Graph declares an adjacency list and a
-   * boolean — so the harness had nothing callable to aim at.
-   *
-   * The guard is deliberately narrow. Only a run whose own output is already
-   * perfect can be rescued this way, so broken code still gets the verdict its
-   * cases earned, with the errors they threw.
-   */
   if (cases.every((c) => c.error !== undefined) && plan.fallback) {
     const fallen = judgeOutput(plan.fallback, result);
     if (fallen.verdict === 'accepted') {
@@ -697,13 +558,6 @@ export function judgeResult(plan: JudgePlan, result: RunResult): Judgement {
   };
 }
 
-/**
- * The fallback: compare what the file printed with what it should print.
- *
- * Weaker than running the cases, and it says so — an extra `console.log` counts
- * against you here, which is why this only runs when there is no interface to
- * call.
- */
 function judgeOutput(expected: string[], result: RunResult): Judgement {
   const actual = withoutJudgeLine(result.logs).map((entry) => entry.text);
 

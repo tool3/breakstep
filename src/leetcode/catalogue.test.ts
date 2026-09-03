@@ -8,7 +8,6 @@ import type { LeetProblem } from './types';
 
 const OPTS = { opLimit: 20_000_000, frameLimit: 60, autoTrace: false };
 
-/** Run a TypeScript source the way the app would and collect its output. */
 async function runTs(source: string) {
   const compiled = toRunnableJs(source, 'typescript');
   expect(compiled.ok, `${compiled.error} (line ${compiled.line})`).toBe(true);
@@ -47,17 +46,14 @@ describe('the problem catalogue', () => {
       expect(problem.techniques.length).toBeGreaterThan(0);
       expect(problem.expectedOutput.length).toBeGreaterThan(0);
 
-      // Ranks start at 1 and increase without gaps.
       const ranks = problem.techniques.map((t) => t.rank).sort((a, b) => a - b);
       expect(ranks).toEqual(ranks.map((_, i) => i + 1));
 
-      // The starter has to be a stub, and the solution must not be one.
       expect(problem.typescript.starter).toContain('TODO');
       expect(problem.python.starter).toContain('TODO');
       expect(problem.typescript.solution).not.toContain('TODO');
       expect(problem.python.solution).not.toContain('TODO');
 
-      // Both languages define something to run.
       expect(listFunctions(problem.typescript.solution, 'typescript').length).toBeGreaterThan(0);
       expect(listFunctions(problem.python.solution, 'python').length).toBeGreaterThan(0);
     },
@@ -77,7 +73,6 @@ describe('the problem catalogue', () => {
     async (_slug, problem) => {
       const result = await runTs(problem.typescript.starter);
       expect(result.error?.message).toBeUndefined();
-      // A stub still prints one line per example — it just prints the wrong one.
       expect(result.logs.length).toBe(problem.expectedOutput.length);
     },
   );
@@ -104,7 +99,6 @@ describe('problems as templates', () => {
   it('hands over source per language', () => {
     expect(solutionSource(problem, 'python')).toBe(problem.python.solution);
     expect(starterSource(problem, 'typescript')).toBe(problem.typescript.starter);
-    // JavaScript is stripped from the TypeScript, so the annotations go away.
     expect(solutionSource(problem, 'javascript')).not.toContain(': number[][]');
     expect(solutionSource(problem, 'javascript')).toContain('function subsets');
   });

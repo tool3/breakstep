@@ -1,22 +1,9 @@
-/**
- * Source-to-source instrumentation for JavaScript.
- *
- * Injects a counter call at the top of every loop body and function body. The
- * resulting count is a machine-independent "basic operations" measure — far
- * better than wall-clock for curve fitting, because it is immune to JIT warmup,
- * GC pauses and whatever else the user's laptop is doing.
- *
- * The same counter doubles as the runaway-loop guard: it throws once the budget
- * is exhausted, which is the only way to stop an accidental `while (true)`
- * inside a worker without terminating it.
- */
 import { parse } from 'acorn';
 import MagicString from 'magic-string';
 import type { Node } from 'acorn';
 
 export const OP_FN = '__breakstep_op';
 
-/** Name of the guard the runner installs in worker scope. */
 export const OP_LIMIT_MESSAGE = 'Operation limit exceeded — is there an infinite loop?';
 
 interface AnyNode extends Node {
@@ -39,7 +26,6 @@ const FUNCTION_TYPES = new Set([
   'ArrowFunctionExpression',
 ]);
 
-/** Walk every node, calling `visit` with the node and its parent. */
 export function walkAst(root: AnyNode, visit: (node: AnyNode, parent: AnyNode | null) => void): void {
   const stack: { node: AnyNode; parent: AnyNode | null }[] = [{ node: root, parent: null }];
   while (stack.length) {
@@ -72,11 +58,6 @@ export function parseJs(source: string): AnyNode {
   }) as unknown as AnyNode;
 }
 
-/**
- * Rewrite `source` so every loop iteration and function call bumps the counter.
- * Returns the original source untouched if it cannot be parsed — the runner will
- * surface the real syntax error when it evaluates the code.
- */
 export function instrument(source: string): { code: string; ok: boolean } {
   let ast: AnyNode;
   try {
@@ -96,7 +77,6 @@ export function instrument(source: string): { code: string; ok: boolean } {
       if (body?.type === 'BlockStatement') {
         s.appendLeft((body.start as number) + 1, call);
       } else if (body) {
-        // Concise arrow body: `x => expr` becomes `x => (op(), expr)`.
         s.appendLeft(body.start as number, `(${OP_FN}(), `);
         s.appendRight(body.end as number, `)`);
       }
@@ -113,17 +93,11 @@ function injectIntoBody(s: MagicString, body: AnyNode | undefined, call: string)
   } else if (body.type === 'EmptyStatement') {
     s.appendLeft(body.start as number, `{${call}}`);
   } else {
-    // Un-braced single-statement body: `for (...) doThing();`
     s.appendLeft(body.start as number, `{${call}`);
     s.appendRight(body.end as number, `}`);
   }
 }
 
-/**
- * Build the counter implementation that the runner prepends to instrumented
- * code. Kept as a string so it can be injected into a worker or a `new Function`
- * scope without bundler involvement.
- */
 export function counterPreamble(limit: number): string {
   return [
     `let __breakstep_ops = 0;`,

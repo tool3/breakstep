@@ -18,8 +18,6 @@
   text-align: center;
 }
 
-// --- Toolbar -----------------------------------------------------------------
-
 .actions {
   display: flex;
   align-items: center;
@@ -30,7 +28,6 @@
   flex-shrink: 0;
 }
 
-/// The same green as the header's Submit, and as the verdict it is aiming at.
 .submit:global(.ant-btn-primary) {
   background: var(--breakstep-mint);
   border-color: var(--breakstep-mint);
@@ -77,8 +74,6 @@
   color: var(--breakstep-text-faint);
 }
 
-// --- Nothing submitted yet ---------------------------------------------------
-
 .blank {
   padding: $space-4;
   display: flex;
@@ -101,10 +96,6 @@
   max-width: 62ch;
 }
 
-// --- The verdict -------------------------------------------------------------
-
-/// Every tone is a border, a wash and a text colour drawn from one token, so a
-/// new verdict only has to name its colour.
 @mixin tone($colour, $soft) {
   border-color: var(#{$colour});
   background: var(#{$soft});
@@ -173,8 +164,6 @@
   color: var(--breakstep-text-faint);
 }
 
-// --- Metrics -----------------------------------------------------------------
-
 .metrics {
   display: flex;
   flex-wrap: wrap;
@@ -217,8 +206,6 @@
   color: var(--breakstep-text-faint);
 }
 
-// --- Cases -------------------------------------------------------------------
-
 .cases,
 .history {
   margin: 0;
@@ -231,7 +218,6 @@
 
 .case {
   display: flex;
-  // Against the first line of the case, not floating in the middle of it.
   align-items: flex-start;
   gap: $space-2;
   padding: $space-2;
@@ -297,8 +283,6 @@
   font-size: 10px;
   color: var(--breakstep-text-faint);
 }
-
-// --- History -----------------------------------------------------------------
 
 .dot {
   display: inline-flex;
@@ -371,7 +355,6 @@
   color: var(--breakstep-accent-text);
 }
 
-// A phone has room for the verdict and the score, and not much else.
 @include below($bp-sm) {
   .rowClass,
   .rowLang {

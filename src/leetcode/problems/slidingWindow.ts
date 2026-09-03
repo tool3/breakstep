@@ -1,7 +1,5 @@
 import type { LeetProblem } from '../types';
 
-// --- 3 · Longest Substring Without Repeating Characters ----------------------
-
 const uniqueDriver = {
   typescript: `
 // --- examples ---------------------------------------------------------------
@@ -113,8 +111,6 @@ ${uniqueDriver.python}`,
   expectedOutput: ['example 1 -> 3', 'example 2 -> 1', 'example 3 -> 3'],
 };
 
-// --- 121 · Best Time to Buy and Sell Stock -----------------------------------
-
 const stockDriver = {
   typescript: `
 // --- examples ---------------------------------------------------------------
@@ -212,8 +208,6 @@ ${stockDriver.python}`,
   },
   expectedOutput: ['example 1 -> 5', 'example 2 -> 0', 'example 3 -> 2'],
 };
-
-// --- 424 · Longest Repeating Character Replacement ---------------------------
 
 const replacementDriver = {
   typescript: `
@@ -333,9 +327,6 @@ ${replacementDriver.python}`,
   expectedOutput: ['example 1 -> 4', 'example 2 -> 4', 'example 3 -> 4'],
 };
 
-
-// --- 209 · Minimum Size Subarray Sum ----------------------------------------
-
 const minSubarrayDriver = {
   typescript: `
 // --- examples ---------------------------------------------------------------
@@ -451,8 +442,6 @@ ${minSubarrayDriver.python}`,
   },
   expectedOutput: ['example 1 -> 2', 'example 2 -> 1', 'example 3 -> 0'],
 };
-
-// --- 567 · Permutation in String ---------------------------------------------
 
 const permInStringDriver = {
   typescript: `

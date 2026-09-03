@@ -11,34 +11,17 @@ import type { Language } from '@/types';
 import styles from './ProblemPanel.module.scss';
 
 interface Props {
-  /** The problem currently in the editor, or null when none is loaded. */
   problem: LeetProblem | null;
   language: Language;
-  /**
-   * How the last submission went, or null if there has not been one.
-   *
-   * Shown beside the title, because whether this problem is solved belongs with
-   * the problem itself and not only in the submission history.
-   */
   verdict: Verdict | null;
-  /** Put the worked solution in the editor. Only offered when there is one. */
   onReveal: (problem: LeetProblem) => void;
-  /** Back to the stub, throwing away this attempt. */
   onResetToStarter: () => void;
   onOpenTemplate: (templateId: string) => void;
-  /** Open the finder, for when nothing is loaded yet. */
   onFindProblem: () => void;
 }
 
 const DIFFICULTY_COLOR = { Easy: 'green', Medium: 'gold', Hard: 'red' } as const;
 
-/**
- * The problem you are solving, next to the code you are solving it in.
- *
- * This is reference material for writing code, so it lives beside the editor
- * rather than in the panel that shows what running the code produced. Finding a
- * problem happens in the drawer; once found, it lives here.
- */
 export function ProblemPanel({
   problem,
   language,

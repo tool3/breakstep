@@ -6,29 +6,12 @@ import styles from './DebugToolbar.module.scss';
 interface Props {
   debug: DebuggerState;
   onStop: () => void;
-  /**
-   * `floating` overlays the editor, which is where these controls belong.
-   * `inline` is for a phone, where the editor and the panel are separate tabs
-   * and a bar floating over a hidden editor would strand the session.
-   */
   variant?: 'floating' | 'inline';
 }
 
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
 const shift = isMac ? '⇧' : 'Shift+';
 
-/**
- * The transport, floating over the editor.
- *
- * Where VS Code puts it, and for the reason VS Code puts it there: these
- * buttons act on a specific line, so they belong next to the line rather than in
- * a panel at the other end of the screen. Keyboard equivalents are in the
- * tooltips because that is how anyone learns them — and they are the same keys,
- * so nobody has to.
- *
- * Step back has no VS Code equivalent to be consistent with. It sits first,
- * where the recording makes it possible and a live debugger cannot follow.
- */
 export function DebugToolbar({ debug, onStop, variant = 'floating' }: Props) {
   const { steps, index, outcome } = debug;
   const atEnd = index >= steps.length - 1;

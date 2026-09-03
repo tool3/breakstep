@@ -1,10 +1,3 @@
-/**
- * When a string is the thing on screen, and when it is not.
- *
- * Subject selection is a heuristic, and the two failure modes are opposite:
- * a palindrome check with nothing on screen at all, and a hash map hijacked by
- * the four-letter key it happens to be inserting. Both are pinned here.
- */
 import { describe, expect, it } from 'vitest';
 import { runInSandbox } from './sandbox';
 import type { ArrayView, Frame } from '@/types/viz';
@@ -39,7 +32,6 @@ console.log(lo, hi);`,
     expect(kinds(result.frames)).toEqual(['array']);
 
     const view = result.frames[0].view as ArrayView;
-    // One cell per character, indexed, with both ends marked.
     expect(view.items.length).toBe(30);
     expect(view.showIndices).toBe(true);
     expect(view.pointers?.map((p) => p.name).sort()).toEqual(['hi', 'lo']);
@@ -62,13 +54,10 @@ console.log(best);`,
       OPTS,
     );
 
-    // The map is bookkeeping; the string is the lesson.
     expect(subjects(result.frames)).toContain('s');
   });
 
   it('leaves a value in flight alone, however small the loop counter is', async () => {
-    // `key` changes every iteration, so it is something being processed rather
-    // than something being traversed — the map has to stay on screen.
     const result = await runInSandbox(
       `const keys = ['cyan', 'gold', 'teal'];
 const table = new Map();

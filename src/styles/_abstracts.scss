@@ -1,6 +1,3 @@
-// Sass-level primitives only — no CSS is emitted from this file, because Vite
-// injects it into the top of every module. Runtime-themeable values live as CSS
-// custom properties in `global.scss`.
 
 $radius-sm: 4px;
 $radius-md: 6px;
@@ -38,7 +35,6 @@ $ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   border-radius: $radius-lg;
 }
 
-/// Thin, unobtrusive scrollbars that match the panel chrome.
 @mixin scrollbars {
   scrollbar-width: thin;
   scrollbar-color: var(--breakstep-border-strong) transparent;
@@ -62,7 +58,6 @@ $ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   }
 }
 
-/// Focus ring used everywhere instead of the browser default.
 @mixin focus-ring($offset: 2px) {
   outline: 2px solid var(--breakstep-accent);
   outline-offset: $offset;
@@ -86,7 +81,6 @@ $ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   }
 }
 
-/// Respect users who asked the OS to calm animation down.
 @mixin motion-safe {
   @media (prefers-reduced-motion: no-preference) {
     @content;

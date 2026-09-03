@@ -15,17 +15,11 @@ interface Props {
   stale: boolean;
   detail: string;
   template: Template;
-  /** Shapes the worked benchmark example for the language in the editor. */
   language: Language;
-  /**
-   * A function in the current file, so the example refers to the reader's own
-   * code rather than an invented `solve`.
-   */
   benchFn?: string;
   onAnalyze: () => void;
 }
 
-/** Pretty-print `O(n^2)` with a real superscript. */
 export function prettyClass(cls: ComplexityClass): string {
   return cls
     .replace('n^2 log n', 'n² log n')
@@ -58,11 +52,6 @@ export function ComplexityPanel({
     [empirical],
   );
 
-  /**
-   * Do the two methods agree? Disagreement is genuinely informative — the
-   * static pass reads the worst case in the source, the sweep measures the path
-   * the parameters actually took — so it gets surfaced rather than hidden.
-   */
   const verdict = useMemo(() => {
     if (!report?.static || !empirical || empirical.best === 'unknown') return null;
     const diff = compareComplexity(report.static.time, empirical.best);
@@ -109,7 +98,7 @@ export function ComplexityPanel({
           />
         )}
 
-        {/* --- Headline verdicts ------------------------------------------ */}
+        {}
         <section className={styles.section}>
           <div className={styles.verdicts}>
             <div className={styles.verdict}>
@@ -154,12 +143,6 @@ export function ComplexityPanel({
           {verdict && (
             <Alert
               className={styles.verdictAlert}
-              /*
-               * Only a run that came out *worse* than the source suggests is a
-               * warning. A run that beat the static worst case is good news —
-               * it was drawn in yellow, which read as though something had gone
-               * wrong when nothing had.
-               */
               type={verdict === 'static-lower' ? 'warning' : 'success'}
               showIcon
               message={
@@ -351,7 +334,6 @@ export function ComplexityPanel({
   );
 }
 
-/** Fit a coefficient for an arbitrary class so it can be drawn for comparison. */
 function coefficientFor(cls: ComplexityClass, samples: { n: number; operations: number }[]): number {
   const model = GROWTH_MODELS.find((m) => m.cls === cls);
   if (!model || samples.length === 0) return 0;
@@ -361,7 +343,6 @@ function coefficientFor(cls: ComplexityClass, samples: { n: number; operations: 
   return ratios[ratios.length >> 1];
 }
 
-/** Render `backticked` spans in analyzer notes as inline code. */
 function renderInlineCode(text: string) {
   const parts = text.split(/(`[^`]+`)/g);
   return parts.map((part, i) =>

@@ -145,7 +145,9 @@ once on first use.
 
 **Editable inputs.** Parameters are top-level constants in the code, and the
 Parameters panel edits *those literals in the editor*. Move a slider, the code
-changes. Nothing is substituted behind your back.
+changes. Nothing is substituted behind your back — and on a problem, the panel is
+the input: comment out the example driver and Run still calls your solution with
+whatever the panel holds. The panel says which call it will make.
 
 ---
 

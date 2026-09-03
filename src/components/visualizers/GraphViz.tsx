@@ -11,13 +11,6 @@ const EDGE_STATE_CLASS: Record<string, string> = {
   compare: styles.edgeActive,
 };
 
-/**
- * Directed and undirected graphs.
- *
- * The layout is deterministic (see `layoutGraph`) so a node never moves between
- * frames — the only thing that changes as you scrub the timeline is colour,
- * which is what makes a traversal readable.
- */
 export const GraphViz = memo(function GraphViz({ view }: { view: GraphView }) {
   const { nodes, edges, directed } = view;
   const layout = useMemo(() => layoutGraph(nodes, edges), [nodes, edges]);
@@ -67,7 +60,6 @@ export const GraphViz = memo(function GraphViz({ view }: { view: GraphView }) {
             const to = positions.get(edge.to);
             if (!from || !to) return null;
 
-            // Self-loops need an arc, not a zero-length line.
             if (edge.from === edge.to) {
               return (
                 <path

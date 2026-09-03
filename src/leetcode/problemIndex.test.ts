@@ -22,9 +22,7 @@ describe('the public problem index', () => {
   });
 
   it('rebuilds titles that the file stores as a slug', () => {
-    // "merge-intervals" → "Merge Intervals", stored as 0 to save space.
     expect(index.get('merge-intervals')!.title).toBe('Merge Intervals');
-    // A title that is not just the slug survives verbatim.
     expect(index.get('3sum')!.title).toBe('3Sum');
   });
 
@@ -52,7 +50,6 @@ describe('the public problem index', () => {
       expect(entry, problem.slug).toBeDefined();
       expect(entry!.number, problem.slug).toBe(problem.number);
       expect(entry!.difficulty, problem.slug).toBe(problem.difficulty);
-      // Nothing written out here should be behind a paywall.
       expect(entry!.paidOnly, problem.slug).toBe(false);
     }
   });
@@ -72,7 +69,6 @@ describe('recommendations from the index', () => {
     const result = recommend('koko-eating-bananas', index);
     expect(result.source).toBe('catalogue');
     expect(result.problem).toBeDefined();
-    // And the written reasoning wins over the generated one.
     expect(result.techniques[0].why).toMatch(/Binary search on the answer/);
   });
 
@@ -89,7 +85,6 @@ describe('recommendations from the index', () => {
 
   it('names its structures and admits what it cannot teach', () => {
     const result = recommend('lru-cache', index);
-    // LRU is hash map + doubly linked list, both of which we have.
     expect(result.structures).toContain('hashmap');
     expect(result.structures).toContain('doubly-linked-list');
   });
@@ -123,7 +118,6 @@ describe('reading LeetCode topic tags', () => {
   });
 
   it('does not call a description of the input a missing template', () => {
-    // "array" and "string" say what you are given, not how to solve it.
     const verdict = readTopics(['array', 'string', 'math', 'two-pointers']);
     expect(verdict.unmapped).toEqual([]);
   });

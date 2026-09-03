@@ -5,7 +5,6 @@
   background: var(--breakstep-panel-alt);
   list-style: none;
 
-  // The first recommendation is the one to read; the rest are alternatives.
   &[data-rank='1'] {
     border-color: #{rgba(#5b8cff, 0.45)};
     background: var(--breakstep-accent-soft);

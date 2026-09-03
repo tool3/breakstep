@@ -10,7 +10,6 @@ interface Props {
   result: RunResult | null;
   status: RunStatus;
   detail: string;
-  /** Jump the editor to the line that threw. */
   onGoToLine: (line: number) => void;
 }
 
@@ -28,7 +27,6 @@ export function OutputPanel({ logs, result, status, detail, onGoToLine }: Props)
     [logs, filter],
   );
 
-  // Follow the tail only while the user has not scrolled up to read something.
   useEffect(() => {
     if (pinnedToBottom.current) {
       bottomRef.current?.scrollIntoView({ block: 'end' });
@@ -56,6 +54,12 @@ export function OutputPanel({ logs, result, status, detail, onGoToLine }: Props)
   };
 
   const busy = status === 'running' || status === 'preparing';
+
+  const ranButDidNothing =
+    status === 'done' &&
+    !result?.error &&
+    logs.length === 0 &&
+    (result?.frames.length ?? 0) === 0;
 
   return (
     <div className={styles.panel}>
@@ -102,7 +106,11 @@ export function OutputPanel({ logs, result, status, detail, onGoToLine }: Props)
             <Empty
               image={Empty.PRESENTED_IMAGE_SIMPLE}
               description={
-                busy ? 'Running…' : 'No output yet — call console.log() or breakstep.log() and press Run.'
+                busy
+                  ? 'Running…'
+                  : ranButDidNothing
+                    ? 'Your code ran, but nothing happened — nothing printed and nothing drawn. Did anything call your function?'
+                    : 'No output yet — call console.log() or breakstep.log() and press Run.'
               }
             />
           </div>

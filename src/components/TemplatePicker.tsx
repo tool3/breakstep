@@ -8,7 +8,6 @@ import styles from './TemplatePicker.module.scss';
 interface Props {
   open: boolean;
   currentId: string;
-  /** Phone-sized: the drawer takes the full width and loses the tag row. */
   compact?: boolean;
   onSelect: (id: string) => void;
   onClose: () => void;
@@ -40,8 +39,6 @@ export function TemplatePicker({ open, currentId, compact, onSelect, onClose }: 
     <Drawer
       title="Choose a structure"
       placement="left"
-      // Never wider than the viewport: a 380px drawer on a 360px phone would
-      // push its own close button off screen.
       width={compact ? '100%' : 380}
       open={open}
       onClose={onClose}

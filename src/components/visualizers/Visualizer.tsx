@@ -12,7 +12,6 @@ import { TrieViz } from './TrieViz';
 import { formatFull } from './format';
 import styles from './viz.module.scss';
 
-/** Human-readable name per view kind, used in the frame header. */
 export const VIEW_LABEL: Record<VizView['kind'], string> = {
   array: 'Array',
   matrix: 'Matrix',
@@ -34,12 +33,6 @@ function RawViz({ value }: { value: unknown }) {
   );
 }
 
-/**
- * Single dispatch point from a normalized view to its renderer.
- *
- * The switch is exhaustive over `VizView['kind']`, so adding a structure is a
- * compile error until a visualizer exists for it.
- */
 export const Visualizer = memo(function Visualizer({ view }: { view: VizView }) {
   switch (view.kind) {
     case 'array':

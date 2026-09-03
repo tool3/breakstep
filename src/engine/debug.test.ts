@@ -83,7 +83,6 @@ for (let i = 0; i < nums.length; i++) {
     for (const step of withFrames) {
       expect(result.frames[step.frame!]).toBeDefined();
     }
-    // The frame index only ever moves forwards through the recording.
     const indices = withFrames.map((s) => s.frame!);
     expect(indices).toEqual([...indices].sort((a, b) => a - b));
   });
@@ -122,8 +121,6 @@ s.pop();
 `);
     expect(result.error).toBeUndefined();
 
-    // Methods report qualified, so a breakpoint switch cannot stop in the
-    // wrong class when two classes share a method name.
     const entries = result.steps!.filter((s) => s.kind === 'entry').map((s) => s.fn);
     expect(entries).toEqual(['Stack.constructor', 'Stack.push', 'Stack.push', 'Stack.pop']);
   });
@@ -140,7 +137,6 @@ const b = new Boxed(7);
 console.log(b.value, b.boxed);
 `);
     expect(result.error).toBeUndefined();
-    // super() still runs, and the program is unchanged.
     expect(result.logs[0].text).toBe('7 true');
 
     const entries = result.steps!.filter((s) => s.kind === 'entry').map((s) => s.fn);
@@ -189,7 +185,6 @@ describe('autoInstrument statement hooks', () => {
   it('does not double-report the first statement of a loop body', async () => {
     const result = await run(`for (let i = 0; i < 2; i++) {\n  const x = i;\n}`);
     const atLine2 = result.steps!.filter((s) => s.line === 2);
-    // One statement step per iteration, not two.
     expect(atLine2.length).toBe(2);
   });
 });

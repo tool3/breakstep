@@ -16,10 +16,6 @@
   text-align: center;
 }
 
-// --- Transport ---------------------------------------------------------------
-
-
-
 .timeline {
   display: flex;
   align-items: center;
@@ -43,8 +39,6 @@
   text-align: right;
 }
 
-// --- Body --------------------------------------------------------------------
-
 .scroll {
   flex: 1;
   min-height: 0;
@@ -64,22 +58,11 @@
   gap: 6px;
 }
 
-
-
-
-
 .none {
   margin: 0;
   @include mono(11px);
   color: var(--breakstep-text-faint);
 }
-
-// --- Position ----------------------------------------------------------------
-
-
-
-
-// --- Variables ---------------------------------------------------------------
 
 .scope,
 .stack,
@@ -109,8 +92,6 @@
   @include truncate;
 }
 
-// --- Call stack --------------------------------------------------------------
-
 .stackRow {
   display: flex;
   align-items: center;
@@ -133,14 +114,6 @@
   min-width: 22px;
 }
 
-// --- Function switches -------------------------------------------------------
-
-
-
-
-
-// --- Narrow ------------------------------------------------------------------
-
 @include below(480px) {
   .controls {
     padding: $space-2;
@@ -155,8 +128,6 @@
   }
 }
 
-/* --- The session's state, at the top of the panel ------------------------- */
-
 .status {
   display: flex;
   align-items: center;
@@ -167,7 +138,6 @@
   flex-shrink: 0;
 }
 
-/// Amber while paused, as the whole debugging chrome is; grey once it is over.
 .statusDot {
   width: 8px;
   height: 8px;
@@ -213,8 +183,6 @@
   white-space: nowrap;
   cursor: pointer;
 }
-
-/* --- Collapsible sections ------------------------------------------------- */
 
 .section {
   border-bottom: 1px solid var(--breakstep-border);
@@ -300,8 +268,6 @@
   color: var(--breakstep-text-faint);
 }
 
-/* --- Watch --------------------------------------------------------------- */
-
 .watchAdd {
   display: flex;
   gap: 4px;
@@ -333,8 +299,6 @@
     opacity: 1;
   }
 }
-
-/* --- Breakpoints --------------------------------------------------------- */
 
 .breakList {
   margin: 0;

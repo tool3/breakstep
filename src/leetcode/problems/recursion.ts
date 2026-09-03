@@ -1,6 +1,5 @@
 import type { LeetProblem } from '../types';
 
-/** Shared by the two tree problems below: the node type and the dataset. */
 const treeHeader = (values: string, python?: string) => ({
   typescript: `class TreeNode {
   val: number;
@@ -26,7 +25,6 @@ values = [${python ?? values}]
 `,
 });
 
-/** Rebuild a tree from a level-order array — the shape LeetCode prints. */
 const BUILD_TREE = {
   typescript: `/** Rebuild a tree from LeetCode's level-order array, nulls and all. */
 function buildTree(values: (number | null)[]): TreeNode | null {
@@ -74,8 +72,6 @@ function buildTree(values: (number | null)[]): TreeNode | null {
 
     return root`,
 };
-
-// --- 226 · Invert Binary Tree ------------------------------------------------
 
 const invertDriver = {
   typescript: `
@@ -217,8 +213,6 @@ ${invertDriver.python}`,
   ],
 };
 
-// --- 104 · Maximum Depth of Binary Tree --------------------------------------
-
 const depthDriver = {
   typescript: `
 // --- examples ---------------------------------------------------------------
@@ -297,8 +291,6 @@ ${depthDriver.python}`,
   },
   expectedOutput: ['example 1 -> 3', 'example 2 -> 2', 'example 3 -> 0'],
 };
-
-// --- 70 · Climbing Stairs ----------------------------------------------------
 
 const stairsDriver = {
   typescript: `
@@ -389,9 +381,6 @@ ${stairsDriver.python}`,
   },
   expectedOutput: ['example 1 -> 2', 'example 2 -> 3', 'example 3 -> 89'],
 };
-
-
-// --- 21 · Merge Two Sorted Lists ---------------------------------------------
 
 const mergeListsDriver = {
   typescript: `
@@ -575,8 +564,6 @@ ${mergeListsDriver.python}`,
     'example 3 -> [0]',
   ],
 };
-
-// --- 206 · Reverse Linked List -----------------------------------------------
 
 const reverseDriver = {
   typescript: `

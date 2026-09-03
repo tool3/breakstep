@@ -3,13 +3,6 @@ import type { CallStackView } from '@/types/viz';
 import { stateClass } from './Cell';
 import styles from './viz.module.scss';
 
-/**
- * The recursion call stack.
- *
- * Indented by depth, deepest frame on top — matching how a debugger shows it,
- * and making the "grow, hit the base case, unwind" rhythm of backtracking
- * visible as motion rather than as a wall of text.
- */
 export const CallStackViz = memo(function CallStackViz({ view }: { view: CallStackView }) {
   const { entries } = view;
 
@@ -26,8 +19,7 @@ export const CallStackViz = memo(function CallStackViz({ view }: { view: CallSta
   return (
     <div className={styles.canvas}>
       <span className={styles.caption}>deepest frame first</span>
-      {/* Left-aligned inside a fixed-width column so the depth indent reads as
-          a staircase; centring each frame would just jitter them sideways. */}
+      {}
       <div
         className={styles.stack}
         role="list"

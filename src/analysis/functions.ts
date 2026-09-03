@@ -4,18 +4,11 @@ import { listFunctions as listJsFunctions } from './autoInstrument';
 import { stripPythonNoise } from './staticPy';
 import { stripTypes } from '@/engine/transpile';
 
-/**
- * Python's function inventory, read from indentation.
- *
- * Same reasoning as the static analyzer: shipping a Python parser to name a few
- * functions would mean booting Pyodide before the debug panel can draw itself.
- */
 export function listPythonFunctions(source: string): FunctionInfo[] {
   const lines = stripPythonNoise(source).split('\n');
   const out: FunctionInfo[] = [];
   const seen = new Set<string>();
 
-  /** Open class blocks, so a method reports as `Class.method`. */
   const classes: { name: string; indent: number }[] = [];
 
   lines.forEach((raw, index) => {
@@ -47,13 +40,6 @@ export function listPythonFunctions(source: string): FunctionInfo[] {
   return out;
 }
 
-/**
- * Every function in the source, for the per-function breakpoint switches.
- *
- * TypeScript is type-stripped first because acorn cannot read annotations —
- * and because stripping preserves line numbers, the reported lines still point
- * at the right place in the editor.
- */
 export function listFunctions(source: string, language: Language): FunctionInfo[] {
   if (language === 'python') return listPythonFunctions(source);
   if (language === 'typescript') {

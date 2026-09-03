@@ -1,13 +1,3 @@
-/**
- * End-to-end smoke test against a real browser.
- *
- * Unit tests cover the engine and the analyzers, but only a real browser proves
- * the pieces are wired together: that Monaco boots, that the Web Workers load
- * under module format, that a run produces frames on screen, and that the
- * analysis panel reaches a verdict.
- *
- * Usage: node scripts/smoke.mjs [--headed] [--python]
- */
 import { chromium } from 'playwright';
 import { preview } from 'vite';
 
@@ -48,8 +38,6 @@ try {
   console.log('▸ Loading the app');
   await page.goto(base, { waitUntil: 'networkidle' });
 
-  // Not `getByText`: the logo's SVG carries a <title>Breakstep</title>, which
-  // matches an exact text search and is not a visible node.
   check('the header renders', await page.locator('[class*="wordmark"]').first().isVisible());
   check(
     'the default template is selected',
@@ -58,13 +46,10 @@ try {
 
   console.log('▸ Waiting for Monaco');
   await page.waitForSelector('.monaco-editor', { timeout: 45_000 });
-  // Monaco paints the container before it paints the text; wait for content.
   await page.waitForFunction(
     () => (document.querySelector('.view-lines')?.textContent ?? '').length > 40,
     { timeout: 30_000 },
   );
-  // Monaco emits U+00A0 for spaces inside rendered lines; normalise before
-  // matching or every multi-word assertion silently fails.
   const editorText = (await page.locator('.view-lines').first().innerText()).replace(
     /\u00a0/g,
     ' ',
@@ -74,7 +59,6 @@ try {
     editorText.includes('linked list'),
     JSON.stringify(editorText.slice(0, 80)),
   );
-  // The headline of the redesign: what you see first is ordinary CS code.
   check(
     'the default view is plain code with no Breakstep API',
     !/breakstep\s*\./.test(editorText),
@@ -82,14 +66,6 @@ try {
   );
 
   console.log('▸ Editing like an editor');
-  /*
-   * The three that are configuration rather than contributions, so a well-meant
-   * perf change can switch them off without breaking anything that would notice.
-   * `scripts/editor-features.mjs` covers the other dozen.
-   */
-  // Focus first, then measure: taking focus can reveal the cursor and scroll the
-  // view, which would leave the coordinates measured a moment ago pointing at a
-  // different line.
   await page.locator('.monaco-editor textarea').first().click({ force: true });
   await page.waitForTimeout(400);
 
@@ -194,8 +170,6 @@ try {
 
   console.log('▸ Editing a parameter rewrites the code');
   const codeBefore = (await page.locator('.view-lines').first().innerText()).replace(/\u00a0/g, ' ');
-  // Number params render as a slider plus a spin box; the spin box carries the
-  // accessible label, the slider carries the id.
   const targetInput = page.getByLabel('Value to find');
   await targetInput.fill('20');
   await targetInput.press('Enter');
@@ -226,14 +200,12 @@ try {
   check('the JavaScript variant runs', jsOutput.includes('vertices'), jsOutput.slice(0, 120));
 
   console.log('▸ Debugging a run');
-  // Back to TypeScript and a template with named functions to step through.
   await page.locator('.ant-segmented-item-label', { hasText: 'TypeScript' }).click();
   await page.waitForTimeout(900);
   await page.getByRole('button', { name: 'Debug', exact: true }).click();
   await page.waitForTimeout(3000);
 
   const status = () => page.locator('[class*="statusText"]').first().innerText();
-  /** The debugger's own transport: the visualizer has its own Step back too. */
   const transport = (name) =>
     page.getByRole('toolbar', { name: 'Debug controls' }).getByRole('button', { name });
 
@@ -246,19 +218,12 @@ try {
     await page.getByRole('toolbar', { name: 'Debug controls' }).isVisible(),
   );
 
-  /*
-   * The headline behaviour: pressing Debug runs the program. With nothing set it
-   * reaches the end and says so, rather than parking on line 1 waiting to be
-   * driven — which is what it used to do.
-   */
   check(
     'with no breakpoints it runs to completion instead of pausing on line 1',
     (await status()).includes('Ran to completion'),
     await status(),
   );
 
-  // Stepping backwards out of a completed run is the thing a live debugger cannot
-  // do, and the reason the session stays open at the end.
   await transport('Step back').click();
   await page.waitForTimeout(300);
   check(
@@ -286,11 +251,6 @@ try {
   check('stepping moves the cursor', firstPosition !== (await status()),
     `${firstPosition.replace(/\n/g, ' ')} -> ${(await status()).replace(/\n/g, ' ')}`);
 
-  /*
-   * A gutter click must set the breakpoint on the line you clicked. Monaco does
-   * not account for its own top padding here, which silently put every
-   * breakpoint one line high until the padding moved into CSS.
-   */
   const here = await status();
   const targetLine = Number(here.match(/line (\d+)/)?.[1] ?? 0);
   await page.locator('[class*="statusText"]').first().click();
@@ -313,7 +273,6 @@ try {
     `wanted line ${targetLine}, got ${(await listedLines()).join() || 'none'}`,
   );
 
-  // Restart now means "run again to the first breakpoint", not "back to line 1".
   await transport('Restart').click();
   await page.waitForTimeout(600);
   check(
@@ -322,7 +281,6 @@ try {
     await status(),
   );
 
-  // F5 continues, as it does in VS Code, and only while a session is open.
   await page.keyboard.press('F5');
   await page.waitForTimeout(500);
   check(
@@ -331,10 +289,6 @@ try {
     await status(),
   );
 
-  /*
-   * A condition is answered against the scope recorded at that line, which is
-   * only possible because the run is already over.
-   */
   await page.mouse.click(gutterBox.x + gutterBox.width / 2, gutterBox.y + gutterBox.height / 2, {
     button: 'right',
   });
@@ -364,7 +318,6 @@ try {
     );
   }
 
-  // Watch expressions read the recorded scope wherever the cursor is.
   const watched = (await page.locator('[class*="scopeName"]').allInnerTexts())[0];
   if (watched) {
     await page.getByRole('textbox', { name: 'Add a watch expression' }).fill(watched);
@@ -378,9 +331,6 @@ try {
     );
   }
 
-  // Hovering a variable should answer what it holds right now, not its type.
-  // Whichever in-scope name is actually on screen: the cursor now rests wherever
-  // the breakpoint is, so the first variable in the list need not be visible.
   const inScope = await page.locator('[class*="scopeName"]').allInnerTexts();
   let varName = null;
   let nameSpan = null;
@@ -396,7 +346,6 @@ try {
   if (nameSpan && (await nameSpan.count())) {
     await nameSpan.hover();
     await page.waitForTimeout(1500);
-    // `.monaco-hover` is the outer widget and is empty; the text is inside.
     const hoverText = (await page.locator('.hover-contents').allInnerTexts()).join(' ');
     check(
       'hovering a variable shows its value at this step',
@@ -426,8 +375,6 @@ try {
   await page.getByRole('button', { name: 'Find', exact: true }).click();
   await page.waitForTimeout(400);
 
-  // Finding a problem opens it, and the problem panel below the editor is where
-  // it lives from then on.
   check(
     'the problem opened into the problem panel',
     await page.getByRole('heading', { name: 'Koko Eating Bananas' }).isVisible(),
@@ -497,10 +444,79 @@ try {
     generatedOutput.slice(0, 160),
   );
 
+  console.log('▸ Running a problem from its parameters, not its driver');
+  await page.getByRole('button', { name: 'LeetCode problems' }).click();
+  await page.waitForTimeout(600);
+  await page
+    .locator('.ant-drawer')
+    .getByRole('button', { name: /Valid Palindrome/ })
+    .click();
+  await page.waitForTimeout(1500);
+  await page.getByRole('button', { name: /Reveal the solution/ }).click();
+  await page.waitForTimeout(1200);
+
+  check(
+    'the parameters panel says what Run will call',
+    await page.getByRole('tab', { name: /Parameters/ }).isVisible(),
+  );
+
+  await page.locator('.view-lines').first().click();
+  await page.keyboard.press(isMac ? 'Meta+a' : 'Control+a');
+  const solution = await page.evaluate(() =>
+    [...document.querySelectorAll('.view-line')].length > 0,
+  );
+  check('the solution is in the editor', solution);
+
+  await page.evaluate(() => {
+    const area = document.querySelector('.monaco-editor textarea');
+    area.focus();
+  });
+  await page.evaluate(() => {
+    const text = [...document.querySelectorAll('.view-line')]
+      .map((line) => line.textContent?.replace(/\u00a0/g, ' ') ?? '')
+      .join('\n');
+    const commented = text
+      .split('\n')
+      .map((line) => (line.trimStart().startsWith('console.log') ? `// ${line}` : line))
+      .join('\n');
+    const area = document.querySelector('.monaco-editor textarea');
+    area.focus();
+    const data = new DataTransfer();
+    data.setData('text/plain', commented);
+    area.dispatchEvent(
+      new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }),
+    );
+  });
+  await page.waitForTimeout(1200);
+
+  await page.getByRole('button', { name: 'Run', exact: true }).click();
+  await page.waitForTimeout(2500);
+  await page.getByRole('tab', { name: /Output/ }).click();
+  const commentedOutput = await page.locator('[class*="OutputPanel"]').first().innerText();
+  check(
+    'a problem still runs with its driver commented out',
+    commentedOutput.includes('->'),
+    commentedOutput.slice(0, 160).replace(/\n/g, ' | '),
+  );
+
+  await page.getByRole('tab', { name: /Visualize/ }).click();
+  await page.waitForTimeout(400);
+  check(
+    'and it still draws',
+    (await page.locator('[class*="Cell"], svg circle, [class*="cell"]').count()) > 0,
+  );
+
+  await page.getByRole('tab', { name: /Problem/ }).click();
+  await page.getByRole('button', { name: /Reset to starter/ }).click();
+  await page.waitForTimeout(800);
+
   console.log('▸ Opening a problem from the list');
   await page.getByRole('button', { name: 'LeetCode problems' }).click();
   await page.waitForTimeout(500);
-  await page.getByRole('button', { name: /Valid Palindrome/ }).click();
+  await page
+    .locator('.ant-drawer')
+    .getByRole('button', { name: /Valid Palindrome/ })
+    .click();
   await page.waitForTimeout(1500);
 
   check(
@@ -511,8 +527,6 @@ try {
     'and the problem tab is showing it',
     await page.getByRole('heading', { name: 'Valid Palindrome' }).isVisible(),
   );
-  // A problem is plain code either way, so the toggle must say so rather than
-  // changing the badge and nothing else.
   check(
     'instrumentation is not offered for a problem',
     await page.getByRole('button', { name: 'Show instrumentation' }).isDisabled(),
@@ -543,8 +557,6 @@ try {
   await page.waitForTimeout(1200);
   await page.getByRole('tab', { name: /Submissions/ }).click();
 
-  // Submitted from the keyboard, with focus inside Monaco — the case where the
-  // editor could have swallowed the chord before the app ever saw it.
   await page.locator('.view-lines').first().click();
   await page.keyboard.press('Shift+Meta+Enter');
   await page.getByRole('heading', { name: 'Accepted' }).waitFor({ timeout: 30_000 });
@@ -572,8 +584,6 @@ try {
   );
   check('both attempts are in the history', /2 attempts/.test(acceptedVerdict), acceptedVerdict.slice(0, 120));
 
-  // The verdict has to be visible without opening the history: on the tab, and
-  // beside the problem itself.
   check(
     'the tab carries the last verdict',
     (await page.getByRole('tab', { name: /Submissions/ }).locator('[aria-label="Accepted"]').count()) > 0,
@@ -595,7 +605,6 @@ try {
   await page.keyboard.press('Escape');
   await page.waitForTimeout(400);
 
-  // Back to a built-in template so the sections below test what they say.
   await page.locator('button[aria-label^="Template:"]').click();
   await page.getByRole('button', { name: /^Graph/ }).first().click();
   await page.waitForTimeout(800);
@@ -644,12 +653,9 @@ try {
     await page.getByRole('tab', { name: /Visualize/ }).click();
     check('python produced a visualization', await page.locator('svg circle').first().isVisible());
 
-    // The debugger records Python through the same replay path as JavaScript.
     await page.getByRole('button', { name: 'Debug', exact: true }).click();
     await transport('Step into').waitFor({ state: 'visible', timeout: 120_000 });
     check('python is debuggable too', await transport('Step into').isVisible());
-    // No breakpoints were set, so this recording rests at its end — where the
-    // only direction left is backwards, which is the point of recording it.
     const pyStart = await page.locator('[class*="statusText"]').first().innerText();
     await transport('Step back').click();
     await page.waitForTimeout(300);
@@ -660,8 +666,6 @@ try {
       'python reports variables in scope',
       (await page.locator('[class*="scopeRow"]').count()) > 0,
     );
-    // Shift+F5 ends the session, as it does in VS Code — and it dodges the
-    // tooltip the previous button click leaves floating over its neighbours.
     await page.keyboard.press('Shift+F5');
     await page.waitForTimeout(400);
     check(
@@ -669,12 +673,13 @@ try {
       (await transport('Step into').count()) === 0,
     );
 
-    // Judging is a generated harness, and Python's is a different generator, so
-    // the only proof it is right is running one.
     console.log('▸ Submitting a Python answer');
     await page.getByRole('button', { name: 'LeetCode problems' }).click();
     await page.waitForTimeout(500);
-    await page.getByRole('button', { name: /Valid Palindrome/ }).click();
+    await page
+    .locator('.ant-drawer')
+    .getByRole('button', { name: /Valid Palindrome/ })
+    .click();
     await page.waitForTimeout(1200);
     await page.getByRole('button', { name: /Reveal the solution/ }).click();
     await page.waitForTimeout(1200);
@@ -717,7 +722,6 @@ try {
   }
 }
 
-// Monaco emits a benign cancellation error when a model is disposed mid-request.
 const realErrors = consoleErrors.filter(
   (e) => !/Canceled|ResizeObserver loop|favicon/i.test(e),
 );

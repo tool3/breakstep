@@ -1,13 +1,3 @@
-/**
- * Responsive conformance across a matrix of real device configurations.
- *
- * The claim being tested is specific: on every listed device the app must have
- * no horizontal overflow, no control clipped outside the viewport, no element
- * overlapping the chrome, and every primary action reachable and working. Text
- * is allowed to disappear; functionality is not.
- *
- * Usage: node scripts/responsive.mjs [--headed] [--only=<name fragment>]
- */
 import { chromium, devices } from 'playwright';
 import { preview } from 'vite';
 import { mkdirSync } from 'node:fs';
@@ -18,7 +8,6 @@ const SHOTS = process.argv.includes('--shots');
 
 if (SHOTS) mkdirSync('screenshots/responsive', { recursive: true });
 
-/** Width, height and pointer type — the three things layout actually depends on. */
 const PROFILES = [
   { name: 'iPhone SE', width: 375, height: 667, touch: true, dpr: 2, expect: 'compact' },
   { name: 'Galaxy S8', width: 360, height: 740, touch: true, dpr: 3, expect: 'compact' },
@@ -79,19 +68,16 @@ for (const profile of PROFILES) {
     await page.waitForSelector('.monaco-editor', { timeout: 45_000 });
     await page.waitForTimeout(1200);
 
-    // --- 1. The layout mode the profile is supposed to get -------------------
     const mode = await page.getAttribute('[data-layout]', 'data-layout');
     if (mode !== profile.expect) {
       problems.push(`layout is "${mode}", expected "${profile.expect}"`);
     }
 
-    // --- 2. Nothing may overflow horizontally --------------------------------
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     if (overflow > 1) problems.push(`horizontal overflow of ${overflow}px`);
 
-    // --- 3. No element may extend past the viewport ---------------------------
     const escapees = await page.evaluate(() => {
       const width = window.innerWidth;
       const height = window.innerHeight;
@@ -99,7 +85,7 @@ for (const profile of PROFILES) {
 
       for (const el of document.querySelectorAll('button, a, input, [role="tab"], [role="slider"]')) {
         const r = el.getBoundingClientRect();
-        if (r.width === 0 && r.height === 0) continue; // hidden, fine
+        if (r.width === 0 && r.height === 0) continue;
         if (getComputedStyle(el).visibility === 'hidden') continue;
         if (r.right > width + 1 || r.left < -1 || r.bottom > height + 1 || r.top < -1) {
           out.push(`${el.tagName.toLowerCase()}.${el.className?.toString().slice(0, 24)}`);
@@ -109,15 +95,12 @@ for (const profile of PROFILES) {
     });
     if (escapees.length) problems.push(`clipped controls: ${escapees.join(', ')}`);
 
-    // --- 4. Touch targets must be tappable -----------------------------------
     if (profile.touch) {
       const small = await page.evaluate(() => {
         const out = [];
         for (const el of document.querySelectorAll('button, [role="tab"]')) {
           const r = el.getBoundingClientRect();
           if (r.width === 0 || r.height === 0) continue;
-          // 32px is the floor; 44 is ideal but antd's compact icon buttons in
-          // a toolbar are acceptable at 38–40.
           if (r.height < 32 || r.width < 24) {
             out.push(`${el.getAttribute('aria-label') ?? el.textContent?.trim().slice(0, 14)} ${Math.round(r.width)}×${Math.round(r.height)}`);
           }
@@ -127,7 +110,6 @@ for (const profile of PROFILES) {
       if (small.length) problems.push(`targets too small: ${small.join(', ')}`);
     }
 
-    // --- 5. The primary action has to work -----------------------------------
     const run = page.getByRole('button', { name: 'Run', exact: true });
     if ((await run.count()) === 0) {
       problems.push('no Run button');
@@ -143,7 +125,6 @@ for (const profile of PROFILES) {
       }
     }
 
-    // --- 6. Every panel must be reachable ------------------------------------
     if (mode === 'compact') {
       const tabs = page.locator('[role="tablist"] [role="tab"]');
       const count = await tabs.count();
@@ -160,7 +141,7 @@ for (const profile of PROFILES) {
           problems.push(`overflow ${after}px on tab "${label.trim()}"`);
         }
       }
-      await tabs.nth(2).click(); // leave on Visualize for the screenshot
+      await tabs.nth(2).click();
     } else {
       for (const name of [/Output/, /Analyze/, /Visualize/]) {
         const tab = page.getByRole('tab', { name });
@@ -170,7 +151,6 @@ for (const profile of PROFILES) {
       }
     }
 
-    // --- 7. The template picker must fit -------------------------------------
     await page.locator('button[aria-label^="Template:"]').click();
     await page.waitForTimeout(500);
 
@@ -195,10 +175,6 @@ for (const profile of PROFILES) {
     await page.keyboard.press('Escape');
     await page.waitForTimeout(400);
 
-    // --- 8. The LeetCode drawer must fit too ---------------------------------
-    //
-    // On a phone the entry point lives in the overflow menu, alongside every
-    // other secondary action — it moves rather than disappearing.
     if (mode === 'compact') {
       await page.getByRole('button', { name: 'More options' }).click();
       await page.waitForTimeout(300);
@@ -230,7 +206,6 @@ for (const profile of PROFILES) {
     await page.keyboard.press('Escape');
     await page.waitForTimeout(400);
 
-    // --- 9. Parameters must be operable --------------------------------------
     if (mode === 'compact') {
       await page.locator('[role="tablist"] [role="tab"]').nth(1).click();
       await page.waitForTimeout(300);

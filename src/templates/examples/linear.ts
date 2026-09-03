@@ -260,8 +260,6 @@ export const linkedListCycle: Template = {
   params: [
     {
       name: 'length',
-      // `length` is a DOM global, so the constant cannot use that name at the
-      // top level without shadowing `window.length`.
       binds: 'nodeCount',
       label: 'List length',
       type: 'number',

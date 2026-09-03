@@ -1,7 +1,5 @@
 import type { LeetProblem } from '../types';
 
-// --- 75 · Sort Colors --------------------------------------------------------
-
 const colorsDriver = {
   typescript: `
 // --- examples ---------------------------------------------------------------
@@ -121,8 +119,6 @@ ${colorsDriver.python}`,
   ],
 };
 
-// --- 56 · Merge Intervals ----------------------------------------------------
-
 const mergeDriver = {
   typescript: `
 // --- examples ---------------------------------------------------------------
@@ -218,8 +214,6 @@ ${mergeDriver.python}`,
     'example 3 -> [[0, 4]]',
   ],
 };
-
-// --- 215 · Kth Largest Element in an Array -----------------------------------
 
 const kthDriver = {
   typescript: `
@@ -358,9 +352,6 @@ ${kthDriver.python}`,
   expectedOutput: ['example 1 -> 5', 'example 2 -> 4', 'example 3 -> 1'],
 };
 
-
-// --- 49 · Group Anagrams -----------------------------------------------------
-
 const anagramDriver = {
   typescript: `
 // --- examples ---------------------------------------------------------------
@@ -444,8 +435,6 @@ ${anagramDriver.python}`,
     'example 3 -> [["a"]]',
   ],
 };
-
-// --- 347 · Top K Frequent Elements -------------------------------------------
 
 const topKDriver = {
   typescript: `

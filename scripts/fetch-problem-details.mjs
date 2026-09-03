@@ -1,28 +1,3 @@
-/**
- * Vendor the runnable part of every free LeetCode problem.
- *
- * A maintenance script, run by hand; its output is committed. What it takes is
- * deliberately narrow:
- *
- *   · `metaData` — the function name, its parameter names and types, and the
- *     return type. This is the problem's *interface*, and it is what lets
- *     Breakstep generate a starter signature and a driver.
- *   · the example cases — the inputs LeetCode publishes in `exampleTestcases`,
- *     and the matching expected outputs, read out of the statement as values.
- *
- * What it deliberately does not take is the statement itself. The prose is
- * LeetCode's copyrighted writing; the app links out for it. Data about the
- * problem — its signature, its example inputs and the answers to them — is what
- * you need in order to *run* something, and that is all this stores.
- *
- * Premium problems are skipped: their content is behind a paywall and this
- * makes no attempt to reach past it.
- *
- * Usage:
- *   node scripts/fetch-problem-details.mjs            # resume where it stopped
- *   node scripts/fetch-problem-details.mjs --limit 50 # a taste, for testing
- *   node scripts/fetch-problem-details.mjs --fresh    # ignore the cache
- */
 import { mkdirSync, readFileSync, writeFileSync, existsSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -35,7 +10,6 @@ const CACHE = join(ROOT, 'node_modules', '.cache', 'breakstep-problem-details.js
 
 const ENDPOINT = 'https://leetcode.com/graphql';
 const DELAY_MS = 180;
-/** Problems per shard. Small enough that opening one is a small download. */
 const SHARD_SIZE = 120;
 
 const arg = (name, fallback) => {
@@ -53,8 +27,6 @@ const QUERY = `query q($titleSlug: String!) {
     content
   }
 }`;
-
-// --- Reading the statement for values, not for words -------------------------
 
 const ENTITIES = {
   '&quot;': '"',
@@ -74,13 +46,6 @@ function plain(html) {
     .replace(/\r/g, '');
 }
 
-/**
- * The expected answers, in order.
- *
- * Examples live either in `<pre>` blocks (the long-standing format) or in
- * `<div class="example-block">` (the newer one), so this reads whichever is
- * there and falls back to scanning the whole statement for `Output:` lines.
- */
 function parseExpected(html) {
   if (!html) return [];
 
@@ -97,17 +62,10 @@ function parseExpected(html) {
   const found = blocks.map((b) => readOutput(plain(b))).filter((v) => v !== null && v !== '');
   if (found.length > 0) return found;
 
-  // Neither format matched — read the flattened statement directly.
   const text = plain(html);
   return [...text.matchAll(/Output:?[ \t]*(.+)/g)].map((m) => m[1].trim()).filter(Boolean);
 }
 
-/**
- * Group the flat list of example inputs into one array per case.
- *
- * `exampleTestcases` is one value per line, cycling through the parameters, so
- * the parameter count is what tells you where a case ends.
- */
 function groupCases(exampleTestcases, paramCount) {
   const lines = (exampleTestcases ?? '').split('\n').filter((l) => l.length > 0);
   if (paramCount < 1) return [];
@@ -118,8 +76,6 @@ function groupCases(exampleTestcases, paramCount) {
   }
   return cases;
 }
-
-// --- Fetching ----------------------------------------------------------------
 
 async function fetchOne(slug) {
   const res = await fetch(ENDPOINT, {
@@ -153,22 +109,12 @@ async function fetchOne(slug) {
   return {
     fn: meta.name,
     params: meta.params.map((p) => [p.name, p.type]),
-    // A void return means an in-place problem, judged on the argument after the
-    // call rather than on a result; there is nothing for a driver to print, and
-    // `canGenerate` reads exactly this. (LeetCode's own `manual` flag is not
-    // used: it only says their judge compares output itself, and it is set on
-    // plenty of perfectly ordinary problems.)
     returns: meta.return?.type ?? 'void',
-    // Cases are only useful in pairs: an input with no expected answer cannot
-    // be checked, and an answer with no input cannot be run.
     cases: inputs.slice(0, expected.length).map((input, i) => ({ input, expected: expected[i] })),
   };
 }
 
-// --- Main --------------------------------------------------------------------
-
 const index = JSON.parse(readFileSync(INDEX, 'utf8'));
-/** rows are [number, slug, title|0, difficulty, paidOnly, ...topicIds] */
 const free = index.rows.filter((r) => r[4] === 0).map((r) => ({ number: r[0], slug: r[1] }));
 
 mkdirSync(dirname(CACHE), { recursive: true });
@@ -216,8 +162,6 @@ for (const problem of todo) {
 process.stdout.write('\n');
 writeFileSync(CACHE, JSON.stringify(cache));
 
-// --- Write the shards --------------------------------------------------------
-
 rmSync(OUT_DIR, { recursive: true, force: true });
 mkdirSync(OUT_DIR, { recursive: true });
 
@@ -228,8 +172,6 @@ for (const problem of usable) {
   const shard = Math.floor(problem.number / SHARD_SIZE);
   if (!shards.has(shard)) shards.set(shard, {});
 
-  // Written out field by field so a stale key in the cache cannot leak into
-  // the committed shards.
   const { fn, params, returns, cases } = cache[problem.slug];
   shards.get(shard)[problem.slug] = { fn, params, returns, cases };
 }

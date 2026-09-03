@@ -1,9 +1,3 @@
-/**
- * The store is the piece most likely to be replaced, so what is pinned here is
- * the *contract* — ids assigned on save, newest first, queries by problem — not
- * how `localStorage` happens to hold it. A service-backed implementation has to
- * pass the same expectations.
- */
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   MAX_CODE_CHARS,
@@ -41,7 +35,6 @@ function draft(overrides: Partial<SubmissionDraft> = {}): SubmissionDraft {
   };
 }
 
-/** A stored record, for the cap helper, which never touches storage. */
 function record(slug: string, id: string, verdict: Submission['verdict'] = 'accepted'): Submission {
   return { ...draft({ problemSlug: slug, verdict }), id };
 }
@@ -97,7 +90,6 @@ describe('the local submission store', () => {
 
     await store.clear({ problemSlug: 'two-sum' });
     expect(await store.list({ problemSlug: 'two-sum' })).toHaveLength(0);
-    // Clearing one problem leaves the others alone.
     expect(await store.list({ problemSlug: 'valid-palindrome' })).toHaveLength(1);
 
     await store.clear();
@@ -109,8 +101,6 @@ describe('the local submission store', () => {
       `${STORAGE_PREFIX}submissions`,
       JSON.stringify({ version: SUBMISSION_SCHEMA + 1, items: [record('two-sum', 'x')] }),
     );
-    // Reading a shape this build does not understand is not an error; it is a
-    // history that no longer means anything, so it goes.
     expect(await submissionStore().list()).toEqual([]);
   });
 
@@ -133,7 +123,6 @@ describe('retention', () => {
     const kept = applyCaps(items);
 
     expect(kept).toHaveLength(MAX_PER_PROBLEM);
-    // Newest first in, newest first kept.
     expect(kept[0].id).toBe('s0');
   });
 

@@ -1,36 +1,17 @@
-/**
- * The full public problem index.
- *
- * Every LeetCode problem — number, slug, title, difficulty, paid-only flag and
- * LeetCode's own topic tags — vendored from their public catalogue endpoint by
- * `scripts/fetch-problem-index.mjs` and committed. The app never calls
- * leetcode.com itself.
- *
- * Metadata only. Problem statements and solutions are LeetCode's content, so
- * they are neither fetched nor stored; the handful of problems that ship with a
- * dataset and a worked solution live in `catalogue.ts` and are written here.
- *
- * The file is ~300 kB, so it is imported dynamically: someone who never opens
- * the problem drawer never downloads it.
- */
 
 export interface IndexedProblem {
   number: number;
   slug: string;
   title: string;
   difficulty: 'Easy' | 'Medium' | 'Hard';
-  /** Premium problems cannot be read without a subscription — say so up front. */
   paidOnly: boolean;
-  /** LeetCode's own topic tags, e.g. `two-pointers`, `dynamic-programming`. */
   topics: string[];
 }
 
 export interface ProblemIndex {
-  /** When the metadata was last refreshed, as YYYY-MM-DD. */
   fetchedAt: string;
   size: number;
   get(slug: string): IndexedProblem | undefined;
-  /** Slug-prefix search, for the "did you mean" list. */
   search(query: string, limit?: number): IndexedProblem[];
 }
 
@@ -38,13 +19,11 @@ interface RawIndex {
   fetchedAt: string;
   count: number;
   topics: string[];
-  /** `[number, slug, title | 0, difficulty, paidOnly, ...topicIds]` */
   rows: (number | string)[][];
 }
 
 const DIFFICULTY = ['Easy', 'Medium', 'Hard'] as const;
 
-/** Titles that are just the slug title-cased are stored as 0 and rebuilt here. */
 function titleFromSlug(slug: string): string {
   return slug
     .split('-')
@@ -73,14 +52,6 @@ function decode(raw: RawIndex): ProblemIndex {
     fetchedAt: raw.fetchedAt,
     size: bySlug.size,
     get: (slug) => bySlug.get(slug),
-    /**
-     * Slug search, tolerant enough to be useful on a typo.
-     *
-     * A whole-slug match wins; failing that, problems are scored on how many of
-     * the query's words appear in their slug, which is what rescues
-     * `two-sum-iiii` → `two-sum-ii`. Shorter slugs break ties, so the plain
-     * problem outranks its variants.
-     */
     search(query, limit = 6) {
       const needle = query.trim().toLowerCase().replace(/\s+/g, '-');
       if (needle.length < 2) return [];
@@ -98,13 +69,10 @@ function decode(raw: RawIndex): ProblemIndex {
           if (problem.slug.includes(word)) score += 10;
         }
 
-        // How far the two slugs agree from the left. This is what separates a
-        // typo from an unrelated problem that happens to share a word.
         let shared = 0;
         while (shared < needle.length && needle[shared] === problem.slug[shared]) shared++;
         score += shared * 3;
 
-        // One incidental word in common is noise, not a suggestion.
         if (score >= 20) scored.push({ problem, score: score - problem.slug.length / 100 });
       }
 
@@ -118,18 +86,11 @@ function decode(raw: RawIndex): ProblemIndex {
 
 let pending: Promise<ProblemIndex> | null = null;
 
-/**
- * Load the index, once per session.
- *
- * Callers can render without it — an uncatalogued problem still gets a
- * keyword-based guess — so this never blocks the drawer from opening.
- */
 export function loadProblemIndex(): Promise<ProblemIndex> {
   if (!pending) {
     pending = import('./problemIndex.json')
       .then((mod) => decode((mod.default ?? mod) as unknown as RawIndex))
       .catch((error) => {
-        // Let the next attempt try again rather than caching the failure.
         pending = null;
         throw error;
       });

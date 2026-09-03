@@ -5,7 +5,6 @@ import { nodeStateClass } from './Cell';
 import { formatFull, formatValue } from './format';
 import styles from './viz.module.scss';
 
-/** Binary trees, BSTs and n-ary trees, drawn as SVG so edges stay crisp. */
 export const TreeViz = memo(function TreeViz({ view }: { view: TreeView }) {
   const layout = useMemo(() => layoutTree(view.root, view.binary ?? true), [view.root, view.binary]);
 

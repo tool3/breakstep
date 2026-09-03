@@ -1,15 +1,3 @@
-/**
- * The JavaScript execution sandbox.
- *
- * Kept out of the worker file so it can be unit tested directly on the main
- * thread. The worker is a thin transport shell around these two functions.
- *
- * Isolation model: user code is compiled with the async `Function` constructor,
- * receiving `breakstep`, `params` and the op-counter as *arguments* rather than
- * globals. Combined with the worker boundary (no DOM, no window, separate
- * event loop) this is enough for a tool whose threat model is "the user pasted
- * their own algorithm", not "the user is hostile to themselves".
- */
 import { normalize } from './normalize';
 import { instrument, OP_LIMIT_MESSAGE } from '@/analysis/instrument';
 import { autoInstrument, hasManualInstrumentation } from '@/analysis/autoInstrument';
@@ -29,28 +17,16 @@ export interface BenchSpec {
 export interface SandboxOptions {
   opLimit: number;
   frameLimit: number;
-  /**
-   * Rewrite the source so it reports its own state, letting plain textbook code
-   * visualize itself. Ignored when the source already calls `breakstep.show`.
-   */
   autoTrace?: boolean;
-  /**
-   * Also record a step before every statement, so the debugger can walk the run
-   * one line at a time. Costs roughly 3x the steps, so it is opt-in.
-   */
   debug?: boolean;
-  /** Ceiling on recorded debug steps; a runaway loop must not fill memory. */
   stepLimit?: number;
-  /** Called as frames/logs arrive so the worker can stream them out. */
   onFlush?: (payload: { frames: Frame[]; logs: LogEntry[] }) => void;
   flushEveryMs?: number;
 }
 
 export interface SandboxResult {
   frames: Frame[];
-  /** Recorded execution, present only on a debug run. */
   steps?: DebugStep[];
-  /** True when frames came from auto-tracing rather than explicit `breakstep.show`. */
   traced?: boolean;
   logs: LogEntry[];
   error?: RunError;
@@ -64,7 +40,6 @@ const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor as
   ...args: string[]
 ) => (...args: unknown[]) => Promise<unknown>;
 
-/** Render a value the way a console would, but without choking on cycles. */
 export function stringifyArg(value: unknown, depth = 0): string {
   if (typeof value === 'string') return depth === 0 ? value : JSON.stringify(value);
   if (value === null) return 'null';
@@ -106,7 +81,6 @@ export function stringifyArg(value: unknown, depth = 0): string {
   return walk(value, depth);
 }
 
-/** Structured-clone safety: strip functions and cycles before postMessage. */
 export function toTransferable(value: unknown, depth = 0, seen = new WeakSet<object>()): unknown {
   if (value === null || typeof value !== 'object') {
     return typeof value === 'function' || typeof value === 'symbol' || typeof value === 'bigint'
@@ -129,7 +103,6 @@ export function toTransferable(value: unknown, depth = 0, seen = new WeakSet<obj
   return out;
 }
 
-/** `export` / bare `import` would throw inside `new Function`; erase them. */
 export function stripModuleSyntax(code: string): string {
   return code
     .replace(/^\s*export\s+default\s+/gm, '')
@@ -148,7 +121,6 @@ interface Harness {
   readOps: () => number;
   resetOps: () => void;
   setCapture: (on: boolean) => void;
-  /** Auto-trace hooks, passed to the compiled function alongside `breakstep`. */
   step: (line: number, snapshot: () => Record<string, unknown>, tag?: string) => void;
   enter: (name: string, line: number, snapshot: () => Record<string, unknown>) => void;
   exit: () => void;
@@ -202,13 +174,6 @@ function createHarness(params: ParamValues, options: SandboxOptions, startedAt: 
     maybeFlush();
   };
 
-  /**
-   * `breakstep.show(value, options)` — options may be a factory.
-   *
-   * Building a highlight map often costs O(n) per frame, which would swamp the
-   * very algorithm the user is measuring. Passing `() => ({ … })` defers that
-   * work so it never runs during a benchmark sweep, where capture is off.
-   */
   const show = (value: unknown, optsOrFactory: ShowOptions | (() => ShowOptions) = {}) => {
     if (!capturing) return;
     if (frames.length >= options.frameLimit) return;
@@ -225,12 +190,10 @@ function createHarness(params: ParamValues, options: SandboxOptions, startedAt: 
 
   const breakstep: Record<string, unknown> = {
     show,
-    /** Alias so `breakstep.viz(x)` reads naturally too. */
     viz: show,
     log: (...args: unknown[]) => record('log', args),
     warn: (...args: unknown[]) => record('warn', args),
     error: (...args: unknown[]) => record('error', args),
-    /** Name the next frame without passing options. */
     label: (text: string) => {
       pendingLabel = text;
     },
@@ -239,7 +202,6 @@ function createHarness(params: ParamValues, options: SandboxOptions, startedAt: 
     bench: (spec: BenchSpec) => {
       bench = spec;
     },
-    /** Escape hatch for templates that want a deterministic input generator. */
     randomInts: (count: number, max = 100, seed = 42) => {
       let s = seed >>> 0;
       const out: number[] = [];
@@ -251,10 +213,6 @@ function createHarness(params: ParamValues, options: SandboxOptions, startedAt: 
     },
   };
 
-  /**
-   * Auto-trace shares the frame budget and the capture flag with `breakstep.show`,
-   * so a benchmark sweep silently disables it along with everything else.
-   */
   const stepLimit = options.stepLimit ?? 20_000;
 
   const tracer = createAutoTracer({
@@ -265,7 +223,6 @@ function createHarness(params: ParamValues, options: SandboxOptions, startedAt: 
       maybeFlush();
       return true;
     },
-    // Only a debug run pays for the recording.
     record: options.debug
       ? (kind, line, scope, stack, fn, frame) => {
           if (steps.length >= stepLimit) return false;
@@ -275,8 +232,6 @@ function createHarness(params: ParamValues, options: SandboxOptions, startedAt: 
             kind,
             fn,
             depth: stack.length,
-            // The scope crosses a worker boundary, so it has to be cloneable —
-            // and shallow enough that a big structure does not dominate.
             scope: toTransferable(scope, 5) as Record<string, unknown>,
             stack: stack.map((e) => ({ label: e.label, depth: e.depth })),
             frame,
@@ -310,9 +265,6 @@ function createHarness(params: ParamValues, options: SandboxOptions, startedAt: 
 function toRunError(err: unknown, code: string): RunError {
   if (!(err instanceof Error)) return { message: String(err) };
   const stack = err.stack ?? '';
-  // `new Function` sources appear as `<anonymous>:LINE:COL`. V8 wraps the body
-  // as `function anonymous(args\n) {\n<body>`, and our own `"use strict";`
-  // preamble takes one more line — so user line 1 lands on reported line 4.
   const match = stack.match(/<anonymous>:(\d+):(\d+)/);
   let line: number | undefined;
   let column: number | undefined;
@@ -326,7 +278,6 @@ function toRunError(err: unknown, code: string): RunError {
 
 const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
-/** Compile and execute user code once, capturing logs, frames and op count. */
 export async function runInSandbox(
   rawCode: string,
   params: ParamValues,
@@ -334,14 +285,9 @@ export async function runInSandbox(
 ): Promise<SandboxResult> {
   const cleaned = stripModuleSyntax(rawCode);
 
-  // Auto-tracing steps aside when the source already drives the visualizer, so
-  // a template that calls `breakstep.show` never gets duplicate frames.
   const manual = hasManualInstrumentation(cleaned);
   const traced = Boolean(options.autoTrace) && !manual;
 
-  // Order matters: op-counting is injected FIRST, so the snapshot thunks that
-  // auto-tracing adds afterwards are never themselves counted. Otherwise every
-  // captured frame would inflate the reported operation count by one.
   const counted = instrument(cleaned).code;
   const traceable = traced ? autoInstrument(counted, { debug: options.debug }) : null;
   const instrumented = traceable?.ok ? traceable.code : counted;
@@ -415,22 +361,12 @@ export interface BenchOutcome {
   error?: string;
 }
 
-/**
- * Run the registered `breakstep.bench(...)` harness across a size sweep.
- *
- * Input generation is excluded from the count (we reset the counter after
- * building the input), so the numbers describe the algorithm and not its
- * fixture. The sweep stops early rather than failing outright when a size blows
- * the op budget — partial data still fits a curve.
- */
 export async function benchInSandbox(
   rawCode: string,
   params: ParamValues,
   sizes: number[],
   opLimit: number,
 ): Promise<BenchOutcome> {
-  // Benchmarks never auto-trace: the sweep measures the algorithm, not the
-  // instrumentation that would draw it.
   const prep = await runInSandbox(rawCode, params, {
     opLimit,
     frameLimit: 0,
@@ -453,7 +389,6 @@ export async function benchInSandbox(
   const cleaned = stripModuleSyntax(rawCode);
   const { code: instrumented } = instrument(cleaned);
 
-  // Recompile with capture disabled so the sweep does not accumulate frames.
   const startedAt = now();
   const h = createHarness(params, { opLimit, frameLimit: 0 }, startedAt);
   h.setCapture(false);
@@ -502,7 +437,6 @@ export async function benchInSandbox(
     const ms = now() - t0;
     samples.push({ n, operations: h.readOps(), ms });
 
-    // Stop before the next size would obviously blow the budget.
     if (h.readOps() > opLimit / 4) {
       stoppedBy = `stopped after n=${n} — the next size would exceed the operation budget`;
       break;

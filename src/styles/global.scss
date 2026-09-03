@@ -1,20 +1,4 @@
-/**
- * Theme tokens and global resets.
- *
- * Three themes, selected by `data-theme` on <html>: `graphite` (default, a
- * softer charcoal), `midnight` (near-black neutral) and `light`. Every colour
- * any component uses comes from a token defined here, which is what keeps them
- * from drifting apart as the app grows.
- */
 
-/**
- * Graphite — the default, and the one built for reading.
- *
- * A charcoal page with lighter panels sitting on top of it, borders you can
- * actually see, and near-white text softened just enough to take the glare off.
- * Deliberately close to the palette LeetCode uses, because that palette is
- * legible for hours; near-black photographs better than it reads.
- */
 :root,
 :root[data-theme='graphite'] {
   --breakstep-bg: #1a1a1a;
@@ -25,21 +9,14 @@
   --breakstep-border: #3e3e3e;
   --breakstep-border-strong: #4f4f4f;
 
-  // Softened rather than pure white: #ffffff on charcoal glares, and the
-  // difference between the three weights is what carries the hierarchy.
   --breakstep-text: #eff1f6;
   --breakstep-text-dim: #{rgba(#eff1f6, 0.66)};
   --breakstep-text-faint: #{rgba(#eff1f6, 0.42)};
 
-  // Brighter and cleaner than the link blue this palette uses for text: at
-  // this size the accent is mostly thin strokes — a slider track, a 1px cell
-  // border — and a mid-tone blue on charcoal reads as washed out rather than
-  // deliberate.
   --breakstep-accent: #58a6ff;
   --breakstep-accent-soft: #{rgba(#58a6ff, 0.18)};
   --breakstep-accent-text: #79c0ff;
 
-  // The difficulty colours, which is where this palette is most recognisable.
   --breakstep-mint: #2cbb5d;
   --breakstep-mint-soft: #{rgba(#2cbb5d, 0.16)};
   --breakstep-amber: #ffb800;
@@ -55,10 +32,6 @@
   color-scheme: dark;
 }
 
-/**
- * Midnight — near-black neutral greys with no blue cast, so the accent colours
- * in the visualizers are the only chroma on screen.
- */
 :root[data-theme='midnight'] {
   --breakstep-bg: #08090b;
   --breakstep-bg-deep: #030304;
@@ -137,8 +110,6 @@ body,
 }
 
 #root {
-  // `dvh` tracks mobile browser chrome as it collapses; `100%` alone leaves a
-  // gap under the footer on iOS Safari.
   height: 100dvh;
 }
 
@@ -152,12 +123,9 @@ body {
   text-rendering: optimizeLegibility;
   overscroll-behavior: none;
 
-  // The app owns its own scrolling regions; the document itself never moves.
-  // Without this an iOS keyboard or a rubber-band drag shifts the whole shell.
   position: fixed;
   inset: 0;
   overflow: hidden;
-  // Stop a double-tap zooming the UI while leaving pinch-zoom available.
   touch-action: manipulation;
 }
 
@@ -175,9 +143,6 @@ pre {
   background: var(--breakstep-accent-soft);
 }
 
-// --- Ant Design bridge -----------------------------------------------------
-// antd renders into portals, so a handful of its surfaces need the same tokens
-// rather than component-scoped module styles.
 .ant-tooltip-inner,
 .ant-popover-inner {
   background: var(--breakstep-elevated) !important;
@@ -207,16 +172,12 @@ pre {
   background: var(--breakstep-bg-deep) !important;
 }
 
-// Monaco's own scrollbars clash with the panel chrome; soften them.
 .monaco-editor .scrollbar .slider {
   background: var(--breakstep-border-strong) !important;
   border-radius: $radius-pill;
 }
 
-// --- Touch and small screens -----------------------------------------------
-
 @media (pointer: coarse) {
-  // antd's dropdown and select rows are 24–32px by default; too small to hit.
   .ant-dropdown-menu-item,
   .ant-select-item {
     min-height: 40px;
@@ -228,8 +189,6 @@ pre {
     padding-block: 8px;
   }
 
-  // `role="tab"` sits on the inner button, so padding the outer element does
-  // not grow the hit area that a finger actually has to find.
   .ant-tabs-tab {
     padding-block: 10px !important;
   }
@@ -241,7 +200,6 @@ pre {
   }
 }
 
-// A drawer wider than the viewport puts its own close button off screen.
 .ant-drawer-content-wrapper {
   max-width: 100vw;
 }
@@ -251,7 +209,6 @@ pre {
     padding: $space-3 $space-4;
   }
 
-  // Tooltips are useless on touch and can cover the control that spawned them.
   .ant-tooltip {
     display: none;
   }

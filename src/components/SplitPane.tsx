@@ -4,23 +4,14 @@ import styles from './SplitPane.module.scss';
 interface Props {
   first: ReactNode;
   second: ReactNode;
-  /** Percentage of the container given to the first pane. */
   ratio: number;
   onRatioChange: (ratio: number) => void;
   direction?: 'horizontal' | 'vertical';
   min?: number;
   max?: number;
-  /** Below this width the split collapses and both panes stack. */
   stacked?: boolean;
 }
 
-/**
- * A two-pane splitter with a keyboard-operable divider.
- *
- * Pointer events (not mouse events) so it works with a trackpad, a touchscreen
- * and a stylus alike, and `setPointerCapture` so a fast drag that leaves the
- * divider does not drop the gesture.
- */
 export function SplitPane({
   first,
   second,
@@ -57,7 +48,6 @@ export function SplitPane({
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
     window.addEventListener('pointercancel', onUp);
-    // Stop text selection from fighting the drag.
     document.body.style.userSelect = 'none';
     document.body.style.cursor = horizontal ? 'col-resize' : 'row-resize';
 

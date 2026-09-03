@@ -11,11 +11,6 @@ import {
 } from './useLocalStorage';
 import { DEFAULT_TEMPLATE_ID, defaultParams, getTemplate, templateSource } from '@/templates';
 
-/**
- * The engine talks to Web Workers, which jsdom does not provide. The transport
- * is covered end to end by `scripts/smoke.mjs` in a real browser; here it is
- * replaced so the state machine around it can be tested in isolation.
- */
 const runMock = vi.fn();
 const benchMock = vi.fn();
 const cancelMock = vi.fn();
@@ -40,8 +35,6 @@ const doneResult = {
 };
 
 beforeEach(() => {
-  // Node 26 defines its own inert `localStorage` global that shadows jsdom's,
-  // so always go through `window` — exactly as the hook itself does.
   window.localStorage.clear();
   vi.clearAllMocks();
   runMock.mockResolvedValue(doneResult);
@@ -112,8 +105,6 @@ describe('useTheme', () => {
   });
 
   it.each(['dark', 'slate'])('falls back to the default for a retired theme (%s)', (stored) => {
-    // 'dark' came from an early build; 'slate' was replaced by Graphite. Either
-    // one left in storage must not leave the app with no tokens.
     writeStored('theme', stored);
     const { result } = renderHook(() => useTheme());
     expect(result.current.theme).toBe('graphite');
@@ -210,7 +201,6 @@ describe('useWorkspace', () => {
     const { result } = renderHook(() => useWorkspace());
     act(() => result.current.analyze());
 
-    // Static analysis is synchronous, so it must be present before the sweep.
     expect(result.current.analysis?.static.time).toBe('O(n)');
     expect(result.current.analyzing).toBe(true);
 
@@ -295,18 +285,6 @@ describe('useWorkspace', () => {
   });
 });
 
-/**
- * The typing path, guarded.
- *
- * This is the contract that keeps the editor fast, and it is easy to undo by
- * accident: one `setState` or one `writeStored` added to `setCode` puts the cost
- * of persisting, re-parsing and re-rendering back onto every keystroke. It
- * measured 35ms of synchronous work per character inside the input handler, and
- * keystroke-to-paint at 48ms. These tests fail if any of it comes back.
- *
- * `scripts/editor-perf.mjs --typing` measures the same thing in a real browser;
- * this measures the architecture that makes the numbers possible.
- */
 describe('typing costs nothing until you pause', () => {
   it('does not publish, persist or re-render while the keys are still coming', () => {
     const { result } = renderHook(() => useWorkspace());
@@ -317,10 +295,8 @@ describe('typing costs nothing until you pause', () => {
       for (const ch of 'const x = 1;') result.current.setCode(`${before}\n// ${ch}`);
     });
 
-    // The buffer the app sees has not moved, and nothing was written.
     expect(result.current.code).toBe(before);
     expect(writes).not.toHaveBeenCalled();
-    // Nor has the document version: only the app moves that, never the user.
     expect(result.current.docVersion).toBe(0);
     writes.mockRestore();
   });
@@ -337,7 +313,6 @@ describe('typing costs nothing until you pause', () => {
     });
 
     expect(result.current.code).toBe('// three');
-    // One write for the code; a clean-mode template also re-syncs its params.
     const codeWrites = writes.mock.calls.filter(([key]) => String(key).includes(':code:'));
     expect(codeWrites).toHaveLength(1);
     expect(String(codeWrites[0][1])).toContain('// three');
@@ -348,8 +323,6 @@ describe('typing costs nothing until you pause', () => {
     const { result } = renderHook(() => useWorkspace());
     runMock.mockResolvedValue(doneResult);
 
-    // Typed and deliberately not flushed: the debounce must not be able to make
-    // Run execute stale text.
     act(() => result.current.setCode('console.log("live buffer");'));
     expect(result.current.code).not.toContain('live buffer');
 
@@ -365,7 +338,6 @@ describe('typing costs nothing until you pause', () => {
     act(() => result.current.selectTemplate('trie'));
     expect(result.current.code).not.toContain('unflushed edit');
 
-    // Switching template flushed it to the slot being left, so it is still there.
     act(() => result.current.selectTemplate(DEFAULT_TEMPLATE_ID));
     expect(result.current.code).toBe('// unflushed edit');
   });

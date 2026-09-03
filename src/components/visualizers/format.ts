@@ -1,4 +1,3 @@
-/** Turn an arbitrary cell value into something that fits in a 44px box. */
 export function formatValue(value: unknown, max = 8): string {
   if (value === null) return '∅';
   if (value === undefined) return '—';
@@ -18,7 +17,6 @@ export function formatValue(value: unknown, max = 8): string {
   return String(value);
 }
 
-/** Longer form used in tooltips, where there is room for the real value. */
 export function formatFull(value: unknown): string {
   if (typeof value === 'string') return value;
   try {
@@ -28,7 +26,6 @@ export function formatFull(value: unknown): string {
   }
 }
 
-/** Compact integers for stat badges: 12_400 → "12.4k". */
 export function formatCount(value: number): string {
   if (!Number.isFinite(value)) return '∞';
   const abs = Math.abs(value);

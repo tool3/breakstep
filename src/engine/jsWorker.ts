@@ -1,12 +1,4 @@
 /// <reference lib="webworker" />
-/**
- * JavaScript/TypeScript execution worker.
- *
- * Everything interesting lives in `sandbox.ts`; this file is transport. Running
- * off the main thread is what makes the runaway-loop story work: the op-limit
- * guard usually stops it, and if the user's code manages to hang anyway the main
- * thread can still terminate the worker.
- */
 import { benchInSandbox, runInSandbox, toTransferable } from './sandbox';
 import type { WorkerRequest } from './protocol';
 
@@ -29,8 +21,6 @@ ctx.onmessage = async (event: MessageEvent<WorkerRequest>) => {
       },
     });
 
-    // The streaming flush may not have covered the tail; send whatever is left
-    // by replaying the complete set — the client de-duplicates by frame id.
     ctx.postMessage({ type: 'frame', id: msg.id, frames: result.frames });
     ctx.postMessage({ type: 'log', id: msg.id, entries: result.logs });
 

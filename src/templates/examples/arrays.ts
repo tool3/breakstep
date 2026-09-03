@@ -204,7 +204,6 @@ export const slidingWindow: Template = {
   category: 'Worked examples',
   blurb: 'Longest substring with no repeated character, in one pass.',
   tags: ['array', 'string', 'hashmap'],
-  // Space is O(k) for an alphabet of size k — bounded, hence O(1) here.
   expected: { time: 'O(n)', space: 'O(1)' },
   params: [
     { name: 'text', label: 'Input string', type: 'string', default: 'abcabcbbxyzzyx' },
