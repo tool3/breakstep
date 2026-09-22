@@ -1,6 +1,6 @@
 import { memo, useMemo } from 'react';
 import type { TreeView } from '@/types/viz';
-import { layoutTree, scalable } from './layout';
+import { layoutTree, scalable, trimToRadius } from './layout';
 import { nodeStateClass } from './Cell';
 import { formatFull, formatValue } from './format';
 import styles from './viz.module.scss';
@@ -32,10 +32,7 @@ export const TreeViz = memo(function TreeViz({ view }: { view: TreeView }) {
             <line
               key={`${e.from}-${e.to}`}
               className={styles.edge}
-              x1={e.x1}
-              y1={e.y1}
-              x2={e.x2}
-              y2={e.y2}
+              {...trimToRadius(e.x1, e.y1, e.x2, e.y2, radius)}
             />
           ))}
 

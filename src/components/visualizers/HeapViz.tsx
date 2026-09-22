@@ -1,6 +1,6 @@
 import { memo, useMemo } from 'react';
 import type { HeapView } from '@/types/viz';
-import { heapToTree, layoutTree } from './layout';
+import { heapToTree, layoutTree, trimToRadius } from './layout';
 import { Cell, nodeStateClass } from './Cell';
 import { formatValue } from './format';
 import styles from './viz.module.scss';
@@ -43,10 +43,7 @@ export const HeapViz = memo(function HeapViz({ view }: { view: HeapView }) {
             <line
               key={`${e.from}-${e.to}`}
               className={styles.edge}
-              x1={e.x1}
-              y1={e.y1}
-              x2={e.x2}
-              y2={e.y2}
+              {...trimToRadius(e.x1, e.y1, e.x2, e.y2, radius)}
             />
           ))}
           {layout.nodes.map(({ node, x, y }) => (

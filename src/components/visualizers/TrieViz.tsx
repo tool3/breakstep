@@ -1,6 +1,6 @@
 import { memo, useMemo } from 'react';
 import type { TrieView } from '@/types/viz';
-import { layoutTree, scalable, trieToTreeNode } from './layout';
+import { layoutTree, scalable, trieToTreeNode, trimToRadius } from './layout';
 import { nodeStateClass } from './Cell';
 import styles from './viz.module.scss';
 
@@ -42,10 +42,7 @@ export const TrieViz = memo(function TrieViz({ view }: { view: TrieView }) {
             <line
               key={`${e.from}-${e.to}`}
               className={styles.edge}
-              x1={e.x1}
-              y1={e.y1}
-              x2={e.x2}
-              y2={e.y2}
+              {...trimToRadius(e.x1, e.y1, e.x2, e.y2, radius)}
             />
           ))}
 
